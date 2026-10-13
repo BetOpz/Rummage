@@ -530,3 +530,31 @@ describe('bot', () => {
     }
   });
 });
+
+describe('sorting chosen cards into melds', () => {
+  // The same part can appear in a run and (as its second copy) in a set.
+  const hand = ['brass:3', 'brass:4', 'brass:5', 'brass:6', 'brass:4', 'wood:4', 'copper:4', 'iron:9'];
+
+  it('splits a run and a set that share a number', () => {
+    // Clockwork Toy: run of 4 + set of 3.
+    const { state, ids } = withHand(setTarget(startedGame('sort'), 'clockwork_toy'), hand);
+    const chosen = ids.slice(0, 7);
+    const groups = engine.suggestBuild(state, 'p1', chosen)!;
+    expect(groups).not.toBeNull();
+    expect(groups.flat().sort()).toEqual([...chosen].sort());
+    const s = engine.reduce(state, { type: 'BUILD', playerId: 'p1', groups });
+    expect(s.phase).toBe('roundOver');
+  });
+
+  it('a 2-3-4-5 run plus three 4s works', () => {
+    const { state, ids } = withHand(setTarget(startedGame('sort2'), 'clockwork_toy'), [
+      'brass:2', 'brass:3', 'brass:4', 'brass:5', 'brass:4', 'wood:4', 'copper:4',
+    ]);
+    expect(engine.suggestBuild(state, 'p1', ids)).not.toBeNull();
+  });
+
+  it('only uses the cards given', () => {
+    const { state, ids } = withHand(setTarget(startedGame('sort3'), 'clockwork_toy'), hand);
+    expect(engine.suggestBuild(state, 'p1', ids.slice(0, 4))).toBeNull();
+  });
+});

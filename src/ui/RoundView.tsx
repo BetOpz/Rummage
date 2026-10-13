@@ -39,7 +39,7 @@ export function RoundView() {
   const [targeting, setTargeting] = useState<Targeting | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('category');
   const [showDiscard, setShowDiscard] = useState(false);
-  const [autoFillMiss, setAutoFillMiss] = useState(false);
+  const [sortMessage, setSortMessage] = useState<string | null>(null);
 
   const lockedIds = me.lockedMelds.flatMap((m) => m.cardIds);
   const usable = new Set([...me.hand, ...lockedIds]);
@@ -82,9 +82,25 @@ export function RoundView() {
 
   const autoFill = () => {
     const suggestion = engine.suggestBuild(state, playerId);
-    setAutoFillMiss(!suggestion);
+    setSortMessage(suggestion ? null : 'No complete build yet with the cards in your hand.');
     if (suggestion) setGroups(suggestion);
   };
+
+  /** Split the cards already in the melds, plus any selected, into the blueprint's melds. */
+  const sortIntoMelds = () => {
+    const pool = [...new Set([...groups.flat(), ...sel])];
+    const suggestion = engine.suggestBuild(state, playerId, pool);
+    if (suggestion) {
+      setGroups(suggestion);
+      setSelected([]);
+      setSortMessage(null);
+    } else {
+      setSortMessage(
+        `Those ${pool.length} cards can't complete every meld yet. Check the blueprint panel above for what's missing.`,
+      );
+    }
+  };
+  const sortable = groups.flat().length + sel.length > 0;
 
   const selectedSpecial = sel.length === 1 ? state.cards[sel[0]] : null;
   const specialDef =
@@ -110,13 +126,13 @@ export function RoundView() {
 
   /** Status line under a meld; names the cards that don't fit when it can. */
   const meldStatus = (res: (typeof groupResults)[number], type: 'set' | 'run'): string => {
-    if (!res) return 'Select cards in your hand, then “Add selected”.';
+    if (!res) return 'Empty.';
     if (res.ok) return '✓ valid';
     const misfits = 'misfits' in res ? (res.misfits ?? []) : [];
     if (misfits.length === 0) return `✗ ${res.reason}`;
     const names = misfits.map((id) => cardName(state, catName, id)).join(', ');
     const rule = type === 'run' ? 'A run is one category, each number once, in a row.' : 'A set is cards with the same number.';
-    return `✗ ${names} ${misfits.length === 1 ? "doesn't" : "don't"} fit this ${type}. ${rule} Click a card to remove it.`;
+    return `✗ ${names} ${misfits.length === 1 ? "doesn't" : "don't"} fit this ${type}. ${rule} Press “Sort into melds” to split them up, or click a card to remove it.`;
   };
 
   return (
@@ -297,10 +313,19 @@ export function RoundView() {
         <div className="hand-head">
           <b>Build {bp.name}</b>
           <span className="spacer" />
-          <button onClick={autoFill}>Auto-fill</button>
+          <button className="primary" disabled={!sortable} onClick={sortIntoMelds} title="Select cards (or put them in any meld), and the game splits them into the melds">
+            Sort into melds
+          </button>
+          <button onClick={autoFill} title="Find a build using any cards in your hand">
+            Auto-fill from hand
+          </button>
           <button onClick={() => setGroups(bp.requirements.map(() => []))}>Clear</button>
         </div>
-        {autoFillMiss && <div className="muted">No complete build yet with the cards you hold.</div>}
+        <div className="muted small-text">
+          Select the cards you want to build with and press <b>Sort into melds</b>. The game works out which cards form each
+          meld. You can also add cards to a meld yourself.
+        </div>
+        {sortMessage && <div className="sort-message">{sortMessage}</div>}
         <div className="melds">
           {bp.requirements.map((req, i) => {
             const res = groupResults[i];

@@ -69,8 +69,12 @@ export interface Engine {
   reduce(state: GameState, action: GameAction): GameState;
   /** Apply an action; returns an error instead of throwing. */
   applyAction(state: GameState, action: GameAction): ApplyResult;
-  /** Helper for UIs and bots: find a valid BUILD assignment for the player's current target. */
-  suggestBuild(state: GameState, playerId: PlayerId): CardId[][] | null;
+  /**
+   * Helper for UIs and bots: find a valid BUILD assignment for the player's
+   * current target. With `cardIds`, only those cards may be used (locked
+   * sub-assemblies count only if all their cards are listed).
+   */
+  suggestBuild(state: GameState, playerId: PlayerId, cardIds?: CardId[]): CardId[][] | null;
   /** Meld rules in force for a player this round. */
   meldRules(player: PlayerState): MeldRules;
   token(state: GameState, cardId: CardId): MeldToken | null;
@@ -900,16 +904,19 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     }
   }
 
-  function suggestBuild(state: GameState, playerId: PlayerId): CardId[][] | null {
+  function suggestBuild(state: GameState, playerId: PlayerId, cardIds?: CardId[]): CardId[][] | null {
     const player = getPlayer(state, playerId);
     if (!player.target) return null;
     const bp = getBlueprint(content, player.target);
+    const allowed = cardIds ? new Set(cardIds) : null;
     const units: MeldUnit[] = [];
     for (const id of player.hand) {
+      if (allowed && !allowed.has(id)) continue;
       const t = cardToken(state, content, effects, id);
       if (t) units.push({ tokens: [t] });
     }
     for (const m of player.lockedMelds) {
+      if (allowed && !m.cardIds.every((id) => allowed.has(id))) continue;
       const tokens = m.cardIds.map((id) => cardToken(state, content, effects, id)).filter((t): t is MeldToken => !!t);
       units.push({ tokens, lockedType: m.type });
     }
