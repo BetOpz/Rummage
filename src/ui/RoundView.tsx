@@ -39,6 +39,7 @@ export function RoundView() {
   const [targeting, setTargeting] = useState<Targeting | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('category');
   const [showDiscard, setShowDiscard] = useState(false);
+  const [autoFillMiss, setAutoFillMiss] = useState(false);
 
   const lockedIds = me.lockedMelds.flatMap((m) => m.cardIds);
   const usable = new Set([...me.hand, ...lockedIds]);
@@ -78,8 +79,8 @@ export function RoundView() {
 
   const autoFill = () => {
     const suggestion = engine.suggestBuild(state, playerId);
+    setAutoFillMiss(!suggestion);
     if (suggestion) setGroups(suggestion);
-    else alert('No complete build found with your current cards.');
   };
 
   const selectedSpecial = sel.length === 1 ? state.cards[sel[0]] : null;
@@ -285,6 +286,7 @@ export function RoundView() {
           <button onClick={autoFill}>Auto-fill</button>
           <button onClick={() => setGroups(bp.requirements.map(() => []))}>Clear</button>
         </div>
+        {autoFillMiss && <div className="muted">No complete build yet with the cards you hold.</div>}
         <div className="melds">
           {bp.requirements.map((req, i) => {
             const res = groupResults[i];

@@ -18,6 +18,7 @@ export function App() {
   const [session, setSession] = useState<Session | null>(() => loadFromLocal());
   const [error, setError] = useState<string | null>(null);
   const [seedInput, setSeedInput] = useState('');
+  const [confirmQuit, setConfirmQuit] = useState(false);
 
   useEffect(() => {
     if (session) saveToLocal(session);
@@ -92,16 +93,23 @@ export function App() {
             Import save
             <input type="file" accept="application/json" onChange={(e) => onLoadFile(e.target.files?.[0])} />
           </label>
-          <button
-            onClick={() => {
-              if (confirm('Abandon this run?')) {
-                clearLocal();
-                setSession(null);
-              }
-            }}
-          >
-            Quit run
-          </button>
+          {confirmQuit ? (
+            <>
+              <span>Abandon this run?</span>
+              <button
+                onClick={() => {
+                  clearLocal();
+                  setConfirmQuit(false);
+                  setSession(null);
+                }}
+              >
+                Yes, quit
+              </button>
+              <button onClick={() => setConfirmQuit(false)}>Keep playing</button>
+            </>
+          ) : (
+            <button onClick={() => setConfirmQuit(true)}>Quit run</button>
+          )}
         </header>
         <StatusBar />
         {error && (
