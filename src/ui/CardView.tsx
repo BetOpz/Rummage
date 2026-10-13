@@ -5,12 +5,14 @@ interface Props {
   id: CardId;
   selected?: boolean;
   dim?: boolean;
+  /** Counts toward the current blueprint (shown as a dot). */
+  wanted?: boolean;
   badge?: string;
   onClick?: () => void;
   title?: string;
 }
 
-export function CardView({ id, selected, dim, badge, onClick, title }: Props) {
+export function CardView({ id, selected, dim, wanted, badge, onClick, title }: Props) {
   const { state, engine } = useGame();
   const card = state.cards[id];
   if (!card) return null;
@@ -18,6 +20,7 @@ export function CardView({ id, selected, dim, badge, onClick, title }: Props) {
   const classes = ['card', card.kind];
   if (selected) classes.push('selected');
   if (dim) classes.push('dim');
+  if (wanted) classes.push('wanted');
   if (card.temporary) classes.push('temporary');
   if (onClick) classes.push('clickable');
 

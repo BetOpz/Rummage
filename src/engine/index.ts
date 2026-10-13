@@ -9,3 +9,4 @@ export { botAction, autoplay } from './bot';
 export { validateContent } from './validateContent';
 export { RuleError, cardLabel, partName } from './zones';
 export { Rng, seedToState } from './rng';
+export { buildHints, type BuildHints, type MeldHint } from './hints';

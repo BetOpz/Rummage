@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { type CardId, type GameState, describeRequirement, getBlueprint, validateMeld } from '../engine';
-import { BlueprintCard } from './BlueprintCard';
+import { type CardId, type GameState, buildHints, describeRequirement, getBlueprint, validateMeld } from '../engine';
+import { BlueprintPanel } from './BlueprintPanel';
 import { CardView } from './CardView';
 import { useGame } from './context';
 
@@ -99,18 +99,15 @@ export function RoundView() {
 
   const top = round.discard.at(-1);
   const drawsLeft = me.rules.drawLimit - me.drawsTaken;
+  const hints = buildHints(engine, state, playerId);
+  const wanted = new Set(hints?.melds.flatMap((m) => m.cardIds) ?? []);
   const phase = round.turnPhase;
   const otherOffers = round.offers.filter((o) => o !== me.target);
   const catName = (id: string) => engine.content.categories.find((c) => c.id === id)?.name ?? id;
 
   return (
     <div className="round">
-      <div className="round-top">
-        <BlueprintCard bp={bp} revealed>
-          <div className="draws">
-            Draws left: <b className={drawsLeft <= 2 ? 'warn' : ''}>{drawsLeft}</b> / {me.rules.drawLimit}
-          </div>
-        </BlueprintCard>
+      <div className="round-top two">
 
         <div className="panel piles">
           <div className="pile">
@@ -210,9 +207,11 @@ export function RoundView() {
 
       {pending && <PendingChoice key={pending.cardIds.join()} />}
 
+      <BlueprintPanel drawsLeft={drawsLeft} hints={hints} />
+
       <div className="panel hand">
         <div className="hand-head">
-          <b>Your hand</b> <span className="muted">({me.hand.length} cards)</span>
+          <b>Your hand</b> <span className="muted">({me.hand.length} cards · <span className="dot-legend" /> = counts toward your blueprint)</span>
           <span className="spacer" />
           sort:{' '}
           {(['category', 'gauge', 'drawn'] as SortMode[]).map((m) => (
@@ -229,6 +228,7 @@ export function RoundView() {
                 key={id}
                 id={id}
                 selected={sel.includes(id)}
+                wanted={wanted.has(id)}
                 badge={g >= 0 ? `M${g + 1}` : undefined}
                 onClick={() => onHandClick(id)}
               />

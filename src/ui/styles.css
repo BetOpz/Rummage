@@ -146,3 +146,20 @@ input { font: inherit; padding: 4px 8px; border-radius: 6px; border: 1px solid v
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
 .summary ul { padding-left: 20px; }
 .log ol { max-height: 220px; overflow: auto; font-size: 0.85rem; margin: 6px 0 0; padding-left: 28px; }
+
+/* Blueprint panel (sits right above the hand) */
+.round-top.two { grid-template-columns: minmax(260px, 1.3fr) minmax(220px, 1fr); }
+@media (max-width: 860px) { .round-top.two { grid-template-columns: 1fr; } }
+.blueprint-panel { border: 2px solid var(--accent); }
+.blueprint-panel.ready { border-color: var(--ok); }
+.bp-panel-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.72rem; color: var(--accent); font-weight: 700; }
+.bp-name { font-size: 1.15rem; }
+.small-text { font-size: 0.88rem; margin-top: 2px; }
+.needs { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 8px; }
+.needs li { display: flex; gap: 10px; align-items: flex-start; }
+.need-chip { min-width: 42px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; border-radius: 999px; padding: 2px 8px; border: 1px solid var(--line); background: var(--bg); }
+.needs li.done .need-chip { border-color: var(--ok); color: var(--ok); }
+.ready-note { margin-top: 10px; font-weight: 600; color: var(--ok); }
+.card.wanted::after { content: ''; position: absolute; top: 5px; left: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.dot-legend { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); vertical-align: middle; }
