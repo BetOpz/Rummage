@@ -1,0 +1,45 @@
+[
+  { "id": "go_kart", "name": "Go-Kart", "tier": 1, "itemId": "workbench",
+    "requirements": [{ "type": "set", "size": 4 }, { "type": "run", "size": 3 }] },
+  { "id": "music_box", "name": "Music Box", "tier": 1, "itemId": "coin_press",
+    "requirements": [{ "type": "set", "size": 4 }, { "type": "run", "size": 3, "category": "brass" }] },
+  { "id": "birdhouse", "name": "Birdhouse", "tier": 1, "itemId": "glue_pot",
+    "requirements": [{ "type": "set", "size": 4, "maxGauge": 5 }, { "type": "run", "size": 3 }] },
+  { "id": "lantern", "name": "Lantern", "tier": 1, "itemId": "magnifier",
+    "requirements": [{ "type": "run", "size": 3 }, { "type": "set", "size": 4, "hidden": true }] },
+  { "id": "clockwork_toy", "name": "Clockwork Toy", "tier": 1, "itemId": "pocket_watch",
+    "requirements": [{ "type": "run", "size": 4 }, { "type": "set", "size": 3 }] },
+
+  { "id": "boss_handcart", "name": "Handcart", "tier": 1, "boss": true, "itemId": "salvage_rig",
+    "requirements": [{ "type": "set", "size": 4 }, { "type": "run", "size": 4 }] },
+
+  { "id": "bicycle", "name": "Bicycle", "tier": 2, "itemId": "sorting_tray",
+    "requirements": [{ "type": "set", "size": 5 }, { "type": "run", "size": 4 }] },
+  { "id": "printing_press", "name": "Printing Press", "tier": 2, "itemId": "coin_press",
+    "requirements": [{ "type": "set", "size": 5, "minGauge": 6 }, { "type": "run", "size": 4 }] },
+  { "id": "weathervane", "name": "Weathervane", "tier": 2, "itemId": "spare_reel",
+    "requirements": [{ "type": "run", "size": 4, "category": "copper" }, { "type": "set", "size": 5, "hidden": true }] },
+  { "id": "loom", "name": "Loom", "tier": 2, "itemId": "workbench",
+    "requirements": [{ "type": "set", "size": 5 }, { "type": "run", "size": 4, "category": "wood" }] },
+
+  { "id": "boss_steam_pump", "name": "Steam Pump", "tier": 2, "boss": true, "itemId": "pocket_watch",
+    "requirements": [{ "type": "set", "size": 5 }, { "type": "run", "size": 5 }] },
+
+  { "id": "automaton", "name": "Automaton", "tier": 3, "itemId": "workbench",
+    "requirements": [{ "type": "set", "size": 6 }, { "type": "run", "size": 5 }] },
+  { "id": "orrery", "name": "Orrery", "tier": 3, "itemId": "magnifier",
+    "requirements": [{ "type": "run", "size": 5, "category": "brass" }, { "type": "set", "size": 6, "hidden": true }] },
+  { "id": "diving_bell", "name": "Diving Bell", "tier": 3, "itemId": "glue_pot",
+    "requirements": [{ "type": "set", "size": 6, "maxGauge": 6 }, { "type": "run", "size": 5, "hidden": true }] },
+
+  { "id": "boss_locomotive", "name": "Locomotive", "tier": 3, "boss": true, "itemId": "salvage_rig",
+    "requirements": [{ "type": "set", "size": 6 }, { "type": "run", "size": 6 }] },
+
+  { "id": "airship", "name": "Airship", "tier": 4, "itemId": "workbench",
+    "requirements": [{ "type": "set", "size": 7 }, { "type": "run", "size": 6 }] },
+  { "id": "difference_engine", "name": "Difference Engine", "tier": 4, "itemId": "coin_press",
+    "requirements": [{ "type": "run", "size": 6 }, { "type": "set", "size": 4 }, { "type": "set", "size": 3 }] },
+
+  { "id": "boss_clocktower", "name": "Clocktower", "tier": 4, "boss": true, "itemId": "pocket_watch",
+    "requirements": [{ "type": "set", "size": 7 }, { "type": "run", "size": 7 }] }
+]

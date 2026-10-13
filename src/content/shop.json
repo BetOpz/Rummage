@@ -1,0 +1,35 @@
+[
+  {
+    "tier": 1,
+    "partSlots": 4,
+    "specialSlots": 2,
+    "partPrice": 2,
+    "specialPriceMultiplier": 1,
+    "services": [
+      { "id": "scrap", "name": "Scrap a card", "text": "Permanently remove a card from your deck.", "price": 2, "target": "deckCard", "effect": { "type": "destroyCard" } },
+      { "id": "crate", "name": "Parts crate", "text": "Add 3 random parts to your deck.", "price": 4, "target": "none", "effect": { "type": "addRandomParts", "params": { "count": 3 } } }
+    ]
+  },
+  {
+    "tier": 2,
+    "partSlots": 5,
+    "specialSlots": 2,
+    "partPrice": 2,
+    "specialPriceMultiplier": 1.2,
+    "services": [
+      { "id": "scrap", "name": "Scrap a card", "text": "Permanently remove a card from your deck.", "price": 3, "target": "deckCard", "effect": { "type": "destroyCard" } },
+      { "id": "crate", "name": "Parts crate", "text": "Add 4 random parts to your deck.", "price": 5, "target": "none", "effect": { "type": "addRandomParts", "params": { "count": 4 } } }
+    ]
+  },
+  {
+    "tier": 3,
+    "partSlots": 5,
+    "specialSlots": 3,
+    "partPrice": 3,
+    "specialPriceMultiplier": 1.4,
+    "services": [
+      { "id": "scrap", "name": "Scrap a card", "text": "Permanently remove a card from your deck.", "price": 3, "target": "deckCard", "effect": { "type": "destroyCard" } },
+      { "id": "crate", "name": "Parts crate", "text": "Add 5 random parts to your deck.", "price": 6, "target": "none", "effect": { "type": "addRandomParts", "params": { "count": 5 } } }
+    ]
+  }
+]

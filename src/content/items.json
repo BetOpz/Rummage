@@ -1,0 +1,10 @@
+[
+  { "id": "workbench", "name": "Workbench", "text": "+1 hand size.", "effects": [{ "type": "modifyRules", "params": { "handSize": 1 } }] },
+  { "id": "pocket_watch", "name": "Pocket Watch", "text": "+2 draws per round.", "effects": [{ "type": "modifyRules", "params": { "drawLimit": 2 } }] },
+  { "id": "glue_pot", "name": "Glue Pot", "text": "Start each round with a free Duct Tape (it vanishes at round end).", "effects": [{ "type": "grantTempCard", "params": { "specialId": "duct_tape", "count": 1 } }] },
+  { "id": "coin_press", "name": "Coin Press", "text": "+2 currency at the end of each round.", "effects": [{ "type": "gainCurrency", "params": { "hook": "onRoundEnd", "amount": 2 } }] },
+  { "id": "magnifier", "name": "Magnifier", "text": "Hidden blueprint requirements are always shown.", "effects": [{ "type": "modifyRules", "params": { "revealHidden": true } }] },
+  { "id": "sorting_tray", "name": "Sorting Tray", "text": "Start each round with an extra card in hand (+1 hand size) and +1 draw.", "effects": [{ "type": "modifyRules", "params": { "handSize": 1, "drawLimit": 1 } }] },
+  { "id": "salvage_rig", "name": "Salvage Rig", "text": "+1 currency whenever you complete a build.", "effects": [{ "type": "gainCurrency", "params": { "hook": "onBuild", "amount": 1 } }] },
+  { "id": "spare_reel", "name": "Spare Reel", "text": "Start each round with a free Adaptor (it vanishes at round end).", "effects": [{ "type": "grantTempCard", "params": { "specialId": "adaptor", "count": 1 } }] }
+]

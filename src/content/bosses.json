@@ -1,0 +1,7 @@
+[
+  { "id": "no_scavenging", "name": "Locked Skip", "text": "No drawing from the discard pile.", "effects": [{ "type": "modifyRules", "params": { "allowDiscardDraw": false } }] },
+  { "id": "no_wilds", "name": "Purist Inspector", "text": "Wild, bulk and adaptor cards are disabled.", "effects": [{ "type": "modifyRules", "params": { "disableMeldRoles": ["wild", "bulk", "adaptor"] } }] },
+  { "id": "embargo", "name": "Embargo", "text": "One random category is banned from builds.", "effects": [{ "type": "banCategory", "params": { "category": "random" } }] },
+  { "id": "short_fuse", "name": "Short Fuse", "text": "-3 draws this round.", "effects": [{ "type": "modifyRules", "params": { "drawLimit": -3 } }] },
+  { "id": "cramped", "name": "Cramped Workshop", "text": "-1 hand size this round.", "minTier": 2, "effects": [{ "type": "modifyRules", "params": { "handSize": -1 } }] }
+]

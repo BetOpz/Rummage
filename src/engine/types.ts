@@ -1,0 +1,329 @@
+/**
+ * Core types for the rules engine.
+ *
+ * Everything in GameState is plain JSON (no classes, Maps, functions or Dates)
+ * so it can be saved, replayed and sent over a network unchanged.
+ */
+
+import type { GameConfig } from '../config';
+
+export type CardId = string;
+export type PlayerId = string;
+
+// ---------------------------------------------------------------------------
+// Content definitions (loaded from src/content/*.json)
+// ---------------------------------------------------------------------------
+
+/** Reference from content to an effect handler in the effect registry. */
+export interface EffectRef {
+  /** Key into the effect registry, e.g. "drawChoice", "modifyRules". */
+  type: string;
+  params?: Record<string, unknown>;
+}
+
+export interface CategoryDef {
+  id: string;
+  name: string;
+  /** Display colour for the UI; the engine ignores it. */
+  color: string;
+  /** Flavour nouns, indexed by gauge (wraps if shorter than the gauge range). */
+  nouns: string[];
+}
+
+export interface SpecialDef {
+  id: string;
+  name: string;
+  text: string;
+  price: number;
+  /** Relative weight in shop pools. */
+  weight: number;
+  /** Lowest tier (1-based) at which the shop may offer this special. */
+  minTier?: number;
+  /** Can the card be played from hand during the main phase? */
+  playable?: boolean;
+  /** Is the card removed from the deck for good when played? */
+  consumeOnPlay?: boolean;
+  /** What the PLAY_SPECIAL action must target, if anything. */
+  target?: 'none' | 'handCard' | 'discardCard';
+  effects: EffectRef[];
+}
+
+export interface ItemDef {
+  id: string;
+  name: string;
+  text: string;
+  effects: EffectRef[];
+}
+
+export type MeldType = 'set' | 'run';
+
+export interface MeldRequirement {
+  type: MeldType;
+  /** Minimum number of slots the meld must fill. */
+  size: number;
+  /** Every card in the meld must be (or be adapted to) this category. */
+  category?: string;
+  /** Every card in the meld must have (or be adapted to) a gauge >= this. */
+  minGauge?: number;
+  /** Every card in the meld must have (or be adapted to) a gauge <= this. */
+  maxGauge?: number;
+  /** Hidden until the blueprint is chosen or revealed by an effect. */
+  hidden?: boolean;
+}
+
+export interface BlueprintDef {
+  id: string;
+  name: string;
+  /** 1-based tier. */
+  tier: number;
+  /** Boss blueprints only appear as the last round of a tier. */
+  boss?: boolean;
+  requirements: MeldRequirement[];
+  /** The item (relic) granted when the blueprint is built. */
+  itemId: string;
+}
+
+export interface BossModifierDef {
+  id: string;
+  name: string;
+  text: string;
+  minTier?: number;
+  effects: EffectRef[];
+}
+
+export interface ShopTierPool {
+  /** 1-based tier this pool applies to (the highest pool <= current tier is used). */
+  tier: number;
+  partSlots: number;
+  specialSlots: number;
+  partPrice: number;
+  /** Multiplier on SpecialDef.price. */
+  specialPriceMultiplier: number;
+  /** Category weights for random parts; omitted categories get weight 1. */
+  categoryWeights?: Record<string, number>;
+  /** Gauge range for random parts; defaults to the config gauge range. */
+  gaugeRange?: [number, number];
+  services: ShopServiceDef[];
+}
+
+export interface ShopServiceDef {
+  id: string;
+  name: string;
+  text: string;
+  price: number;
+  /** Effect run on purchase (with the target card, if any). */
+  effect: EffectRef;
+  target?: 'none' | 'deckCard';
+}
+
+export interface ContentPack {
+  categories: CategoryDef[];
+  specials: SpecialDef[];
+  items: ItemDef[];
+  blueprints: BlueprintDef[];
+  bossModifiers: BossModifierDef[];
+  shopPools: ShopTierPool[];
+}
+
+// ---------------------------------------------------------------------------
+// Card instances
+// ---------------------------------------------------------------------------
+
+export interface PartCard {
+  id: CardId;
+  kind: 'part';
+  owner: PlayerId;
+  category: string;
+  gauge: number;
+  name: string;
+  /** Temporary cards vanish at the end of the round. */
+  temporary?: boolean;
+}
+
+export interface SpecialCard {
+  id: CardId;
+  kind: 'special';
+  owner: PlayerId;
+  specialId: string;
+  temporary?: boolean;
+}
+
+export type Card = PartCard | SpecialCard;
+
+// ---------------------------------------------------------------------------
+// Rules for the current round (base config + items + boss, recomputed per round)
+// ---------------------------------------------------------------------------
+
+export type MeldRole = 'natural' | 'wild' | 'bulk' | 'adaptor';
+
+export interface RoundRules {
+  handSize: number;
+  drawLimit: number;
+  allowDiscardDraw: boolean;
+  /** Special meld roles that are switched off this round (e.g. by a boss). */
+  disabledMeldRoles: MeldRole[];
+  /** Parts of these categories cannot be used in builds. */
+  bannedCategories: string[];
+  /** Show hidden blueprint requirements. */
+  revealHidden: boolean;
+  gaugeMin: number;
+  gaugeMax: number;
+  /** Every meld must contain at least one natural part. */
+  requireNaturalInMeld: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Player, round, shop and game state
+// ---------------------------------------------------------------------------
+
+export interface ItemInstance {
+  itemId: string;
+  /** Blueprint it was built from (for display/history). */
+  fromBlueprint: string;
+  /** Card ids consumed to build it (they no longer exist). */
+  builtFrom: number;
+}
+
+export interface LockedMeld {
+  type: MeldType;
+  cardIds: CardId[];
+}
+
+export interface PlayerState {
+  id: PlayerId;
+  name: string;
+  /** Master list of cards the player owns. Source of truth between rounds. */
+  deck: CardId[];
+  drawPile: CardId[];
+  hand: CardId[];
+  /** Specials played this round; return to the deck at round end. */
+  played: CardId[];
+  lockedMelds: LockedMeld[];
+  items: ItemInstance[];
+  currency: number;
+  score: number;
+  lives: number;
+  /** Blueprint this player is building this round. */
+  target: string | null;
+  /** Draws taken this round. */
+  drawsTaken: number;
+  /** Player has run out of draws this round and is out (multiplayer). */
+  exhausted: boolean;
+  /** Effective rules for this player this round. */
+  rules: RoundRules;
+}
+
+export type PendingChoice =
+  | {
+      kind: 'keepOne';
+      playerId: PlayerId;
+      cardIds: CardId[];
+      keep: number;
+      /** Where the rest go. */
+      rest: 'discard' | 'bottom';
+    }
+  | {
+      kind: 'reorderTop';
+      playerId: PlayerId;
+      cardIds: CardId[];
+    };
+
+export interface BossState {
+  modifierId: string;
+  /** Resolved parameters, e.g. which category is banned. */
+  params: Record<string, unknown>;
+}
+
+export interface RoundState {
+  /** Blueprints face-up this round. */
+  offers: string[];
+  isBoss: boolean;
+  boss: BossState | null;
+  /** Every rule modifier active this round (challenge modifiers + boss), params resolved. */
+  modifiers: BossState[];
+  /** Shared discard pile; last element is the top. */
+  discard: CardId[];
+  turnPhase: 'draw' | 'main';
+  pendingChoice: PendingChoice | null;
+  /** Number of completed turns (for display). */
+  turn: number;
+}
+
+export interface ShopSlot {
+  kind: 'part' | 'special' | 'service';
+  /** For parts: category/gauge; for specials: specialId; for services: serviceId. */
+  category?: string;
+  gauge?: number;
+  specialId?: string;
+  serviceId?: string;
+  price: number;
+  sold: boolean;
+}
+
+export interface ShopState {
+  slots: ShopSlot[];
+  rerolls: number;
+}
+
+export interface RoundResult {
+  tier: number;
+  round: number;
+  blueprintId: string | null;
+  winner: PlayerId | null;
+  perPlayer: Record<
+    PlayerId,
+    { built: boolean; deadwood: number; reward: number; itemId: string | null; lifeLost: boolean }
+  >;
+}
+
+export type GamePhase =
+  | 'blueprintSelect'
+  | 'playing'
+  | 'roundOver'
+  | 'shop'
+  | 'runWon'
+  | 'runLost';
+
+export interface GameState {
+  schemaVersion: 1;
+  config: GameConfig;
+  seed: string;
+  /** Seeded RNG state; the only source of randomness. */
+  rng: number;
+  phase: GamePhase;
+  /** 0-based tier index. */
+  tier: number;
+  /** 0-based round index within the tier. */
+  round: number;
+  players: PlayerState[];
+  /** Index into players whose turn it is. */
+  activePlayer: number;
+  cards: Record<CardId, Card>;
+  nextCardSeq: number;
+  roundState: RoundState | null;
+  /** Shared market (one market for all players, per the multiplayer design). */
+  shop: ShopState | null;
+  lastResult: RoundResult | null;
+  /** Human-readable event log (capped), for UI feedback. */
+  messages: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Actions: every state change goes through one of these.
+// ---------------------------------------------------------------------------
+
+export type GameAction =
+  | { type: 'SELECT_BLUEPRINT'; playerId: PlayerId; blueprintId: string }
+  | { type: 'DRAW'; playerId: PlayerId; source: 'deck' | 'discard' }
+  | { type: 'PLAY_SPECIAL'; playerId: PlayerId; cardId: CardId; targetId?: CardId }
+  | { type: 'RESOLVE_CHOICE'; playerId: PlayerId; cardIds: CardId[] }
+  | { type: 'LOCK_MELD'; playerId: PlayerId; meldType: MeldType; cardIds: CardId[] }
+  | { type: 'PIVOT'; playerId: PlayerId; blueprintId: string }
+  | { type: 'BUILD'; playerId: PlayerId; groups: CardId[][] }
+  | { type: 'DISCARD'; playerId: PlayerId; cardId: CardId }
+  | { type: 'CONTINUE'; playerId: PlayerId }
+  | { type: 'SHOP_BUY'; playerId: PlayerId; slot: number; targetId?: CardId }
+  | { type: 'SHOP_REROLL'; playerId: PlayerId }
+  | { type: 'LEAVE_SHOP'; playerId: PlayerId };
+
+export type ActionType = GameAction['type'];

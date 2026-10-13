@@ -1,0 +1,6 @@
+[
+  { "id": "wood", "name": "Wood", "color": "#a0703c", "nouns": ["Peg", "Dowel", "Slat", "Batten", "Plank", "Board", "Beam", "Post", "Joist", "Timber"] },
+  { "id": "iron", "name": "Iron", "color": "#6b7280", "nouns": ["Nail", "Rivet", "Bolt", "Hinge", "Bracket", "Gear", "Axle", "Plate", "Girder", "Anvil"] },
+  { "id": "brass", "name": "Brass", "color": "#c9a227", "nouns": ["Pin", "Screw", "Washer", "Nut", "Valve", "Fitting", "Cog", "Dial", "Bell", "Cylinder"] },
+  { "id": "copper", "name": "Copper", "color": "#b8622e", "nouns": ["Wire", "Tack", "Rod", "Coil", "Tube", "Pipe", "Spring", "Sheet", "Boiler", "Kettle"] }
+]

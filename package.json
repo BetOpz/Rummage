@@ -1,0 +1,30 @@
+{
+  "name": "rummage",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Rummy-style building deckbuilder: rules engine + minimal UI",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p . && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "sim": "tsx scripts/simulate.ts"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "tsx": "^4.23.15",
+    "typescript": "~5.8.3",
+    "vite": "^6.4.4",
+    "vitest": "^5.0.4"
+  }
+}
