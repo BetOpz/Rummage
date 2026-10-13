@@ -221,3 +221,5 @@ input { font: inherit; padding: 4px 8px; border-radius: 6px; border: 1px solid v
 h3 { margin: 14px 0 6px; font-size: 1rem; }
 .card.misfit { outline: 3px dashed var(--warn); outline-offset: 2px; }
 .sort-message { color: var(--warn); margin-top: 6px; font-weight: 600; }
+.panel.build.ready { border: 2px solid var(--ok); }
+.unused { margin-top: 10px; border: 1px dashed var(--line); border-radius: 8px; padding: 8px; }

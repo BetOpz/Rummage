@@ -36,3 +36,16 @@ describe('build hints', () => {
     expect(hints.melds[0]).toMatchObject({ gauge: 2, filled: 1 });
   });
 });
+
+describe('build hints for selected cards', () => {
+  it('only counts the cards given', () => {
+    const { state, ids } = withHand(setTarget(startedGame('hints-sel'), 'music_box'), [
+      'iron:5', 'wood:5', 'copper:5', 'brass:5', 'brass:6', 'brass:7', 'brass:8',
+    ]);
+    expect(buildHints(engine, state, 'p1')!.ready).toBe(true);
+    const partial = buildHints(engine, state, 'p1', ids.slice(0, 3))!;
+    expect(partial.ready).toBe(false);
+    expect(partial.melds[0]).toMatchObject({ filled: 3, gauge: 5 });
+    expect(partial.melds[1].filled).toBe(0);
+  });
+});

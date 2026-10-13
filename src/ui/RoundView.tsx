@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { type CardId, type GameState, buildHints, describeRequirement, getBlueprint, meldMisfits, validateMeld } from '../engine';
-import { BlueprintPanel } from './BlueprintPanel';
+import { type CardId, type GameState, buildHints, describeRequirement, getBlueprint } from '../engine';
+import { BlueprintPanel, hintText } from './BlueprintPanel';
 import { CardView } from './CardView';
 import { useGame } from './context';
 
@@ -30,36 +30,30 @@ export function RoundView() {
   const { state, me, engine, act, playerId } = useGame();
   const round = state.roundState!;
   const bp = getBlueprint(engine.content, me.target!);
-  const rules = engine.meldRules(me);
   const myTurn = state.players[state.activePlayer].id === playerId;
   const pending = round.pendingChoice?.playerId === playerId ? round.pendingChoice : null;
 
   const [selected, setSelected] = useState<CardId[]>([]);
-  const [groupsRaw, setGroups] = useState<CardId[][]>(() => bp.requirements.map(() => []));
   const [targeting, setTargeting] = useState<Targeting | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('category');
   const [showDiscard, setShowDiscard] = useState(false);
-  const [sortMessage, setSortMessage] = useState<string | null>(null);
+  const [noBuildFound, setNoBuildFound] = useState(false);
 
   const lockedIds = me.lockedMelds.flatMap((m) => m.cardIds);
   const usable = new Set([...me.hand, ...lockedIds]);
-  // Drop cards that have left the hand, and resize if the target changed (pivot).
-  const groups = bp.requirements.map((_, i) => (groupsRaw[i] ?? []).filter((id) => usable.has(id)));
   const sel = selected.filter((id) => usable.has(id));
-  const groupOf = (id: CardId) => groups.findIndex((g) => g.includes(id));
 
-  const groupResults = groups.map((g, i) => {
-    if (g.length === 0) return null;
-    const tokens = g.map((id) => engine.token(state, id));
-    if (tokens.some((t) => !t)) return { ok: false as const, reason: 'Contains a card that cannot meld' };
-    const result = validateMeld(tokens.map((t) => t!), bp.requirements[i], rules);
-    if (result.ok) return result;
-    const misfits = meldMisfits(tokens.map((t) => t!), bp.requirements[i], rules);
-    return { ...result, misfits };
-  });
-  const allValid = groupResults.every((r) => r?.ok);
+  // The selected cards are the build: the game sorts them into the melds.
+  const selBuild = sel.length > 0 ? engine.suggestBuild(state, playerId, sel) : null;
+  const selHints = sel.length > 0 && !selBuild ? buildHints(engine, state, playerId, sel) : null;
+  const meldCards: CardId[][] = bp.requirements.map((_, i) => selBuild?.[i] ?? selHints?.melds[i]?.cardIds ?? []);
+  const groupOf = (id: CardId) => meldCards.findIndex((g) => g.includes(id));
+  const unused = sel.filter((id) => groupOf(id) < 0);
 
-  const toggle = (id: CardId) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  const toggle = (id: CardId) => {
+    setNoBuildFound(false);
+    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  };
 
   const onHandClick = (id: CardId) => {
     if (targeting?.target === 'handCard') {
@@ -75,32 +69,11 @@ export function RoundView() {
     setSelected(allIn ? sel.filter((id) => !ids.includes(id)) : [...new Set([...sel, ...ids])]);
   };
 
-  const assign = (i: number) => {
-    setGroups(groups.map((g, j) => (j === i ? [...new Set([...g, ...sel])] : g.filter((id) => !sel.includes(id)))));
-    setSelected([]);
-  };
-
-  const autoFill = () => {
+  const pickBuildForMe = () => {
     const suggestion = engine.suggestBuild(state, playerId);
-    setSortMessage(suggestion ? null : 'No complete build yet with the cards in your hand.');
-    if (suggestion) setGroups(suggestion);
+    setNoBuildFound(!suggestion);
+    if (suggestion) setSelected(suggestion.flat());
   };
-
-  /** Split the cards already in the melds, plus any selected, into the blueprint's melds. */
-  const sortIntoMelds = () => {
-    const pool = [...new Set([...groups.flat(), ...sel])];
-    const suggestion = engine.suggestBuild(state, playerId, pool);
-    if (suggestion) {
-      setGroups(suggestion);
-      setSelected([]);
-      setSortMessage(null);
-    } else {
-      setSortMessage(
-        `Those ${pool.length} cards can't complete every meld yet. Check the blueprint panel above for what's missing.`,
-      );
-    }
-  };
-  const sortable = groups.flat().length + sel.length > 0;
 
   const selectedSpecial = sel.length === 1 ? state.cards[sel[0]] : null;
   const specialDef =
@@ -123,17 +96,6 @@ export function RoundView() {
   const phase = round.turnPhase;
   const otherOffers = round.offers.filter((o) => o !== me.target);
   const catName = (id: string) => engine.content.categories.find((c) => c.id === id)?.name ?? id;
-
-  /** Status line under a meld; names the cards that don't fit when it can. */
-  const meldStatus = (res: (typeof groupResults)[number], type: 'set' | 'run'): string => {
-    if (!res) return 'Empty.';
-    if (res.ok) return '✓ valid';
-    const misfits = 'misfits' in res ? (res.misfits ?? []) : [];
-    if (misfits.length === 0) return `✗ ${res.reason}`;
-    const names = misfits.map((id) => cardName(state, catName, id)).join(', ');
-    const rule = type === 'run' ? 'A run is one category, each number once, in a row.' : 'A set is cards with the same number.';
-    return `✗ ${names} ${misfits.length === 1 ? "doesn't" : "don't"} fit this ${type}. ${rule} Press “Sort into melds” to split them up, or click a card to remove it.`;
-  };
 
   return (
     <div className="round">
@@ -309,66 +271,69 @@ export function RoundView() {
         </div>
       </div>
 
-      <div className="panel build">
+      <div className={`panel build ${selBuild ? 'ready' : ''}`}>
         <div className="hand-head">
           <b>Build {bp.name}</b>
           <span className="spacer" />
-          <button className="primary" disabled={!sortable} onClick={sortIntoMelds} title="Select cards (or put them in any meld), and the game splits them into the melds">
-            Sort into melds
+          <button onClick={pickBuildForMe} title="Select a set of cards from your hand that completes the blueprint">
+            Find a build for me
           </button>
-          <button onClick={autoFill} title="Find a build using any cards in your hand">
-            Auto-fill from hand
-          </button>
-          <button onClick={() => setGroups(bp.requirements.map(() => []))}>Clear</button>
+          {sel.length > 0 && <button onClick={() => setSelected([])}>Clear selection</button>}
         </div>
-        <div className="muted small-text">
-          Select the cards you want to build with and press <b>Sort into melds</b>. The game works out which cards form each
-          meld. You can also add cards to a meld yourself.
-        </div>
-        {sortMessage && <div className="sort-message">{sortMessage}</div>}
+        {sel.length === 0 ? (
+          <div className="muted small-text">
+            Tap the cards in your hand you want to build with. The game sorts them into the melds as you go.
+          </div>
+        ) : (
+          <div className="muted small-text">{sel.length} cards selected.</div>
+        )}
+        {noBuildFound && <div className="sort-message">No complete build in your hand yet. Keep drawing.</div>}
         <div className="melds">
           {bp.requirements.map((req, i) => {
-            const res = groupResults[i];
+            const cards = meldCards[i];
+            const hint = selHints?.melds[i];
+            const done = !!selBuild || (hint ? hint.filled >= req.size : false);
             return (
-              <div key={i} className={`meld ${res ? (res.ok ? 'ok' : 'bad') : ''}`}>
+              <div key={i} className={`meld ${sel.length === 0 ? '' : done ? 'ok' : 'bad'}`}>
                 <div className="meld-head">
                   <b>M{i + 1}</b> {describeRequirement(req, catName)}
-                  <span className="spacer" />
-                  <button disabled={sel.length === 0} onClick={() => assign(i)}>
-                    Add selected
-                  </button>
                 </div>
                 <div className="cards small">
-                  {groups[i].map((id) => (
-                    <CardView
-                      key={id}
-                      id={id}
-                      misfit={!!res && !res.ok && 'misfits' in res && !!res.misfits?.includes(id)}
-                      onClick={() => setGroups(groups.map((g, j) => (j === i ? g.filter((x) => x !== id) : g)))}
-                      title="Click to remove from this meld"
-                    />
+                  {cards.map((id) => (
+                    <CardView key={id} id={id} onClick={() => toggle(id)} title="Tap to take it out of the build" />
                   ))}
                 </div>
-                <div className="meld-status">{meldStatus(res, req.type)}</div>
+                <div className="meld-status">
+                  {sel.length === 0 ? '' : done ? '✓ complete' : hint ? hintText(hint, catName) : ''}
+                </div>
               </div>
             );
           })}
         </div>
+        {unused.length > 0 && (
+          <div className="unused">
+            <span className="muted">
+              {selBuild ? 'Not needed (they stay in your hand):' : "Doesn't fit any meld yet:"}
+            </span>
+            <div className="cards small">
+              {unused.map((id) => (
+                <CardView key={id} id={id} onClick={() => toggle(id)} title="Tap to take it out of the build" />
+              ))}
+            </div>
+          </div>
+        )}
         <button
           className="primary big"
-          disabled={!allValid || !myTurn || !!pending}
-          onClick={() => act({ type: 'BUILD', playerId, groups })}
+          disabled={!selBuild || !myTurn || !!pending}
+          onClick={() => {
+            if (selBuild && act({ type: 'BUILD', playerId, groups: selBuild })) setSelected([]);
+          }}
         >
           Build it! (parts are used up)
         </button>
       </div>
     </div>
   );
-}
-
-function cardName(state: GameState, catName: (id: string) => string, id: CardId): string {
-  const c = state.cards[id];
-  return c?.kind === 'part' ? `${catName(c.category)} ${c.gauge}` : id;
 }
 
 function PendingChoice() {

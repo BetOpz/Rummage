@@ -43,7 +43,7 @@ export function BlueprintPanel({ drawsLeft, hints }: { drawsLeft: number; hints:
   );
 }
 
-function hintText(h: MeldHint, catName: (id: string) => string): string {
+export function hintText(h: MeldHint, catName: (id: string) => string): string {
   const req = h.requirement;
   const need = req.size - h.filled;
   if (req.type === 'set') {

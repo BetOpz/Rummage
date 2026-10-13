@@ -31,14 +31,18 @@ export interface BuildHints {
   melds: MeldHint[];
 }
 
-export function buildHints(engine: Engine, state: GameState, playerId: PlayerId): BuildHints | null {
+/**
+ * With `cardIds`, only those cards are considered (e.g. the cards the player
+ * has selected); otherwise the whole hand and any locked sub-assemblies.
+ */
+export function buildHints(engine: Engine, state: GameState, playerId: PlayerId, cardIds?: CardId[]): BuildHints | null {
   const player = state.players.find((p) => p.id === playerId);
   if (!player?.target) return null;
   const bp = getBlueprint(engine.content, player.target);
   const rules = player.rules;
 
-  const cardIds = [...player.hand, ...player.lockedMelds.flatMap((m) => m.cardIds)];
-  const tokens = cardIds.map((id) => engine.token(state, id)).filter((t): t is MeldToken => !!t);
+  const pool = cardIds ?? [...player.hand, ...player.lockedMelds.flatMap((m) => m.cardIds)];
+  const tokens = pool.map((id) => engine.token(state, id)).filter((t): t is MeldToken => !!t);
   let naturals = tokens.filter(
     (t): t is Natural => t.role === 'natural' && !rules.bannedCategories.includes(t.category),
   );
@@ -121,5 +125,5 @@ export function buildHints(engine: Engine, state: GameState, playerId: PlayerId)
     melds[i] = hint;
   }
 
-  return { ready: engine.suggestBuild(state, playerId) !== null, melds };
+  return { ready: engine.suggestBuild(state, playerId, cardIds) !== null, melds };
 }
