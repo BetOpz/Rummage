@@ -7,12 +7,14 @@ interface Props {
   dim?: boolean;
   /** Counts toward the current blueprint (shown as a dot). */
   wanted?: boolean;
+  /** Doesn't fit the meld it's in (shown with a warning outline). */
+  misfit?: boolean;
   badge?: string;
   onClick?: () => void;
   title?: string;
 }
 
-export function CardView({ id, selected, dim, wanted, badge, onClick, title }: Props) {
+export function CardView({ id, selected, dim, wanted, misfit, badge, onClick, title }: Props) {
   const { state, engine } = useGame();
   const card = state.cards[id];
   if (!card) return null;
@@ -21,6 +23,7 @@ export function CardView({ id, selected, dim, wanted, badge, onClick, title }: P
   if (selected) classes.push('selected');
   if (dim) classes.push('dim');
   if (wanted) classes.push('wanted');
+  if (misfit) classes.push('misfit');
   if (card.temporary) classes.push('temporary');
   if (onClick) classes.push('clickable');
 

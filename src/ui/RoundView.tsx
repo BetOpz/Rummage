@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type CardId, type GameState, buildHints, describeRequirement, getBlueprint, validateMeld } from '../engine';
+import { type CardId, type GameState, buildHints, describeRequirement, getBlueprint, meldMisfits, validateMeld } from '../engine';
 import { BlueprintPanel } from './BlueprintPanel';
 import { CardView } from './CardView';
 import { useGame } from './context';
@@ -52,7 +52,10 @@ export function RoundView() {
     if (g.length === 0) return null;
     const tokens = g.map((id) => engine.token(state, id));
     if (tokens.some((t) => !t)) return { ok: false as const, reason: 'Contains a card that cannot meld' };
-    return validateMeld(tokens.map((t) => t!), bp.requirements[i], rules);
+    const result = validateMeld(tokens.map((t) => t!), bp.requirements[i], rules);
+    if (result.ok) return result;
+    const misfits = meldMisfits(tokens.map((t) => t!), bp.requirements[i], rules);
+    return { ...result, misfits };
   });
   const allValid = groupResults.every((r) => r?.ok);
 
@@ -104,6 +107,17 @@ export function RoundView() {
   const phase = round.turnPhase;
   const otherOffers = round.offers.filter((o) => o !== me.target);
   const catName = (id: string) => engine.content.categories.find((c) => c.id === id)?.name ?? id;
+
+  /** Status line under a meld; names the cards that don't fit when it can. */
+  const meldStatus = (res: (typeof groupResults)[number], type: 'set' | 'run'): string => {
+    if (!res) return 'Select cards in your hand, then “Add selected”.';
+    if (res.ok) return '✓ valid';
+    const misfits = 'misfits' in res ? (res.misfits ?? []) : [];
+    if (misfits.length === 0) return `✗ ${res.reason}`;
+    const names = misfits.map((id) => cardName(state, catName, id)).join(', ');
+    const rule = type === 'run' ? 'A run is one category, each number once, in a row.' : 'A set is cards with the same number.';
+    return `✗ ${names} ${misfits.length === 1 ? "doesn't" : "don't"} fit this ${type}. ${rule} Click a card to remove it.`;
+  };
 
   return (
     <div className="round">
@@ -304,12 +318,13 @@ export function RoundView() {
                     <CardView
                       key={id}
                       id={id}
+                      misfit={!!res && !res.ok && 'misfits' in res && !!res.misfits?.includes(id)}
                       onClick={() => setGroups(groups.map((g, j) => (j === i ? g.filter((x) => x !== id) : g)))}
                       title="Click to remove from this meld"
                     />
                   ))}
                 </div>
-                <div className="meld-status">{res ? (res.ok ? '✓ valid' : `✗ ${res.reason}`) : 'Select cards in your hand, then “Add selected”.'}</div>
+                <div className="meld-status">{meldStatus(res, req.type)}</div>
               </div>
             );
           })}
@@ -324,6 +339,11 @@ export function RoundView() {
       </div>
     </div>
   );
+}
+
+function cardName(state: GameState, catName: (id: string) => string, id: CardId): string {
+  const c = state.cards[id];
+  return c?.kind === 'part' ? `${catName(c.category)} ${c.gauge}` : id;
 }
 
 function PendingChoice() {

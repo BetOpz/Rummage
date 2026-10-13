@@ -345,3 +345,41 @@ function candidateGroups(units: MeldUnit[], available: number[], req: MeldRequir
   found.sort((a, b) => a.cost - b.cost);
   return found.map((f) => f.idxs);
 }
+
+/**
+ * For an invalid meld of plain parts, the cards that stop it from being
+ * valid (so the UI can say "remove these"). Keeps the largest group that
+ * does fit: the most common gauge for a set, the longest same-category
+ * chain for a run. Returns [] when it can't say (wilds or adaptors present).
+ */
+export function meldMisfits(tokens: MeldToken[], req: MeldRequirement, rules: MeldRules): string[] {
+  if (tokens.some((t) => t.role !== 'natural')) return [];
+  const naturals = tokens as Natural[];
+  const lo = Math.max(rules.gaugeMin, req.minGauge ?? rules.gaugeMin);
+  const hi = Math.min(rules.gaugeMax, req.maxGauge ?? rules.gaugeMax);
+  const fitsConstraints = (n: Natural) =>
+    n.gauge >= lo && n.gauge <= hi && (!req.category || n.category === req.category) && !rules.bannedCategories.includes(n.category);
+
+  let keep: Natural[] = [];
+  if (req.type === 'set') {
+    for (let g = lo; g <= hi; g++) {
+      const group = naturals.filter((n) => n.gauge === g && fitsConstraints(n));
+      if (group.length > keep.length) keep = group;
+    }
+  } else {
+    const categories = [...new Set(naturals.filter(fitsConstraints).map((n) => n.category))];
+    for (const c of categories) {
+      const byGauge = new Map<number, Natural>();
+      for (const n of naturals) if (n.category === c && fitsConstraints(n) && !byGauge.has(n.gauge)) byGauge.set(n.gauge, n);
+      // Longest chain of consecutive gauges.
+      for (const start of byGauge.keys()) {
+        if (byGauge.has(start - 1)) continue;
+        const chain: Natural[] = [];
+        for (let g = start; byGauge.has(g); g++) chain.push(byGauge.get(g)!);
+        if (chain.length > keep.length) keep = chain;
+      }
+    }
+  }
+  const kept = new Set(keep.map((n) => n.id));
+  return naturals.filter((n) => !kept.has(n.id)).map((n) => n.id);
+}

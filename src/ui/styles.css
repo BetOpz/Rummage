@@ -219,3 +219,4 @@ input { font: inherit; padding: 4px 8px; border-radius: 6px; border: 1px solid v
 .reward-option { text-align: left; padding: 8px 12px; }
 .repair-list { list-style: none; padding: 0; display: grid; gap: 6px; }
 h3 { margin: 14px 0 6px; font-size: 1rem; }
+.card.misfit { outline: 3px dashed var(--warn); outline-offset: 2px; }

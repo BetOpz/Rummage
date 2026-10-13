@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkBuild, findBuild, type MeldRules, type MeldToken, validateMeld } from '../src/engine/melds';
+import { checkBuild, findBuild, meldMisfits, type MeldRules, type MeldToken, validateMeld } from '../src/engine/melds';
 
 const rules: MeldRules = {
   gaugeMin: 1,
@@ -258,5 +258,26 @@ describe('findBuild', () => {
 
     const wrongType = [{ tokens: locked, lockedType: 'set' as const }, ...units.slice(1)];
     expect(findBuild(wrongType, reqs, rules)).toBeNull();
+  });
+});
+
+describe('meldMisfits', () => {
+  it('names the cards that break a run', () => {
+    const run = [p('brass', 3), p('brass', 4), p('brass', 5), p('brass', 6)];
+    const extra = [p('brass', 4), p('wood', 4), p('copper', 4)];
+    const tokens = [...run, ...extra];
+    expect(validateMeld(tokens, { type: 'run', size: 3 }, rules).ok).toBe(false);
+    expect(meldMisfits(tokens, { type: 'run', size: 3 }, rules).sort()).toEqual(extra.map((t) => t.id).sort());
+  });
+
+  it('names the cards that break a set', () => {
+    const odd = p('iron', 6);
+    const tokens = [p('iron', 5), p('wood', 5), odd, p('brass', 5)];
+    expect(meldMisfits(tokens, { type: 'set', size: 3 }, rules)).toEqual([odd.id]);
+  });
+
+  it('returns nothing for a valid meld or when specials are involved', () => {
+    expect(meldMisfits([p('iron', 1), p('iron', 2), p('iron', 3)], { type: 'run', size: 3 }, rules)).toEqual([]);
+    expect(meldMisfits([p('iron', 1), wild(), p('wood', 9)], { type: 'run', size: 3 }, rules)).toEqual([]);
   });
 });
