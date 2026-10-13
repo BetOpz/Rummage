@@ -1,0 +1,17 @@
+[
+  {
+    "id": "hammer",
+    "name": "Hammer",
+    "text": "Deal 5 damage.",
+    "cost": 1,
+    "targeted": true,
+    "effects": [{ "type": "damage", "params": { "amount": 5 } }]
+  },
+  {
+    "id": "plank_shield",
+    "name": "Plank Shield",
+    "text": "Gain 5 block.",
+    "cost": 1,
+    "effects": [{ "type": "block", "params": { "amount": 5 } }]
+  }
+]

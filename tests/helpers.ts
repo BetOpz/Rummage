@@ -2,7 +2,18 @@ import { createEngine, type Engine } from '../src/engine/game';
 import type { Card, CardId, GameState, PlayerId } from '../src/engine/types';
 import { createPart, createSpecial } from '../src/engine/zones';
 
-export const engine: Engine = createEngine();
+const realEngine: Engine = createEngine();
+
+/**
+ * Most tests exercise the workshop (rummy) layer on its own, so the test
+ * engine defaults to the linear 'workshopOnly' run structure. Pass
+ * `runStructure: 'map'` to test the map and battles.
+ */
+export const engine: Engine = {
+  ...realEngine,
+  newGame: (opts) => realEngine.newGame({ ...opts, config: { runStructure: 'workshopOnly', ...opts.config } }),
+};
+export const mapEngine = realEngine;
 
 /** Start a game and pick the first offered blueprint (or a given one). */
 export function startedGame(

@@ -1,0 +1,22 @@
+[
+  { "id": "rust_rat", "name": "Rust Rat", "kind": "normal", "hp": 16,
+    "intents": [{ "type": "attack", "damage": 6 }, { "type": "attack", "damage": 3, "hits": 2 }, { "type": "block", "amount": 5 }] },
+  { "id": "loose_cog", "name": "Loose Cog", "kind": "normal", "hp": 12,
+    "intents": [{ "type": "attack", "damage": 5 }, { "type": "attackBlock", "damage": 3, "block": 3 }] },
+  { "id": "scrap_gremlin", "name": "Scrap Gremlin", "kind": "normal", "hp": 24,
+    "intents": [{ "type": "block", "amount": 6 }, { "type": "attack", "damage": 9 }, { "type": "attack", "damage": 4, "hits": 2 }] },
+  { "id": "tin_beetle", "name": "Tin Beetle", "kind": "normal", "minAct": 2, "hp": 20,
+    "intents": [{ "type": "attackBlock", "damage": 5, "block": 6 }, { "type": "attack", "damage": 8 }] },
+
+  { "id": "junk_golem", "name": "Junk Golem", "kind": "elite", "hp": 48,
+    "intents": [{ "type": "attack", "damage": 11 }, { "type": "block", "amount": 10 }, { "type": "attack", "damage": 5, "hits": 3 }] },
+  { "id": "steam_hound", "name": "Steam Hound", "kind": "elite", "minAct": 2, "hp": 40,
+    "intents": [{ "type": "attack", "damage": 4, "hits": 3 }, { "type": "attackBlock", "damage": 8, "block": 8 }] },
+
+  { "id": "the_foreman", "name": "The Foreman", "kind": "boss", "maxAct": 1, "hp": 90,
+    "intents": [{ "type": "attack", "damage": 10 }, { "type": "attackBlock", "damage": 6, "block": 10 }, { "type": "attack", "damage": 4, "hits": 4 }, { "type": "block", "amount": 15 }] },
+  { "id": "boiler_titan", "name": "Boiler Titan", "kind": "boss", "minAct": 2, "maxAct": 2, "hp": 85,
+    "intents": [{ "type": "block", "amount": 12 }, { "type": "attack", "damage": 14 }, { "type": "attack", "damage": 5, "hits": 3 }] },
+  { "id": "clockwork_king", "name": "Clockwork King", "kind": "boss", "minAct": 3, "hp": 70,
+    "intents": [{ "type": "attack", "damage": 5, "hits": 2 }, { "type": "attackBlock", "damage": 8, "block": 8 }, { "type": "block", "amount": 10 }, { "type": "attack", "damage": 12 }] }
+]

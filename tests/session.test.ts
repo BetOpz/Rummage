@@ -21,7 +21,7 @@ describe('session, save and load', () => {
     const bad = dispatch(s0, { type: 'DRAW', playerId: 'p1', source: 'deck' });
     expect(bad.ok).toBe(false);
     expect(bad.session.actions).toHaveLength(0);
-    const good = dispatch(s0, { type: 'SELECT_BLUEPRINT', playerId: 'p1', blueprintId: s0.state.roundState!.offers[0] });
+    const good = dispatch(s0, { type: 'CHOOSE_NODE', playerId: 'p1', nodeId: s0.state.map!.rows[0][0].id });
     expect(good.ok).toBe(true);
     expect(good.session.actions).toHaveLength(1);
   });
@@ -48,6 +48,12 @@ describe('session, save and load', () => {
     data.state.players[0].currency = 999;
     expect(() => deserializeSession(JSON.stringify(data))).toThrow(/does not match/);
     expect(deserializeSession(JSON.stringify(data), { verify: false }).state.players[0].currency).toBe(999);
+  });
+
+  it('rejects saves from before the map update', () => {
+    const data = JSON.parse(serializeSession(playSome(3)));
+    delete data.state.config.runStructure;
+    expect(() => deserializeSession(JSON.stringify(data))).toThrow(/older version/);
   });
 
   it('rejects non-save JSON', () => {

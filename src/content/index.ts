@@ -10,12 +10,16 @@ import items from './items.json';
 import blueprints from './blueprints.json';
 import bossModifiers from './bosses.json';
 import shopPools from './shop.json';
+import starterCards from './starterCards.json';
+import enemies from './enemies.json';
 
 export const defaultContent: ContentPack = {
   categories,
   specials: specials as ContentPack['specials'],
-  items,
+  items: items as ContentPack['items'],
   blueprints: blueprints as ContentPack['blueprints'],
   bossModifiers,
   shopPools: shopPools as ContentPack['shopPools'],
+  starterCards,
+  enemies: enemies as ContentPack['enemies'],
 };

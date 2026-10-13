@@ -48,11 +48,53 @@ export interface SpecialDef {
   effects: EffectRef[];
 }
 
+/** A card that can be played in battle (starter cards and the battle side of items). */
+export interface BattleCardDef {
+  name: string;
+  text: string;
+  /** Energy cost. */
+  cost: number;
+  /** Battle effects (handlers implement `onBattlePlay`). */
+  effects: EffectRef[];
+  /**
+   * Durability for item cards: the item breaks after this many plays.
+   * Omit for an item that never breaks.
+   */
+  uses?: number;
+  /** Does the card need an enemy target? */
+  targeted?: boolean;
+}
+
+export interface StarterCardDef extends BattleCardDef {
+  id: string;
+}
+
 export interface ItemDef {
   id: string;
   name: string;
   text: string;
+  /** Passive effects (workshop rules, currency, ...). */
   effects: EffectRef[];
+  /** The item's battle card, if it has one. */
+  battle?: BattleCardDef;
+}
+
+export type EnemyIntent =
+  | { type: 'attack'; damage: number; hits?: number }
+  | { type: 'block'; amount: number }
+  | { type: 'attackBlock'; damage: number; block: number };
+
+export interface EnemyDef {
+  id: string;
+  name: string;
+  kind: 'normal' | 'elite' | 'boss';
+  /** First act (1-based) this enemy can appear in. */
+  minAct?: number;
+  /** Last act it can appear in. */
+  maxAct?: number;
+  hp: number;
+  /** Cycled in order, one per enemy turn. */
+  intents: EnemyIntent[];
 }
 
 export type MeldType = 'set' | 'run';
@@ -123,6 +165,8 @@ export interface ContentPack {
   blueprints: BlueprintDef[];
   bossModifiers: BossModifierDef[];
   shopPools: ShopTierPool[];
+  starterCards: StarterCardDef[];
+  enemies: EnemyDef[];
 }
 
 // ---------------------------------------------------------------------------
@@ -177,11 +221,17 @@ export interface RoundRules {
 // ---------------------------------------------------------------------------
 
 export interface ItemInstance {
+  /** Unique per run, so two copies of the same item can be told apart. */
+  uid: string;
   itemId: string;
   /** Blueprint it was built from (for display/history). */
   fromBlueprint: string;
-  /** Card ids consumed to build it (they no longer exist). */
+  /** Number of parts consumed to build it (they no longer exist). */
   builtFrom: number;
+  /** Power level (the blueprint's tier, +1 for master workshops). Scales battle effects. */
+  level: number;
+  /** Plays left before it breaks; null = never breaks. */
+  usesLeft: number | null;
 }
 
 export interface LockedMeld {
@@ -202,7 +252,11 @@ export interface PlayerState {
   items: ItemInstance[];
   currency: number;
   score: number;
+  /** Used by the workshop-only run structure. */
   lives: number;
+  /** Used by the map run structure. */
+  hp: number;
+  maxHp: number;
   /** Blueprint this player is building this round. */
   target: string | null;
   /** Draws taken this round. */
@@ -272,15 +326,88 @@ export interface RoundResult {
   winner: PlayerId | null;
   perPlayer: Record<
     PlayerId,
-    { built: boolean; deadwood: number; reward: number; itemId: string | null; lifeLost: boolean }
+    { built: boolean; deadwood: number; reward: number; itemId: string | null; lifeLost: boolean; hpLost: number }
   >;
 }
 
+// ---------------------------------------------------------------------------
+// Map and battles (the outer layer)
+// ---------------------------------------------------------------------------
+
+export type NodeType = 'workshop' | 'masterWorkshop' | 'battle' | 'elite' | 'shop' | 'rest' | 'boss';
+
+export interface MapNode {
+  id: string;
+  row: number;
+  col: number;
+  type: NodeType;
+  /** Ids of nodes in the next row this node leads to. */
+  next: string[];
+}
+
+export interface MapState {
+  /** 0-based act (same as GameState.tier). */
+  act: number;
+  rows: MapNode[][];
+  /** Node the player is on; null before the first choice. */
+  current: string | null;
+  visited: string[];
+}
+
+export interface BattleCard {
+  uid: string;
+  source: 'starter' | 'item';
+  /** Starter card id, or the ItemInstance uid. */
+  ref: string;
+}
+
+export interface EnemyState {
+  defId: string;
+  name: string;
+  hp: number;
+  maxHp: number;
+  block: number;
+  intentIndex: number;
+  /** Damage/block multiplier for the act. */
+  scale: number;
+}
+
+export interface BattleState {
+  kind: 'battle' | 'elite' | 'boss';
+  playerId: PlayerId;
+  enemies: EnemyState[];
+  drawPile: BattleCard[];
+  hand: BattleCard[];
+  discard: BattleCard[];
+  /** Cards removed for this battle (broken items). */
+  exhausted: BattleCard[];
+  energy: number;
+  block: number;
+  turn: number;
+}
+
+export interface RewardOption {
+  kind: 'part' | 'special';
+  category?: string;
+  gauge?: number;
+  specialId?: string;
+}
+
+export interface BattleReward {
+  kind: BattleState['kind'];
+  currency: number;
+  options: RewardOption[];
+}
+
 export type GamePhase =
+  | 'map'
   | 'blueprintSelect'
   | 'playing'
   | 'roundOver'
   | 'shop'
+  | 'battle'
+  | 'battleReward'
+  | 'rest'
   | 'runWon'
   | 'runLost';
 
@@ -304,6 +431,12 @@ export interface GameState {
   /** Shared market (one market for all players, per the multiplayer design). */
   shop: ShopState | null;
   lastResult: RoundResult | null;
+  /** Map run structure only. */
+  map: MapState | null;
+  battle: BattleState | null;
+  reward: BattleReward | null;
+  /** Counter for ItemInstance / battle card uids. */
+  nextUid: number;
   /** Human-readable event log (capped), for UI feedback. */
   messages: string[];
 }
@@ -324,6 +457,11 @@ export type GameAction =
   | { type: 'CONTINUE'; playerId: PlayerId }
   | { type: 'SHOP_BUY'; playerId: PlayerId; slot: number; targetId?: CardId }
   | { type: 'SHOP_REROLL'; playerId: PlayerId }
-  | { type: 'LEAVE_SHOP'; playerId: PlayerId };
+  | { type: 'LEAVE_SHOP'; playerId: PlayerId }
+  | { type: 'CHOOSE_NODE'; playerId: PlayerId; nodeId: string }
+  | { type: 'PLAY_CARD'; playerId: PlayerId; cardUid: string; target?: number }
+  | { type: 'END_TURN'; playerId: PlayerId }
+  | { type: 'TAKE_REWARD'; playerId: PlayerId; index: number | null }
+  | { type: 'REST'; playerId: PlayerId; choice: 'heal' | 'repair'; itemUid?: string };
 
 export type ActionType = GameAction['type'];

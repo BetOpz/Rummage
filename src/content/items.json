@@ -1,10 +1,257 @@
 [
-  { "id": "workbench", "name": "Workbench", "text": "+1 hand size.", "effects": [{ "type": "modifyRules", "params": { "handSize": 1 } }] },
-  { "id": "pocket_watch", "name": "Pocket Watch", "text": "+2 draws per round.", "effects": [{ "type": "modifyRules", "params": { "drawLimit": 2 } }] },
-  { "id": "glue_pot", "name": "Glue Pot", "text": "Start each round with a free Duct Tape (it vanishes at round end).", "effects": [{ "type": "grantTempCard", "params": { "specialId": "duct_tape", "count": 1 } }] },
-  { "id": "coin_press", "name": "Coin Press", "text": "+2 currency at the end of each round.", "effects": [{ "type": "gainCurrency", "params": { "hook": "onRoundEnd", "amount": 2 } }] },
-  { "id": "magnifier", "name": "Magnifier", "text": "Hidden blueprint requirements are always shown.", "effects": [{ "type": "modifyRules", "params": { "revealHidden": true } }] },
-  { "id": "sorting_tray", "name": "Sorting Tray", "text": "Start each round with an extra card in hand (+1 hand size) and +1 draw.", "effects": [{ "type": "modifyRules", "params": { "handSize": 1, "drawLimit": 1 } }] },
-  { "id": "salvage_rig", "name": "Salvage Rig", "text": "+1 currency whenever you complete a build.", "effects": [{ "type": "gainCurrency", "params": { "hook": "onBuild", "amount": 1 } }] },
-  { "id": "spare_reel", "name": "Spare Reel", "text": "Start each round with a free Adaptor (it vanishes at round end).", "effects": [{ "type": "grantTempCard", "params": { "specialId": "adaptor", "count": 1 } }] }
+  {
+    "id": "workbench",
+    "name": "Workbench",
+    "text": "+1 hand size.",
+    "effects": [
+      {
+        "type": "modifyRules",
+        "params": {
+          "handSize": 1
+        }
+      }
+    ],
+    "battle": {
+      "name": "Workbench Bash",
+      "text": "Gain 8 block (+3 per level).",
+      "cost": 1,
+      "effects": [
+        {
+          "type": "block",
+          "params": {
+            "amount": 8,
+            "perLevel": 3
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "pocket_watch",
+    "name": "Pocket Watch",
+    "text": "+2 draws per round.",
+    "effects": [
+      {
+        "type": "modifyRules",
+        "params": {
+          "drawLimit": 2
+        }
+      }
+    ],
+    "battle": {
+      "name": "Wind Up",
+      "text": "Draw 2 cards and gain 1 energy.",
+      "cost": 0,
+      "uses": 4,
+      "effects": [
+        {
+          "type": "draw",
+          "params": {
+            "amount": 2
+          }
+        },
+        {
+          "type": "energy",
+          "params": {
+            "amount": 1
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "glue_pot",
+    "name": "Glue Pot",
+    "text": "Start each round with a free Duct Tape (it vanishes at round end).",
+    "effects": [
+      {
+        "type": "grantTempCard",
+        "params": {
+          "specialId": "duct_tape",
+          "count": 1
+        }
+      }
+    ],
+    "battle": {
+      "name": "Sticky Splash",
+      "text": "Deal 5 damage and gain 5 block (+2 each per level).",
+      "cost": 1,
+      "targeted": true,
+      "effects": [
+        {
+          "type": "damage",
+          "params": {
+            "amount": 5,
+            "perLevel": 2
+          }
+        },
+        {
+          "type": "block",
+          "params": {
+            "amount": 5,
+            "perLevel": 2
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "coin_press",
+    "name": "Coin Press",
+    "text": "+2 currency at the end of each round.",
+    "effects": [
+      {
+        "type": "gainCurrency",
+        "params": {
+          "hook": "onRoundEnd",
+          "amount": 2
+        }
+      }
+    ],
+    "battle": {
+      "name": "Coin Toss",
+      "text": "Deal 7 damage (+3 per level). Gain 2 currency.",
+      "cost": 1,
+      "targeted": true,
+      "uses": 3,
+      "effects": [
+        {
+          "type": "damage",
+          "params": {
+            "amount": 7,
+            "perLevel": 3
+          }
+        },
+        {
+          "type": "gainCurrency",
+          "params": {
+            "hook": "onBattlePlay",
+            "amount": 2
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "magnifier",
+    "name": "Magnifier",
+    "text": "Hidden blueprint requirements are always shown.",
+    "effects": [
+      {
+        "type": "modifyRules",
+        "params": {
+          "revealHidden": true
+        }
+      }
+    ],
+    "battle": {
+      "name": "Weak Point",
+      "text": "Deal 14 damage (+5 per level).",
+      "cost": 2,
+      "targeted": true,
+      "uses": 3,
+      "effects": [
+        {
+          "type": "damage",
+          "params": {
+            "amount": 14,
+            "perLevel": 5
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "sorting_tray",
+    "name": "Sorting Tray",
+    "text": "Start each round with an extra card in hand (+1 hand size) and +1 draw.",
+    "effects": [
+      {
+        "type": "modifyRules",
+        "params": {
+          "handSize": 1,
+          "drawLimit": 1
+        }
+      }
+    ],
+    "battle": {
+      "name": "Sort Out",
+      "text": "Gain 6 block (+2 per level). Draw 1 card.",
+      "cost": 1,
+      "effects": [
+        {
+          "type": "block",
+          "params": {
+            "amount": 6,
+            "perLevel": 2
+          }
+        },
+        {
+          "type": "draw",
+          "params": {
+            "amount": 1
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "salvage_rig",
+    "name": "Salvage Rig",
+    "text": "+1 currency whenever you complete a build.",
+    "effects": [
+      {
+        "type": "gainCurrency",
+        "params": {
+          "hook": "onBuild",
+          "amount": 1
+        }
+      }
+    ],
+    "battle": {
+      "name": "Scrap Cannon",
+      "text": "Deal 9 damage to every enemy (+4 per level).",
+      "cost": 2,
+      "uses": 3,
+      "effects": [
+        {
+          "type": "damageAll",
+          "params": {
+            "amount": 9,
+            "perLevel": 4
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "spare_reel",
+    "name": "Spare Reel",
+    "text": "Start each round with a free Adaptor (it vanishes at round end).",
+    "effects": [
+      {
+        "type": "grantTempCard",
+        "params": {
+          "specialId": "adaptor",
+          "count": 1
+        }
+      }
+    ],
+    "battle": {
+      "name": "Whip Line",
+      "text": "Deal 4 damage twice (+2 per level).",
+      "cost": 1,
+      "targeted": true,
+      "effects": [
+        {
+          "type": "damage",
+          "params": {
+            "amount": 4,
+            "perLevel": 2,
+            "hits": 2
+          }
+        }
+      ]
+    }
+  }
 ]

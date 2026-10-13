@@ -10,6 +10,7 @@
 
 import { defaultContent } from '../content';
 import { type GameConfig, makeConfig, perTier } from '../config';
+import { endBattleTurn, makeReward, playBattleCard, startBattle } from './battle';
 import { blueprintsForTier, getBlueprint } from './blueprints';
 import {
   type EffectContext,
@@ -21,6 +22,7 @@ import {
   itemEffects,
   runHook,
 } from './effects';
+import { findNode, generateMap, reachableNodes } from './map';
 import { type MeldRules, type MeldToken, type MeldUnit, checkBuild, findBuild, validateMeld } from './melds';
 import { Rng, seedToState } from './rng';
 import type {
@@ -102,6 +104,8 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
         currency: config.startingCurrency,
         score: 0,
         lives: config.lives,
+        hp: config.battle.startingHp,
+        maxHp: config.battle.startingHp,
         target: null,
         drawsTaken: 0,
         exhausted: false,
@@ -113,8 +117,15 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       roundState: null,
       shop: null,
       lastResult: null,
+      map: null,
+      battle: null,
+      reward: null,
+      nextUid: 1,
       messages: [],
     };
+    if (config.runStructure === 'map' && state.players.length > 1) {
+      throw new Error('Map runs are single-player for now; use runStructure "workshopOnly" for multiplayer.');
+    }
 
     const deckCfg = config.startingDeck;
     const categories = deckCfg.categories === 'all' ? content.categories.map((c) => c.id) : deckCfg.categories;
@@ -127,8 +138,9 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       for (const specialId of deckCfg.specials) addToDeck(state, createSpecial(state, player.id, specialId));
     }
 
-    prepareRound(state);
     log(state, `New run (seed "${seed}").`);
+    if (config.runStructure === 'map') enterAct(state, 0);
+    else prepareRound(state, isBossRound(state));
     return state;
   }
 
@@ -178,11 +190,14 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     return state.round >= state.config.normalRoundsPerTier;
   }
 
-  /** Set up blueprint offers (and the boss modifier) for the coming round. */
-  function prepareRound(state: GameState): void {
+  /**
+   * Set up blueprint offers for the coming workshop round. A boss round
+   * (the end of a tier, or a master workshop on the map) offers one big
+   * blueprint with a random hazard modifier.
+   */
+  function prepareRound(state: GameState, boss: boolean): void {
     const rng = new Rng(state);
     const tier = state.tier + 1;
-    const boss = isBossRound(state);
     let offers: string[];
     let bossState: BossState | null = null;
 
@@ -218,7 +233,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     if (bossState) {
       const def = content.bossModifiers.find((m) => m.id === bossState!.modifierId);
       const extra = typeof bossState.params.category === 'string' ? ` (${bossState.params.category})` : '';
-      log(state, `Boss round! Modifier: ${def?.name}${extra}.`);
+      log(state, `${state.map ? 'Master workshop' : 'Boss round'}! Hazard: ${def?.name}${extra}.`);
     }
   }
 
@@ -444,7 +459,15 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     for (const id of used) destroyCard(state, id);
     const ctx = context(state, player);
     runHook(effects, 'onBuild', itemEffects(content, player), ctx);
-    player.items.push({ itemId: bp.itemId, fromBlueprint: bp.id, builtFrom: used.length });
+    const itemDef = content.items.find((i) => i.id === bp.itemId);
+    player.items.push({
+      uid: `it${state.nextUid++}`,
+      itemId: bp.itemId,
+      fromBlueprint: bp.id,
+      builtFrom: used.length,
+      level: bp.tier + (bp.boss ? 1 : 0),
+      usesLeft: itemDef?.battle?.uses ?? null,
+    });
     const item = content.items.find((i) => i.id === bp.itemId);
     log(state, `${player.name} builds ${bp.name}! ${used.length} parts become ${item?.name ?? bp.itemId}.`);
     endRound(state, player.id);
@@ -509,6 +532,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       const built = p.id === winner;
       let reward = 0;
       let lifeLost = false;
+      let hpLost = 0;
       if (built) {
         const unused = Math.max(0, p.rules.drawLimit - p.drawsTaken);
         reward = Math.max(0, perTier(cfg.roundRewardByTier, state.tier) + unused * cfg.rewardPerUnusedDraw - penalty);
@@ -517,10 +541,14 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       } else {
         p.currency = Math.max(0, p.currency - penalty);
         p.score = Math.max(0, p.score - deadwood);
-        if (cfg.mode === 'solo') {
+        if (cfg.mode === 'solo' && cfg.runStructure === 'workshopOnly') {
           p.lives -= 1;
           lifeLost = true;
           log(state, `${p.name} failed the round and loses a life (${p.lives} left).`);
+        } else if (cfg.mode === 'solo') {
+          hpLost = Math.min(p.hp, cfg.battle.workshopFailDamage);
+          p.hp -= hpLost;
+          if (hpLost > 0) log(state, `${p.name} failed the build and takes ${hpLost} damage.`);
         }
       }
       result.perPlayer[p.id] = {
@@ -529,6 +557,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
         reward,
         itemId: built ? (p.items[p.items.length - 1]?.itemId ?? null) : null,
         lifeLost,
+        hpLost,
       };
       runHook(effects, 'onRoundEnd', itemEffects(content, p), context(state, p));
     }
@@ -552,6 +581,15 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
   function continueAfterRound(state: GameState) {
     assertRule(state.phase === 'roundOver', 'Nothing to continue');
     const cfg = state.config;
+    if (cfg.runStructure === 'map') {
+      if (state.players.every((p) => p.hp <= 0)) {
+        state.phase = 'runLost';
+        log(state, 'The run is over.');
+      } else {
+        state.phase = 'map';
+      }
+      return;
+    }
     if (cfg.mode === 'solo' && state.players.every((p) => p.lives <= 0)) {
       state.phase = 'runLost';
       log(state, 'The run is over.');
@@ -653,7 +691,136 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
   function leaveShop(state: GameState) {
     assertRule(state.phase === 'shop', 'The shop is closed');
     state.shop = null;
-    prepareRound(state);
+    if (state.config.runStructure === 'map') state.phase = 'map';
+    else prepareRound(state, isBossRound(state));
+  }
+
+  // -------------------------------------------------------------------------
+  // Map, battles, rewards, rest (map run structure)
+  // -------------------------------------------------------------------------
+
+  function enterAct(state: GameState, act: number) {
+    state.tier = act;
+    state.round = 0;
+    state.map = generateMap(act, state.config.map, new Rng(state));
+    state.phase = 'map';
+    log(state, `Act ${act + 1} begins.`);
+  }
+
+  function soloPlayer(state: GameState, playerId: PlayerId): PlayerState {
+    assertRule(state.map, 'Not on a map run');
+    return getPlayer(state, playerId);
+  }
+
+  function chooseNode(state: GameState, playerId: PlayerId, nodeId: string) {
+    const player = soloPlayer(state, playerId);
+    assertRule(state.phase === 'map', 'Finish what you are doing first');
+    const map = state.map!;
+    assertRule(reachableNodes(map).some((n) => n.id === nodeId), 'You cannot reach that stop from here');
+    const node = findNode(map, nodeId)!;
+    map.current = node.id;
+    map.visited.push(node.id);
+    state.round += 1;
+    const rng = new Rng(state);
+
+    switch (node.type) {
+      case 'workshop':
+      case 'masterWorkshop':
+        prepareRound(state, node.type === 'masterWorkshop');
+        break;
+      case 'battle':
+      case 'elite':
+      case 'boss':
+        startBattle(state, content, player, node.type, rng);
+        break;
+      case 'shop':
+        openShop(state);
+        break;
+      case 'rest':
+        state.phase = 'rest';
+        break;
+    }
+  }
+
+  function battleFor(state: GameState, playerId: PlayerId): PlayerState {
+    assertRule(state.phase === 'battle' && state.battle, 'No battle in progress');
+    assertRule(state.battle.playerId === playerId, 'Not your battle');
+    return getPlayer(state, playerId);
+  }
+
+  function playCard(state: GameState, playerId: PlayerId, cardUid: string, target?: number) {
+    const player = battleFor(state, playerId);
+    const won = playBattleCard(state, content, effects, player, cardUid, target, new Rng(state));
+    if (won) winBattle(state);
+  }
+
+  function endTurn(state: GameState, playerId: PlayerId) {
+    const player = battleFor(state, playerId);
+    const result = endBattleTurn(state, content, player, new Rng(state));
+    if (result === 'lost') {
+      log(state, `${player.name} is defeated.`);
+      state.battle = null;
+      state.phase = 'runLost';
+    }
+  }
+
+  function winBattle(state: GameState) {
+    const battle = state.battle!;
+    const player = getPlayer(state, battle.playerId);
+    state.reward = makeReward(state, content, battle.kind, new Rng(state));
+    player.currency += state.reward.currency;
+    player.score += state.reward.currency;
+    log(state, `Victory! +${state.reward.currency} currency.`);
+    state.battle = null;
+    state.phase = 'battleReward';
+  }
+
+  function takeReward(state: GameState, playerId: PlayerId, index: number | null) {
+    assertRule(state.phase === 'battleReward' && state.reward, 'No reward to take');
+    const player = getPlayer(state, playerId);
+    const reward = state.reward;
+    if (index !== null) {
+      const option = reward.options[index];
+      assertRule(option, 'No such reward');
+      const card =
+        option.kind === 'part'
+          ? createPart(state, content, player.id, option.category!, option.gauge!)
+          : createSpecial(state, player.id, option.specialId!);
+      addToDeck(state, card);
+      log(state, `${player.name} adds ${cardLabel(state, content, card.id)} to their parts deck.`);
+    }
+    state.reward = null;
+
+    if (reward.kind !== 'boss') {
+      state.phase = 'map';
+      return;
+    }
+    if (state.tier + 1 >= state.config.tiers) {
+      state.phase = 'runWon';
+      log(state, 'Run complete!');
+      return;
+    }
+    const heal = Math.round(player.maxHp * state.config.battle.actHealFraction);
+    player.hp = Math.min(player.maxHp, player.hp + heal);
+    enterAct(state, state.tier + 1);
+  }
+
+  function rest(state: GameState, playerId: PlayerId, choice: 'heal' | 'repair', itemUid?: string) {
+    assertRule(state.phase === 'rest', 'There is nowhere to rest here');
+    const player = getPlayer(state, playerId);
+    if (choice === 'heal') {
+      const amount = Math.round(player.maxHp * state.config.battle.restHealFraction);
+      player.hp = Math.min(player.maxHp, player.hp + amount);
+      log(state, `${player.name} rests and recovers ${amount} HP.`);
+    } else {
+      const item = player.items.find((i) => i.uid === itemUid);
+      assertRule(item, 'Choose an item to repair');
+      const max = content.items.find((d) => d.id === item.itemId)?.battle?.uses;
+      assertRule(max !== undefined, 'That item never wears out');
+      item.usesLeft = max;
+      log(state, `${player.name} repairs ${content.items.find((d) => d.id === item.itemId)?.name}.`);
+    }
+    state.phase = 'map';
   }
 
   // -------------------------------------------------------------------------
@@ -700,6 +867,21 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       case 'LEAVE_SHOP':
         getPlayer(state, action.playerId);
         leaveShop(state);
+        break;
+      case 'CHOOSE_NODE':
+        chooseNode(state, action.playerId, action.nodeId);
+        break;
+      case 'PLAY_CARD':
+        playCard(state, action.playerId, action.cardUid, action.target);
+        break;
+      case 'END_TURN':
+        endTurn(state, action.playerId);
+        break;
+      case 'TAKE_REWARD':
+        takeReward(state, action.playerId, action.index);
+        break;
+      case 'REST':
+        rest(state, action.playerId, action.choice, action.itemUid);
         break;
       default: {
         const never: never = action;

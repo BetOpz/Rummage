@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { type GameAction, type Session, dispatch, engine, newSession } from '../engine';
+import { BattleView } from './BattleView';
 import { BlueprintSelect } from './BlueprintSelect';
 import { GameContext } from './context';
+import { MapView } from './MapView';
+import { RestView } from './RestView';
+import { RewardView } from './RewardView';
 import { RoundOver, RunOver } from './RoundOver';
 import { RoundView } from './RoundView';
 import { ShopView } from './ShopView';
@@ -117,6 +121,10 @@ export function App() {
             {error}
           </div>
         )}
+        {state.phase === 'map' && <MapView />}
+        {state.phase === 'battle' && <BattleView />}
+        {state.phase === 'battleReward' && <RewardView />}
+        {state.phase === 'rest' && <RestView />}
         {state.phase === 'blueprintSelect' && <BlueprintSelect />}
         {state.phase === 'playing' && <RoundView />}
         {state.phase === 'roundOver' && <RoundOver />}
@@ -154,14 +162,23 @@ function HowToPlay() {
       <h2>How to play</h2>
       <ul>
         <li>
-          Each round, pick a <b>blueprint</b>: a list of melds such as “Set of 4 + Run of 3”.
+          Each act is a <b>map</b>. Pick a route through workshops, battles, shops and rests to the boss.
         </li>
         <li>
-          <b>Set</b>: cards of the same gauge (any categories). <b>Run</b>: one category, consecutive gauges.
+          <b>Workshops</b> are rummy rounds. Pick a <b>blueprint</b> (such as “Set of 4 + Run of 3”), then draw and
+          discard until your hand completes it.
         </li>
-        <li>Each turn: draw (deck or discard pile), optionally play specials or build, then discard one card.</li>
-        <li>Complete the blueprint before your draws run out. The parts are used up and become an item with a passive bonus.</li>
-        <li>Spend currency in the shop between rounds. Each tier ends with a boss blueprint that bends the rules.</li>
+        <li>
+          <b>Set</b>: cards with the same number, any category. <b>Run</b>: one category, numbers in a row.
+        </li>
+        <li>
+          Building uses up the parts for good and gives you an <b>item</b>. Each item has a passive bonus and a{' '}
+          <b>battle card</b>. Some items wear out after a few uses.
+        </li>
+        <li>
+          <b>Battles</b>: spend energy to play cards, block what enemies say they will do, and end your turn. Winning gives
+          currency and new parts.
+        </li>
       </ul>
     </div>
   );

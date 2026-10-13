@@ -13,6 +13,13 @@ export function RoundOver() {
       {mine.built ? (
         <p>
           New item: <b>{item?.name}</b> — {item?.text}
+          {item?.battle && (
+            <>
+              <br />
+              Battle card: <b>{item.battle.name}</b> ({item.battle.cost} energy) — {item.battle.text}
+              {item.battle.uses ? ` Breaks after ${item.battle.uses} uses.` : ''}
+            </>
+          )}
           <br />
           Reward: <b>{mine.reward}</b> currency (deadwood {mine.deadwood}).
         </p>
@@ -24,10 +31,15 @@ export function RoundOver() {
               Lost a life — <b>{me.lives}</b> left.
             </>
           )}
+          {mine.hpLost > 0 && (
+            <>
+              You take <b>{mine.hpLost}</b> damage ({me.hp}/{me.maxHp} HP).
+            </>
+          )}
         </p>
       )}
       <button className="primary" onClick={() => act({ type: 'CONTINUE', playerId })}>
-        Continue
+        {state.map ? 'Back to the map' : 'Continue'}
       </button>
     </div>
   );
@@ -40,7 +52,7 @@ export function RunOver({ onNewRun }: { onNewRun: () => void }) {
     <div className="panel summary">
       <h2>{won ? 'Run complete!' : 'Run over'}</h2>
       <p>
-        Reached tier {state.tier + 1}, round {state.round + 1}. Score {me.score}. Items built: {me.items.length}.
+        Reached {state.map ? 'act' : 'tier'} {state.tier + 1}. Score {me.score}. Items held: {me.items.length}.
       </p>
       <ul>
         {me.items.map((it, i) => (

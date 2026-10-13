@@ -17,9 +17,46 @@ export interface StartingDeckConfig {
   specials: string[];
 }
 
+export interface MapConfig {
+  /** Rows per act, including the final boss row. */
+  rows: number;
+  /** Lanes across the map. */
+  width: number;
+  /** Relative odds of each node type in the middle rows. */
+  weights: { battle: number; workshop: number; elite: number; shop: number; rest: number };
+}
+
+export interface BattleConfig {
+  startingHp: number;
+  energy: number;
+  handSize: number;
+  /** Starter card ids that every battle deck includes. */
+  starterDeck: string[];
+  /** Enemy HP and damage multiplier, by act. */
+  enemyScalingByAct: number[];
+  /** Currency for winning each kind of battle (multiplied by act number). */
+  currencyReward: { battle: number; elite: number; boss: number };
+  /** Number of part/special cards offered after a battle. */
+  rewardOptions: number;
+  /** Fraction of max HP restored by resting. */
+  restHealFraction: number;
+  /** Fraction of max HP restored when starting a new act. */
+  actHealFraction: number;
+  /** HP lost when a workshop round fails. */
+  workshopFailDamage: number;
+}
+
 export interface GameConfig {
   /** 'solo' is the MVP; 'versus' is reserved for multiplayer. */
   mode: 'solo' | 'versus';
+  /**
+   * 'map': acts with a branching map of workshops (rummy builds), battles,
+   * shops and rests; items become battle cards. 'workshopOnly': the original
+   * linear run of rummy rounds with a boss blueprint per tier.
+   */
+  runStructure: 'map' | 'workshopOnly';
+  map: MapConfig;
+  battle: BattleConfig;
   tiers: number;
   /** Normal rounds per tier; a boss round follows them. */
   normalRoundsPerTier: number;
@@ -66,7 +103,27 @@ export interface GameConfig {
 
 export const defaultConfig: GameConfig = {
   mode: 'solo',
+  runStructure: 'map',
+  map: {
+    rows: 8,
+    width: 3,
+    weights: { battle: 45, workshop: 30, elite: 8, shop: 9, rest: 8 },
+  },
+  battle: {
+    startingHp: 60,
+    energy: 3,
+    handSize: 5,
+    starterDeck: ['hammer', 'hammer', 'hammer', 'hammer', 'plank_shield', 'plank_shield', 'plank_shield', 'plank_shield'],
+    enemyScalingByAct: [1, 1.25, 1.5, 1.8],
+    currencyReward: { battle: 4, elite: 8, boss: 15 },
+    rewardOptions: 3,
+    restHealFraction: 0.3,
+    actHealFraction: 0.5,
+    workshopFailDamage: 6,
+  },
+  /** Acts (map) or tiers (workshop-only). */
   tiers: 3,
+  /** Workshop-only structure: normal rounds before each tier's boss round. */
   normalRoundsPerTier: 2,
   offersPerRound: 3,
   gaugeMin: 1,
@@ -113,5 +170,15 @@ export function makeConfig(overrides: Partial<GameConfig> = {}): GameConfig {
     startingDeck: { ...defaultConfig.startingDeck, ...overrides.startingDeck },
     deadwood: { ...defaultConfig.deadwood, ...overrides.deadwood },
     pivotCost: { ...defaultConfig.pivotCost, ...overrides.pivotCost },
+    map: {
+      ...defaultConfig.map,
+      ...overrides.map,
+      weights: { ...defaultConfig.map.weights, ...overrides.map?.weights },
+    },
+    battle: {
+      ...defaultConfig.battle,
+      ...overrides.battle,
+      currencyReward: { ...defaultConfig.battle.currencyReward, ...overrides.battle?.currencyReward },
+    },
   };
 }

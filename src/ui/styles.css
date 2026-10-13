@@ -163,3 +163,59 @@ input { font: inherit; padding: 4px 8px; border-radius: 6px; border: 1px solid v
 .ready-note { margin-top: 10px; font-weight: 600; color: var(--ok); }
 .card.wanted::after { content: ''; position: absolute; top: 5px; left: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .dot-legend { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); vertical-align: middle; }
+
+/* Map */
+.map-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.map-scroll { overflow-x: auto; display: flex; justify-content: center; padding-block: 8px; }
+.map { position: relative; flex: none; }
+.map-lines { position: absolute; inset: 0; }
+.map-lines line { stroke: var(--line); stroke-width: 2; }
+.map-lines line.walked { stroke: var(--accent); stroke-width: 3; }
+.map-node {
+  position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 4px 6px; border-radius: 10px; background: var(--panel); border: 2px solid var(--line); min-width: 84px;
+}
+.map-node .glyph { font-weight: 800; font-size: 1rem; width: 26px; height: 26px; line-height: 26px; border-radius: 50%; background: var(--bg); }
+.map-node .node-label { font-size: 0.72rem; }
+.map-node:disabled { opacity: 0.55; }
+.map-node.visited { opacity: 0.7; border-style: dashed; }
+.map-node.current { border-color: var(--accent); opacity: 1; }
+.map-node.reachable { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); opacity: 1; }
+.map-node.boss .glyph, .glyph-chip.boss { background: var(--warn); color: var(--panel); }
+.map-node.elite .glyph, .glyph-chip.elite { background: color-mix(in srgb, var(--warn) 30%, var(--bg)); }
+.map-node.workshop .glyph, .map-node.masterWorkshop .glyph, .glyph-chip.workshop, .glyph-chip.masterWorkshop { background: color-mix(in srgb, var(--accent) 25%, var(--bg)); }
+.map-legend { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 4px; font-size: 0.88rem; }
+.glyph-chip { display: inline-block; width: 22px; height: 22px; line-height: 22px; text-align: center; border-radius: 50%; font-weight: 800; background: var(--bg); border: 1px solid var(--line); }
+
+/* Battle */
+.battle > .panel { margin-bottom: 12px; }
+.enemies { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+.enemy { flex: 1 1 180px; max-width: 280px; border: 2px solid var(--line); border-radius: 10px; padding: 10px; display: grid; gap: 4px; }
+.enemy.dead { opacity: 0.45; }
+.enemy.aimable { cursor: pointer; border-color: var(--warn); }
+.stat-line { display: flex; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; }
+.hpbar { display: inline-block; width: 110px; height: 8px; border-radius: 4px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; vertical-align: middle; }
+.hpbar.small { width: 60px; margin-left: 6px; }
+.hpbar > span { display: block; height: 100%; background: var(--warn); }
+.block-badge { display: inline-block; font-size: 0.82rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); width: fit-content; }
+.intent { font-weight: 600; }
+.intent.attack, .intent.attackBlock { color: var(--warn); }
+.player-line { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.energy b { font-size: 1.15rem; color: var(--accent); }
+.bcard {
+  position: relative; width: 132px; min-height: 150px; text-align: left; display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 10px 8px; border-radius: 10px; border: 2px solid var(--line); background: var(--panel);
+}
+.bcard.item { border-color: var(--accent); }
+.bcard.selected { outline: 3px solid var(--warn); }
+.bcard .cost { position: absolute; top: -10px; left: -10px; width: 26px; height: 26px; line-height: 24px; text-align: center; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-weight: 800; border: 2px solid var(--panel); }
+.bcard .bname { font-weight: 700; }
+.bcard .btext { font-size: 0.8rem; color: var(--muted); flex: 1; }
+.bcard .bfoot { font-size: 0.72rem; color: var(--muted); }
+.item-chip.fragile { border-color: var(--warn); }
+.item-chip .uses { color: var(--muted); }
+.hp-stat { display: inline-flex; align-items: center; gap: 4px; }
+.reward-options { display: grid; gap: 8px; margin-bottom: 10px; }
+.reward-option { text-align: left; padding: 8px 12px; }
+.repair-list { list-style: none; padding: 0; display: grid; gap: 6px; }
+h3 { margin: 14px 0 6px; font-size: 1rem; }

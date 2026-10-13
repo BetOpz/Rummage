@@ -4,10 +4,12 @@
  * It only ever chooses actions; the engine decides whether they are legal.
  */
 
+import { battleCardDef, incomingDamage } from './battle';
 import { blueprintSize, getBlueprint } from './blueprints';
+import { reachableNodes } from './map';
 import type { Engine } from './game';
 import type { MeldToken } from './melds';
-import type { CardId, GameAction, GameState, MeldRequirement, PlayerId } from './types';
+import type { CardId, GameAction, GameState, MeldRequirement, NodeType, PlayerId, PlayerState } from './types';
 
 const SHOP_PREFERENCE = ['duct_tape', 'bulk_pack', 'adaptor', 'toolbox', 'parts_catalogue'];
 
@@ -91,6 +93,26 @@ export function botAction(engine: Engine, state: GameState, playerId: PlayerId):
       const crate = slots.findIndex((s) => !s.sold && s.serviceId === 'crate');
       if (crate >= 0 && slots[crate].price <= player.currency) return { type: 'SHOP_BUY', playerId, slot: crate };
       return { type: 'LEAVE_SHOP', playerId };
+    }
+
+    case 'map': {
+      const options = reachableNodes(state.map!);
+      const best = [...options].sort((a, b) => nodeScore(player, b.type) - nodeScore(player, a.type))[0];
+      return best ? { type: 'CHOOSE_NODE', playerId, nodeId: best.id } : null;
+    }
+
+    case 'battle':
+      return battleAction(engine, state, player);
+
+    case 'battleReward':
+      return { type: 'TAKE_REWARD', playerId, index: state.reward && state.reward.options.length > 0 ? 0 : null };
+
+    case 'rest': {
+      const worn = player.items
+        .filter((i) => i.usesLeft !== null)
+        .sort((a, b) => (a.usesLeft ?? 0) - (b.usesLeft ?? 0))[0];
+      if (worn && player.hp > player.maxHp * 0.7) return { type: 'REST', playerId, choice: 'repair', itemUid: worn.uid };
+      return { type: 'REST', playerId, choice: 'heal' };
     }
 
     default:
@@ -185,4 +207,56 @@ export function progress(engine: Engine, state: GameState, hand: CardId[], reqs:
     naturals = naturals.filter((n) => !bestIds.includes(n.id));
   }
   return total;
+}
+
+/** How much the bot wants to visit a map stop. */
+function nodeScore(player: PlayerState, type: NodeType): number {
+  const hurt = player.hp < player.maxHp * 0.5;
+  switch (type) {
+    case 'workshop':
+      return player.items.length < 3 ? 6 : 3;
+    case 'masterWorkshop':
+      return 5;
+    case 'rest':
+      return hurt ? 8 : 1;
+    case 'shop':
+      return player.currency >= 8 ? 4 : 1;
+    case 'battle':
+      return hurt ? 2 : 4;
+    case 'elite':
+      return hurt || player.items.length < 3 ? 0 : 3;
+    case 'boss':
+      return 10;
+  }
+}
+
+/** Battle: block if the incoming hit would hurt, otherwise attack; end the turn when out of plays. */
+function battleAction(engine: Engine, state: GameState, player: PlayerState): GameAction {
+  const battle = state.battle!;
+  const end: GameAction = { type: 'END_TURN', playerId: player.id };
+  const playable = battle.hand
+    .map((card) => ({ card, info: battleCardDef(engine.content, player, card) }))
+    .filter((x) => x.info && x.info.def.cost <= battle.energy);
+  if (playable.length === 0) return end;
+
+  const has = (x: (typeof playable)[number], type: string) => x.info!.def.effects.some((e) => e.type === type);
+  const target = battle.enemies
+    .map((e, i) => ({ e, i }))
+    .filter(({ e }) => e.hp > 0)
+    .sort((a, b) => a.e.hp - b.e.hp)[0]?.i;
+  const play = (x: (typeof playable)[number]): GameAction => ({
+    type: 'PLAY_CARD',
+    playerId: player.id,
+    cardUid: x.card.uid,
+    target: x.info!.def.targeted ? target : undefined,
+  });
+
+  const free = playable.find((x) => has(x, 'draw') || has(x, 'energy'));
+  if (free) return play(free);
+  const needBlock = incomingDamage(engine.content, battle) > battle.block;
+  const blocker = playable.find((x) => has(x, 'block'));
+  if (needBlock && blocker) return play(blocker);
+  const attacker = playable.find((x) => has(x, 'damage') || has(x, 'damageAll'));
+  if (attacker) return play(attacker);
+  return play(playable[0]);
 }

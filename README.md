@@ -1,6 +1,9 @@
 # Rummage
 
-A rummy-style building deckbuilder (working title). Draw and discard like gin rummy, meld **part cards** into **blueprints**, and turn finished blueprints into **items**: relics with passive effects. The parts you build with are gone for good, so each build trades deck quality for power.
+A rummy-style building deckbuilder (working title) with two layers:
+
+1. **Workshop layer (rummy):** draw and discard like gin rummy, meld **part cards** into **blueprints**, and turn finished blueprints into **items**. The parts you build with are gone for good, so each build trades parts-deck quality for power.
+2. **Adventure layer (map and battles):** each act is a branching map of workshops, battles, elites, shops, rests and a boss. Every item you build has a passive bonus *and* a **battle card**. Your battle deck is a few starter cards plus your items. Some items wear out after a number of uses and break.
 
 This repo is a **playable framework**, not a finished game: a pure, tested rules engine, data-driven content, a minimal React UI for a single-player run, and an architecture that leaves room for multiplayer.
 
@@ -25,6 +28,10 @@ src/
   engine/              pure rules engine, no DOM
     types.ts           state, actions and content types (all plain JSON)
     game.ts            createEngine(): newGame, reduce, applyAction, suggestBuild
+    map.ts             act map generation and reachability
+    battle.ts          battle layer (placeholder design; swappable)
+    battleZones.ts     low-level battle helpers (draw, damage)
+    hints.ts           "what does my blueprint still need" hints
     melds.ts           set/run validation, wilds/bulk/adaptor, build solver
     effects.ts         effect/hook registry used by specials, items, bosses, shop services
     zones.ts           low-level card movement helpers + RuleError
@@ -43,9 +50,11 @@ scripts/simulate.ts    balance simulation
 
 **Serialisable everything.** `GameState` and `GameAction` are plain JSON. A `Session` is `{ initial, actions, state }`; `replay(initial, actions)` rebuilds the current state, and `deserializeSession` checks a save against its log. The same action stream is what a server or peer would exchange later.
 
-**Actions.** `SELECT_BLUEPRINT`, `DRAW`, `PLAY_SPECIAL`, `RESOLVE_CHOICE`, `LOCK_MELD`, `PIVOT`, `BUILD`, `DISCARD`, `CONTINUE`, `SHOP_BUY`, `SHOP_REROLL`, `LEAVE_SHOP`. Every action carries a `playerId`.
+**Actions.** Workshop: `SELECT_BLUEPRINT`, `DRAW`, `PLAY_SPECIAL`, `RESOLVE_CHOICE`, `LOCK_MELD`, `PIVOT`, `BUILD`, `DISCARD`, `CONTINUE`. Shop: `SHOP_BUY`, `SHOP_REROLL`, `LEAVE_SHOP`. Map: `CHOOSE_NODE`, `PLAY_CARD`, `END_TURN`, `TAKE_REWARD`, `REST`. Every action carries a `playerId`.
 
-**Phases.** `blueprintSelect` → `playing` → `roundOver` → `shop` → `blueprintSelect` … → `runWon` / `runLost`. Within `playing`, each turn is `draw` → `main` (play specials, lock sub-assemblies, pivot, build) → discard. Some specials open a `pendingChoice` (Toolbox, Parts Catalogue), which must be resolved with `RESOLVE_CHOICE` first.
+**Run structures** (`config.runStructure`):
+- `map` (default): `map` → a stop (`blueprintSelect`/`playing`/`roundOver` for workshops, `battle` → `battleReward`, `shop`, `rest`) → back to `map` … boss → next act → `runWon` / `runLost`. A failed workshop costs HP; reaching 0 HP ends the run.
+- `workshopOnly`: the original linear run of rummy rounds: `blueprintSelect` → `playing` → `roundOver` → `shop` → … with a boss blueprint each tier and lives. Most rummy-layer tests use this mode. Within `playing`, each turn is `draw` → `main` (play specials, lock sub-assemblies, pivot, build) → discard. Some specials open a `pendingChoice` (Toolbox, Parts Catalogue), which must be resolved with `RESOLVE_CHOICE` first.
 
 **Cards and zones.** All cards live in `state.cards` keyed by id, with an `owner`. A player's `deck` is the permanent master list; `drawPile`, `hand`, `played` and `lockedMelds` are per-round zones, rebuilt from `deck` at round start. Building destroys the used cards (removed from `deck` and `cards`). Temporary cards (e.g. Glue Pot's free Duct Tape) vanish at round end.
 
@@ -81,6 +90,14 @@ Content references effects by name: `{ "type": "modifyRules", "params": { "handS
 
 Built-in effect types: `meldRole`, `drawChoice`, `reorderTop`, `takeFromDiscard`, `destroyCard`, `addRandomParts`, `modifyRules`, `banCategory`, `grantTempCard`, `gainCurrency`.
 
+### Map and battles
+
+- **Map** (`map.ts`): rows × lanes. Row 0 is workshops, the middle rows are drawn from `config.map.weights`, the second-to-last row is rest or **master workshop** (a boss blueprint plus a random hazard, which builds a stronger item), and the last row is the boss. Each node always links to its own lane in the next row, and sometimes diagonally.
+- **Items in battle**: `ItemDef.battle` is a `BattleCardDef` (`cost`, `effects`, optional `uses`, `targeted`). An `ItemInstance` has a `level` (blueprint tier, +1 from a master workshop) that adds each effect's `perLevel` bonus, and `usesLeft` (`null` = never breaks). When an item breaks, it is removed along with its passive effect. Rest stops can repair it.
+- **Battles** (`battle.ts`, placeholder design): energy per turn, a hand of cards, block that resets each turn, and enemies that cycle through visible intents (`attack`, `block`, `attackBlock`) scaled by `config.battle.enemyScalingByAct`. The whole battle layer sits behind `startBattle` / `playBattleCard` / `endBattleTurn`, so a different combat design can replace it without touching the workshop layer.
+- **Battle effects** are ordinary effect handlers with an `onBattlePlay` hook: `damage` (`amount`, `perLevel`, `hits`), `damageAll`, `block`, `draw`, `energy`, `heal`, and `gainCurrency` with `"hook": "onBattlePlay"`.
+- **Rewards**: currency (by fight kind × act) plus a choice of part or special cards for the parts deck, which feeds the next workshop.
+
 ## Adding content
 
 All of these are JSON edits only; `npm test` runs `validateContent` to catch broken references.
@@ -89,6 +106,9 @@ All of these are JSON edits only; `npm test` runs `validateContent` to catch bro
 - **Item**: add to `items.json` with effects, e.g. `{ "type": "modifyRules", "params": { "drawLimit": 1 } }`.
 - **Special card**: add to `specials.json`. Use `meldRole` for meld behaviour; set `playable`, `target` (`none` / `handCard` / `discardCard`) and `consumeOnPlay` for played specials. It appears in shops according to `weight` and `minTier`.
 - **Boss modifier**: add to `bosses.json`. It is picked at random for boss rounds (respecting `minTier`). Modifiers listed in `config.challengeModifiers` apply to every round, which is the hook for future difficulty ladders.
+- **Enemy**: add to `enemies.json` with `kind` (`normal` / `elite` / `boss`), `hp`, optional `minAct`/`maxAct`, and an `intents` cycle.
+- **Starter battle card**: add to `starterCards.json` and list it in `config.battle.starterDeck`.
+- **Item battle card**: add a `battle` block to the item in `items.json`.
 - **Shop**: `shop.json` has one pool per tier (the highest pool ≤ current tier is used): slot counts, prices, category weights and services.
 - **New effect type**: add a handler to `defaultEffects` in `effects.ts` (or pass your own registry to `createEngine(content, effects)`), then reference it from JSON.
 
@@ -106,11 +126,11 @@ All of these are JSON edits only; `npm test` runs `validateContent` to catch bro
 | Pivot cost | `pivotCost` |
 | Theme | `content/categories.json` (names, colours, flavour nouns) |
 
-The current defaults are a first pass: the simple bot wins about a quarter of runs, and people should do better. Use `npm run sim` to compare settings.
+The current defaults are a first pass. On map runs the simple bot wins about 40% of runs, and in workshop-only runs about a quarter. People should do better. Use `npm run sim` to compare settings.
 
 ## Multiplayer readiness
 
-Not implemented in the UI, but the engine already supports it:
+Not implemented in the UI, and map runs are single-player for now (multiplayer uses `runStructure: 'workshopOnly'`). The workshop engine already supports:
 
 - `newGame({ players: [...] })` creates N players with their own deck, hand, items and currency.
 - Turn order uses `activePlayer`; actions from the wrong player are rejected.
@@ -123,5 +143,6 @@ Still to do for real multiplayer: per-player shop turns, hidden-information view
 ## Known gaps / next steps
 
 - Placeholder art and flavour text only; the bot is a basic heuristic.
+- The battle system is a placeholder until the combat style is decided.
 - Hidden requirements are revealed when chosen (or by the Magnifier item); there is no "reveal" special card yet.
 - Balance (rewards, prices, draw limits) is a first pass.

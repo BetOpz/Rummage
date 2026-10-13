@@ -12,7 +12,8 @@
 
 import type { MeldToken } from './melds';
 import type { Rng } from './rng';
-import type { CardId, ContentPack, EffectRef, GameState, MeldRole, PlayerState, RoundRules } from './types';
+import { damageEnemy, drawBattleCards, livingEnemies } from './battleZones';
+import type { BattleState, CardId, ContentPack, EffectRef, GameState, MeldRole, PlayerState, RoundRules } from './types';
 import {
   addToDeck,
   assertRule,
@@ -38,6 +39,14 @@ export interface EffectContext {
   targetId?: CardId;
 }
 
+export interface BattleEffectContext extends EffectContext {
+  battle: BattleState;
+  /** Index into battle.enemies chosen by the player, if any. */
+  target?: number;
+  /** Item level (1 for starter cards); scales `perLevel` params. */
+  level: number;
+}
+
 export interface EffectHandler {
   /** Static meld role for a card carrying this effect. */
   meldRole?(params: Params): Omit<MeldToken, 'id'> | null;
@@ -55,6 +64,8 @@ export interface EffectHandler {
   onRoundEnd?(ctx: EffectContext, params: Params): void;
   /** Bought from the shop (services). */
   onPurchase?(ctx: EffectContext, params: Params): void;
+  /** The card was played in battle. */
+  onBattlePlay?(ctx: BattleEffectContext, params: Params): void;
 }
 
 export type EffectRegistry = Record<string, EffectHandler>;
@@ -209,6 +220,9 @@ const gainCurrency: EffectHandler = {
   onBuild(ctx, params) {
     if (params.hook === 'onBuild') gain(ctx, params);
   },
+  onBattlePlay(ctx, params) {
+    if (params.hook === 'onBattlePlay') gain(ctx, params);
+  },
   onRoundEnd(ctx, params) {
     if (params.hook === undefined || params.hook === 'onRoundEnd') gain(ctx, params);
   },
@@ -220,7 +234,66 @@ function gain(ctx: EffectContext, params: Params) {
   log(ctx.state, `${ctx.player.name} gains ${amount} currency.`);
 }
 
+// --- Battle effects --------------------------------------------------------
+
+/** `amount` plus `perLevel` for each item level above 1. */
+function scaled(params: Params, level: number): number {
+  return num(params.amount) + num(params.perLevel) * Math.max(0, level - 1);
+}
+
+function targetEnemy(ctx: BattleEffectContext) {
+  const chosen = ctx.target !== undefined ? ctx.battle.enemies[ctx.target] : undefined;
+  if (chosen && chosen.hp > 0) return chosen;
+  return livingEnemies(ctx.battle)[0];
+}
+
+const damage: EffectHandler = {
+  onBattlePlay(ctx, params) {
+    for (let i = 0; i < num(params.hits, 1); i++) {
+      const enemy = targetEnemy(ctx);
+      if (!enemy) return;
+      damageEnemy(enemy, scaled(params, ctx.level));
+    }
+  },
+};
+
+const damageAll: EffectHandler = {
+  onBattlePlay(ctx, params) {
+    for (const enemy of livingEnemies(ctx.battle)) damageEnemy(enemy, scaled(params, ctx.level));
+  },
+};
+
+const block: EffectHandler = {
+  onBattlePlay(ctx, params) {
+    ctx.battle.block += scaled(params, ctx.level);
+  },
+};
+
+const drawCards: EffectHandler = {
+  onBattlePlay(ctx, params) {
+    drawBattleCards(ctx.battle, scaled(params, ctx.level), ctx.rng);
+  },
+};
+
+const energy: EffectHandler = {
+  onBattlePlay(ctx, params) {
+    ctx.battle.energy += scaled(params, ctx.level);
+  },
+};
+
+const heal: EffectHandler = {
+  onBattlePlay(ctx, params) {
+    ctx.player.hp = Math.min(ctx.player.maxHp, ctx.player.hp + scaled(params, ctx.level));
+  },
+};
+
 export const defaultEffects: EffectRegistry = {
+  damage,
+  damageAll,
+  block,
+  draw: drawCards,
+  energy,
+  heal,
   drawChoice,
   reorderTop,
   takeFromDiscard,

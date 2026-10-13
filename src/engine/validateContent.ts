@@ -37,6 +37,17 @@ export function validateContent(content: ContentPack, effects: EffectRegistry, c
   for (const s of content.specials) checkEffects(`special ${s.id}`, s.effects);
   for (const i of content.items) checkEffects(`item ${i.id}`, i.effects);
   for (const b of content.bossModifiers) checkEffects(`boss modifier ${b.id}`, b.effects);
+  for (const i of content.items) if (i.battle) checkEffects(`item ${i.id} battle card`, i.battle.effects);
+  for (const c of content.starterCards) checkEffects(`starter card ${c.id}`, c.effects);
+  dupes('starter card', content.starterCards.map((c) => c.id));
+  dupes('enemy', content.enemies.map((e) => e.id));
+  for (const e of content.enemies) {
+    if (e.intents.length === 0) problems.push(`enemy ${e.id}: no intents`);
+    if (e.hp <= 0) problems.push(`enemy ${e.id}: hp must be positive`);
+  }
+  for (const kind of ['normal', 'elite', 'boss'] as const) {
+    if (!content.enemies.some((e) => e.kind === kind)) problems.push(`No ${kind} enemies`);
+  }
   for (const pool of content.shopPools) {
     for (const svc of pool.services) checkEffects(`shop service ${svc.id}`, [svc.effect]);
     for (const c of Object.keys(pool.categoryWeights ?? {})) {
@@ -65,6 +76,9 @@ export function validateContent(content: ContentPack, effects: EffectRegistry, c
       for (const c of config.startingDeck.categories) {
         if (!catIds.has(c)) problems.push(`config.startingDeck: unknown category "${c}"`);
       }
+    }
+    for (const id of config.battle.starterDeck) {
+      if (!content.starterCards.some((c) => c.id === id)) problems.push(`config.battle.starterDeck: unknown card "${id}"`);
     }
     for (const id of config.challengeModifiers) {
       if (!content.bossModifiers.some((b) => b.id === id)) problems.push(`config.challengeModifiers: unknown "${id}"`);
