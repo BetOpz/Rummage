@@ -51,6 +51,15 @@ export function RoundView() {
   const groupOf = (id: CardId) => meldCards.findIndex((g) => g.includes(id));
   const unused = sel.filter((id) => groupOf(id) < 0);
 
+  /** Cards the round's hazard stops you using (disabled wilds, banned categories). */
+  const unusable = (id: CardId) => {
+    const c = state.cards[id];
+    if (!c) return false;
+    if (c.kind === 'part') return me.rules.bannedCategories.includes(c.category);
+    const t = engine.token(state, id);
+    return !!t && t.role !== 'natural' && me.rules.disabledMeldRoles.includes(t.role);
+  };
+
   const toggle = (id: CardId) => {
     setNoBuildFound(false);
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
@@ -222,6 +231,8 @@ export function RoundView() {
                 id={id}
                 selected={sel.includes(id)}
                 wanted={wanted.has(id)}
+                dim={unusable(id)}
+                title={unusable(id) ? "Can't be used this round (hazard)" : undefined}
                 badge={g >= 0 ? `M${g + 1}` : undefined}
                 onClick={() => onHandClick(id)}
               />

@@ -262,3 +262,4 @@ h3 { margin: 14px 0 6px; font-size: 1rem; }
 .mini-card { display: inline-block; min-width: 18px; padding: 0 3px; text-align: center; font-weight: 800; font-size: 0.75rem; border-radius: 3px; border: 1.5px solid var(--cat); color: var(--cat); background: color-mix(in srgb, var(--cat) 12%, var(--panel)); }
 .shape-warning { margin-top: 8px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--warn); color: var(--warn); font-weight: 600; }
 .req-limit { font-size: 0.78rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1.5px solid var(--warn); color: var(--warn); }
+.hazard-line { margin-top: 6px; padding: 4px 10px; border-radius: 8px; background: color-mix(in srgb, var(--warn) 12%, var(--panel)); color: var(--warn); }

@@ -8,7 +8,15 @@ export function BlueprintPanel({ drawsLeft, hints }: { drawsLeft: number; hints:
   const bp = getBlueprint(engine.content, me.target!);
   const item = engine.content.items.find((i) => i.id === bp.itemId);
   const catName = (id: string) => engine.content.categories.find((c) => c.id === id)?.name ?? id;
-  const warnings = hints ? shapeWarnings(state, me.hand, bp.requirements, hints, catName) : [];
+  const warnings = [
+    ...ruleWarnings(state, me.hand, me.rules, engine, catName),
+    ...(hints ? shapeWarnings(state, me.hand, bp.requirements, hints, catName) : []),
+  ];
+  const hazards = (state.roundState?.modifiers ?? []).map((m) => {
+    const def = engine.content.bossModifiers.find((b) => b.id === m.modifierId);
+    const cat = typeof m.params.category === 'string' ? ` (${catName(m.params.category)})` : '';
+    return { name: `${def?.name ?? m.modifierId}${cat}`, text: def?.text ?? '' };
+  });
 
   return (
     <div className={`panel blueprint-panel ${hints?.ready ? 'ready' : ''}`}>
@@ -23,6 +31,11 @@ export function BlueprintPanel({ drawsLeft, hints }: { drawsLeft: number; hints:
       <div className="muted small-text">
         Builds <b>{item?.name}</b>: {item?.text} You need <b>every</b> meld below, each in its own shape.
       </div>
+      {hazards.map((h) => (
+        <div key={h.name} className="hazard-line">
+          <b>Hazard: {h.name}</b> — {h.text}
+        </div>
+      ))}
       <ul className="needs">
         {bp.requirements.map((req, i) => {
           const h = hints?.melds[i];
@@ -49,6 +62,37 @@ export function BlueprintPanel({ drawsLeft, hints }: { drawsLeft: number; hints:
       )}
     </div>
   );
+}
+
+/** Cards in hand that this round's rules (hazards) stop you using. */
+function ruleWarnings(
+  state: GameState,
+  hand: string[],
+  rules: GameState['players'][number]['rules'],
+  engine: ReturnType<typeof useGame>['engine'],
+  catName: (id: string) => string,
+): string[] {
+  const out: string[] = [];
+  const roleNames: Record<string, string> = { wild: 'wild cards', bulk: 'bulk cards', adaptor: 'adaptors' };
+  const blocked = new Map<string, string[]>();
+  for (const id of hand) {
+    const t = engine.token(state, id);
+    if (!t || t.role === 'natural' || !rules.disabledMeldRoles.includes(t.role)) continue;
+    const card = state.cards[id];
+    const name = card?.kind === 'special' ? (engine.content.specials.find((s) => s.id === card.specialId)?.name ?? 'card') : 'card';
+    blocked.set(t.role, [...(blocked.get(t.role) ?? []), name]);
+  }
+  for (const [role, names] of blocked) {
+    out.push(`Your ${[...new Set(names)].join(', ')} can't be used this round: ${roleNames[role] ?? role} are disabled by the hazard.`);
+  }
+  for (const cat of rules.bannedCategories) {
+    const n = hand.filter((id) => {
+      const c = state.cards[id];
+      return c?.kind === 'part' && c.category === cat;
+    }).length;
+    if (n > 0) out.push(`Your ${n} ${catName(cat)} card${n === 1 ? '' : 's'} can't be used this round: ${catName(cat)} is banned by the hazard.`);
+  }
+  return out;
 }
 
 /**
