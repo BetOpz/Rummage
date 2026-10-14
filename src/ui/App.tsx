@@ -15,6 +15,9 @@ import { clearLocal, discardedOldSave, downloadSave, loadFromLocal, readSaveFile
 
 const PLAYER_ID = 'p1';
 
+/** Shown on screen so it's easy to tell which version is running. Bump on each release. */
+export const BUILD_LABEL = 'build 13';
+
 function randomSeed(): string {
   return Math.random().toString(36).slice(2, 8);
 }
@@ -64,7 +67,7 @@ export function App() {
       <div className="app">
         <header className="title">
           <h1>Rummage</h1>
-          <p className="muted">Collect parts. Meld them into blueprints. Build items that change the rules.</p>
+          <p className="muted">Collect parts. Meld them into blueprints. Build items that change the rules. ({BUILD_LABEL})</p>
         </header>
         <div className="panel start">
           <label>
@@ -97,7 +100,7 @@ export function App() {
       <div className="app">
         <header className="topbar">
           <h1>Rummage</h1>
-          <span className="muted">seed “{state.seed}”</span>
+          <span className="muted">seed “{state.seed}” · {BUILD_LABEL}</span>
           <span className="spacer" />
           <button onClick={() => downloadSave(session)}>Export save</button>
           <label className="file-button">
