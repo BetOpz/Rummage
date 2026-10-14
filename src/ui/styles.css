@@ -250,3 +250,4 @@ h3 { margin: 14px 0 6px; font-size: 1rem; }
 .upgrade { display: grid; gap: 6px; }
 .item-chip.grade-5 { border-color: #8f9aa6; }
 .item-chip.grade-6, .item-chip.grade-7 { border-color: #d4a017; font-weight: 600; }
+.notice { border: 2px solid var(--accent); font-weight: 600; }

@@ -11,7 +11,7 @@ import { RoundOver, RunOver } from './RoundOver';
 import { RoundView } from './RoundView';
 import { ShopView } from './ShopView';
 import { StatusBar } from './StatusBar';
-import { clearLocal, downloadSave, loadFromLocal, readSaveFile, saveToLocal } from './storage';
+import { clearLocal, discardedOldSave, downloadSave, loadFromLocal, readSaveFile, saveToLocal } from './storage';
 
 const PLAYER_ID = 'p1';
 
@@ -80,6 +80,12 @@ export function App() {
           </label>
           {error && <div className="error">{error}</div>}
         </div>
+        {discardedOldSave && (
+          <div className="panel notice">
+            The game has been updated, and your saved run was from an older version, so it can't continue. Start a new run to
+            play the new version.
+          </div>
+        )}
         <HowToPlay />
       </div>
     );

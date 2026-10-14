@@ -50,6 +50,12 @@ describe('session, save and load', () => {
     expect(deserializeSession(JSON.stringify(data), { verify: false }).state.players[0].currency).toBe(999);
   });
 
+  it('rejects saves from before rummy duels', () => {
+    const data = JSON.parse(serializeSession(playSome(3)));
+    delete data.state.config.battleStyle;
+    expect(() => deserializeSession(JSON.stringify(data))).toThrow(/older version/);
+  });
+
   it('rejects saves from before the map update', () => {
     const data = JSON.parse(serializeSession(playSome(3)));
     delete data.state.config.runStructure;

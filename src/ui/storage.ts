@@ -11,11 +11,22 @@ export function saveToLocal(session: Session): void {
   }
 }
 
+/** True if a saved run was found but had to be discarded (e.g. from an older version). */
+export let discardedOldSave = false;
+
 export function loadFromLocal(): Session | null {
+  let json: string | null = null;
   try {
-    const json = localStorage.getItem(KEY);
-    return json ? deserializeSession(json) : null;
+    json = localStorage.getItem(KEY);
   } catch {
+    return null;
+  }
+  if (!json) return null;
+  try {
+    return deserializeSession(json);
+  } catch {
+    discardedOldSave = true;
+    clearLocal();
     return null;
   }
 }
