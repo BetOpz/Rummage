@@ -13,7 +13,7 @@
 import type { MeldToken } from './melds';
 import type { Rng } from './rng';
 import { damageEnemy, drawBattleCards, livingEnemies } from './battleZones';
-import type { BattleState, CardId, ContentPack, EffectRef, GameState, MeldRole, PlayerState, RoundRules } from './types';
+import type { BattleState, CardId, ContentPack, DuelState, EffectRef, GameState, MeldRole, PlayerState, RoundRules } from './types';
 import {
   addToDeck,
   assertRule,
@@ -47,6 +47,12 @@ export interface BattleEffectContext extends EffectContext {
   level: number;
 }
 
+export interface GadgetContext extends EffectContext {
+  duel: DuelState;
+  /** Opponent index chosen by the player, if the gadget needs one. */
+  target?: number;
+}
+
 export interface EffectHandler {
   /** Static meld role for a card carrying this effect. */
   meldRole?(params: Params): Omit<MeldToken, 'id'> | null;
@@ -66,6 +72,8 @@ export interface EffectHandler {
   onPurchase?(ctx: EffectContext, params: Params): void;
   /** The card was played in battle. */
   onBattlePlay?(ctx: BattleEffectContext, params: Params): void;
+  /** A gadget was used during a rummy duel. */
+  onGadget?(ctx: GadgetContext, params: Params): void;
 }
 
 export type EffectRegistry = Record<string, EffectHandler>;
@@ -207,6 +215,12 @@ const banCategory: EffectHandler = {
 };
 
 const grantTempCard: EffectHandler = {
+  onGadget(ctx, params) {
+    for (let i = 0; i < num(params.count, 1); i++) {
+      const card = createSpecial(ctx.state, ctx.player.id, String(params.specialId), true);
+      ctx.duel.hand.push(card.id);
+    }
+  },
   onRoundStart(ctx, params) {
     const { state, player } = ctx;
     for (let i = 0; i < num(params.count, 1); i++) {
@@ -287,7 +301,75 @@ const heal: EffectHandler = {
   },
 };
 
+// --- Gadget effects (rummy duels) ------------------------------------------
+
+function gadgetTarget(ctx: GadgetContext) {
+  const opp = ctx.target !== undefined ? ctx.duel.opponents[ctx.target] : undefined;
+  assertRule(opp, 'Choose an opponent');
+  return opp;
+}
+
+const skipTurn: EffectHandler = {
+  onGadget(ctx, params) {
+    const opp = gadgetTarget(ctx);
+    opp.skip += num(params.turns, 1);
+    log(ctx.state, `${opp.name} is frozen in time.`);
+  },
+};
+
+const revealHands: EffectHandler = {
+  onGadget(ctx) {
+    for (const o of ctx.duel.opponents) o.revealed = true;
+  },
+};
+
+const extraDraws: EffectHandler = {
+  onGadget(ctx, params) {
+    ctx.duel.rules.drawLimit += num(params.amount, 1);
+  },
+};
+
+const drawExtra: EffectHandler = {
+  onGadget(ctx, params) {
+    for (let i = 0; i < num(params.amount, 1); i++) {
+      const id = ctx.duel.drawPile.pop();
+      if (id) ctx.duel.hand.push(id);
+    }
+  },
+};
+
+const stealCard: EffectHandler = {
+  onGadget(ctx) {
+    const opp = gadgetTarget(ctx);
+    assertRule(opp.hand.length > 0, `${opp.name} has no cards`);
+    const [id] = opp.hand.splice(ctx.rng.int(0, opp.hand.length - 1), 1);
+    ctx.duel.hand.push(id);
+    log(ctx.state, `You snatch ${cardLabel(ctx.state, ctx.content, id)} from ${opp.name}.`);
+  },
+};
+
+const raiseStakes: EffectHandler = {
+  onGadget(ctx, params) {
+    for (const opp of ctx.duel.opponents) {
+      const def = ctx.content.minions.find((m) => m.id === opp.defId);
+      for (let i = 0; i < num(params.count, 1); i++) {
+        const category = ctx.rng.pick(def?.deck.categories ?? ctx.content.categories.map((c) => c.id));
+        const [lo, hi] = def?.deck.gauges ?? [ctx.state.config.gaugeMin, ctx.state.config.gaugeMax];
+        const card = createPart(ctx.state, ctx.content, ctx.player.id, category, ctx.rng.int(lo, hi), true);
+        ctx.duel.pot.push(card.id);
+      }
+    }
+    log(ctx.state, 'The stakes go up!');
+  },
+};
+
 export const defaultEffects: EffectRegistry = {
+  skipTurn,
+  revealHands,
+  extraDraws,
+  drawExtra,
+  stealCard,
+  raiseStakes,
   damage,
   damageAll,
   block,

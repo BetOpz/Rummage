@@ -6,7 +6,14 @@ import { autoplay } from '../src/engine/bot';
 import { generateMap, reachableNodes } from '../src/engine/map';
 import { Rng } from '../src/engine/rng';
 import type { GameState, NodeType } from '../src/engine/types';
-import { mapEngine as engine, withHand } from './helpers';
+import { mapEngine, withHand } from './helpers';
+
+// These tests cover the card-battle style; rummy duels are in duel.test.ts.
+const engine = {
+  ...mapEngine,
+  newGame: (opts: Parameters<typeof mapEngine.newGame>[0]) =>
+    mapEngine.newGame({ ...opts, config: { battleStyle: 'cards', ...opts.config } }),
+};
 
 const P = 'p1';
 const me = (s: GameState) => s.players[0];
@@ -21,7 +28,7 @@ function enterNode(type: NodeType, seed = 'map', config = {}): GameState {
 function withItem(s: GameState, itemId: string, level = 1): GameState {
   const out = structuredClone(s);
   const def = defaultContent.items.find((i) => i.id === itemId)!;
-  me(out).items.push({ uid: `test-${itemId}`, itemId, fromBlueprint: 'go_kart', builtFrom: 7, level, usesLeft: def.battle?.uses ?? null });
+  me(out).items.push({ uid: `test-${itemId}`, itemId, fromBlueprint: 'go_kart', builtFrom: 7, level, usesLeft: def.battle?.uses ?? null, charges: null });
   return out;
 }
 

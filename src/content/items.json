@@ -57,6 +57,22 @@
           }
         }
       ]
+    },
+    "gadget": {
+      "name": "Stop Time",
+      "text": "An opponent misses its next turn.",
+      "charges": 2,
+      "target": "opponent",
+      "effects": [
+        {
+          "type": "skipTurn",
+          "params": {
+            "turns": 1
+          }
+        }
+      ],
+      "rechargeCost": 5,
+      "rechargeName": "Rewind"
     }
   },
   {
@@ -93,6 +109,22 @@
           }
         }
       ]
+    },
+    "gadget": {
+      "name": "Quick Patch",
+      "text": "Add a temporary Duct Tape (wild) to your hand.",
+      "charges": 2,
+      "effects": [
+        {
+          "type": "grantTempCard",
+          "params": {
+            "specialId": "duct_tape",
+            "count": 1
+          }
+        }
+      ],
+      "rechargeCost": 3,
+      "rechargeName": "Refill"
     }
   },
   {
@@ -130,6 +162,21 @@
           }
         }
       ]
+    },
+    "gadget": {
+      "name": "Raise the Stakes",
+      "text": "Every opponent adds another card to the pot.",
+      "charges": 2,
+      "effects": [
+        {
+          "type": "raiseStakes",
+          "params": {
+            "count": 1
+          }
+        }
+      ],
+      "rechargeCost": 4,
+      "rechargeName": "Re-ink"
     }
   },
   {
@@ -159,6 +206,18 @@
           }
         }
       ]
+    },
+    "gadget": {
+      "name": "Spyglass",
+      "text": "See every opponent's hand for the rest of this fight.",
+      "charges": 3,
+      "effects": [
+        {
+          "type": "revealHands"
+        }
+      ],
+      "rechargeCost": 3,
+      "rechargeName": "Polish"
     }
   },
   {
@@ -193,6 +252,21 @@
           }
         }
       ]
+    },
+    "gadget": {
+      "name": "Rummage",
+      "text": "+3 draws this fight.",
+      "charges": 2,
+      "effects": [
+        {
+          "type": "extraDraws",
+          "params": {
+            "amount": 3
+          }
+        }
+      ],
+      "rechargeCost": 3,
+      "rechargeName": "Tidy"
     }
   },
   {
@@ -222,6 +296,19 @@
           }
         }
       ]
+    },
+    "gadget": {
+      "name": "Snatch",
+      "text": "Take a random card from an opponent's hand.",
+      "charges": 2,
+      "target": "opponent",
+      "effects": [
+        {
+          "type": "stealCard"
+        }
+      ],
+      "rechargeCost": 5,
+      "rechargeName": "Re-tension"
     }
   },
   {
@@ -252,6 +339,21 @@
           }
         }
       ]
+    },
+    "gadget": {
+      "name": "Cast Line",
+      "text": "Draw 2 extra cards now.",
+      "charges": 2,
+      "effects": [
+        {
+          "type": "drawExtra",
+          "params": {
+            "amount": 2
+          }
+        }
+      ],
+      "rechargeCost": 3,
+      "rechargeName": "Rewind the reel"
     }
   }
 ]

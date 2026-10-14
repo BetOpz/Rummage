@@ -8,7 +8,7 @@ import { battleCardDef, incomingDamage } from './battle';
 import { blueprintSize, getBlueprint } from './blueprints';
 import { reachableNodes } from './map';
 import type { Engine } from './game';
-import type { MeldToken } from './melds';
+import { type MeldToken, handProgress } from './melds';
 import type { CardId, GameAction, GameState, MeldRequirement, NodeType, PlayerId, PlayerState } from './types';
 
 const SHOP_PREFERENCE = ['duct_tape', 'bulk_pack', 'adaptor', 'toolbox', 'parts_catalogue'];
@@ -96,6 +96,13 @@ export function botAction(engine: Engine, state: GameState, playerId: PlayerId):
     }
 
     case 'map': {
+      // Pay to recharge gadgets when there is money to spare.
+      for (const item of player.items) {
+        const g = engine.content.items.find((d) => d.id === item.itemId)?.gadget;
+        if (g && (item.charges ?? 0) < g.charges && player.currency >= g.rechargeCost + 4) {
+          return { type: 'RECHARGE', playerId, itemUid: item.uid };
+        }
+      }
       const options = reachableNodes(state.map!);
       const best = [...options].sort((a, b) => nodeScore(player, b.type) - nodeScore(player, a.type))[0];
       return best ? { type: 'CHOOSE_NODE', playerId, nodeId: best.id } : null;
@@ -107,7 +114,27 @@ export function botAction(engine: Engine, state: GameState, playerId: PlayerId):
     case 'battleReward':
       return { type: 'TAKE_REWARD', playerId, index: state.reward && state.reward.options.length > 0 ? 0 : null };
 
+    case 'duelAnte': {
+      // Stake the lowest part we own.
+      const parts = player.deck.filter((id) => state.cards[id]?.kind === 'part');
+      const pick = [...(parts.length ? parts : player.deck)].sort((a, b) => gaugeOf(state, a) - gaugeOf(state, b))[0];
+      return { type: 'DUEL_STAKE', playerId, cardId: pick };
+    }
+
+    case 'duel':
+      return duelAction(engine, state, playerId);
+
+    case 'duelResult':
+      return { type: 'CONTINUE', playerId };
+
     case 'rest': {
+      if (state.config.battleStyle === 'rummy') {
+        const flat = player.items.find((i) => {
+          const g = engine.content.items.find((d) => d.id === i.itemId)?.gadget;
+          return g && (i.charges ?? 0) < g.charges;
+        });
+        return flat ? { type: 'REST', playerId, choice: 'recharge', itemUid: flat.uid } : { type: 'REST', playerId, choice: 'leave' };
+      }
       const worn = player.items
         .filter((i) => i.usesLeft !== null)
         .sort((a, b) => (a.usesLeft ?? 0) - (b.usesLeft ?? 0))[0];
@@ -175,38 +202,7 @@ function bestAfterDiscard(hand: CardId[], prog: (h: CardId[]) => number, keep: C
  */
 export function progress(engine: Engine, state: GameState, hand: CardId[], reqs: MeldRequirement[]): number {
   const tokens = hand.map((id) => engine.token(state, id)).filter((t): t is MeldToken => !!t);
-  let naturals = tokens.filter((t): t is Extract<MeldToken, { role: 'natural' }> => t.role === 'natural');
-  let wilds = tokens.filter((t) => t.role === 'wild').length;
-  let total = 0;
-  const { gaugeMin, gaugeMax } = state.config;
-  for (const req of [...reqs].sort((a, b) => b.size - a.size)) {
-    const lo = Math.max(gaugeMin, req.minGauge ?? gaugeMin);
-    const hi = Math.min(gaugeMax, req.maxGauge ?? gaugeMax);
-    let bestIds: string[] = [];
-    if (req.type === 'set') {
-      for (let g = lo; g <= hi; g++) {
-        const ids = naturals.filter((n) => n.gauge === g && (!req.category || n.category === req.category)).map((n) => n.id);
-        if (ids.length > bestIds.length) bestIds = ids.slice(0, req.size);
-      }
-    } else {
-      const cats = req.category ? [req.category] : [...new Set(naturals.map((n) => n.category))];
-      for (const c of cats) {
-        for (let start = lo; start + req.size - 1 <= hi; start++) {
-          const ids: string[] = [];
-          for (let g = start; g < start + req.size; g++) {
-            const n = naturals.find((x) => x.category === c && x.gauge === g);
-            if (n) ids.push(n.id);
-          }
-          if (ids.length > bestIds.length) bestIds = ids;
-        }
-      }
-    }
-    const useWilds = Math.min(wilds, req.size - bestIds.length);
-    wilds -= useWilds;
-    total += bestIds.length + useWilds;
-    naturals = naturals.filter((n) => !bestIds.includes(n.id));
-  }
-  return total;
+  return handProgress(tokens, reqs, state.config.gaugeMin, state.config.gaugeMax);
 }
 
 /** How much the bot wants to visit a map stop. */
@@ -259,4 +255,52 @@ function battleAction(engine: Engine, state: GameState, player: PlayerState): Ga
   const attacker = playable.find((x) => has(x, 'damage') || has(x, 'damageAll'));
   if (attacker) return play(attacker);
   return play(playable[0]);
+}
+
+function gaugeOf(state: GameState, id: CardId): number {
+  const c = state.cards[id];
+  return c?.kind === 'part' ? c.gauge : 99;
+}
+
+/** Duel: go out if possible, use a gadget on bosses, otherwise draw and discard like the workshop bot. */
+function duelAction(engine: Engine, state: GameState, playerId: PlayerId): GameAction {
+  const duel = state.duel!;
+  const out = engine.suggestDuelOut(state);
+  if (out) return { type: 'DUEL_GO_OUT', playerId, groups: out };
+
+  const player = state.players.find((p) => p.id === playerId)!;
+  if (duel.kind !== 'battle' && duel.turnPhase === 'draw') {
+    for (const item of player.items) {
+      const g = engine.content.items.find((d) => d.id === item.itemId)?.gadget;
+      if (!g || (item.charges ?? 0) <= 0) continue;
+      if (item.itemId === 'pocket_watch' && duel.opponents[0].skip === 0) {
+        return { type: 'USE_GADGET', playerId, itemUid: item.uid, target: 0 };
+      }
+      if (item.itemId === 'glue_pot' || item.itemId === 'sorting_tray') {
+        return { type: 'USE_GADGET', playerId, itemUid: item.uid };
+      }
+    }
+  }
+
+  const prog = (hand: CardId[]) => progress(engine, state, hand, duel.requirements);
+  if (duel.turnPhase === 'draw') {
+    const top = duel.discard.at(-1);
+    if (top && duel.rules.allowDiscardDraw) {
+      const withTop = bestAfterDiscard(duel.hand.concat(top), prog, top);
+      if (withTop > prog(duel.hand)) return { type: 'DUEL_DRAW', playerId, source: 'discard' };
+    }
+    return { type: 'DUEL_DRAW', playerId, source: 'deck' };
+  }
+  let worst = duel.hand[0];
+  let bestScore = -Infinity;
+  for (const id of duel.hand) {
+    const t = engine.token(state, id);
+    if (t && t.role !== 'natural') continue;
+    const score = prog(duel.hand.filter((h) => h !== id)) * 100 + gaugeOf(state, id);
+    if (score > bestScore) {
+      bestScore = score;
+      worst = id;
+    }
+  }
+  return { type: 'DUEL_DISCARD', playerId, cardId: worst };
 }

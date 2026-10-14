@@ -1,5 +1,6 @@
 import { type MapNode, type NodeType, reachableNodes } from '../engine';
 import { useGame } from './context';
+import { GadgetPanel } from './GadgetPanel';
 
 export const NODE_INFO: Record<NodeType, { label: string; glyph: string; text: string }> = {
   workshop: { label: 'Workshop', glyph: 'W', text: 'Rummy round: build a blueprint into an item.' },
@@ -11,12 +12,34 @@ export const NODE_INFO: Record<NodeType, { label: string; glyph: string; text: s
   boss: { label: 'Boss', glyph: '!', text: 'Beat it to finish the act.' },
 };
 
+/** Duel stops read differently from card battles. */
+const RUMMY_TEXT: Partial<Record<NodeType, string>> = {
+  battle: 'Rummy duel against minions. Everyone stakes a part; first to go out takes the pot.',
+  elite: 'A tougher duel for a bigger pot.',
+  boss: 'Boss duel with a rule twist. Win to finish the act; lose and you lose a life.',
+  rest: 'Recharge one gadget for free.',
+};
+
 const CELL_W = 120;
-const CELL_H = 74;
+const CELL_H = 80;
 
 export function MapView() {
-  const { state, act, playerId } = useGame();
+  const { state, engine, act, playerId } = useGame();
   const map = state.map!;
+  const rummy = state.config.battleStyle === 'rummy';
+  const textFor = (t: NodeType) => (rummy ? RUMMY_TEXT[t] : undefined) ?? NODE_INFO[t].text;
+  const stakeLabel = (n: MapNode) => {
+    if (!n.encounter) return '';
+    const who = n.encounter.minions.map((id) => engine.content.minions.find((m) => m.id === id)?.name ?? id).join(', ');
+    const pot = n.encounter.stakes
+      .map((o) =>
+        o.kind === 'part'
+          ? `${engine.content.categories.find((c) => c.id === o.category)?.name} ${o.gauge}`
+          : engine.content.specials.find((s) => s.id === o.specialId)?.name,
+      )
+      .join(', ');
+    return `\nOpponents: ${who}\nPot: ${pot}`;
+  };
   const reachable = new Set(reachableNodes(map).map((n) => n.id));
   const width = Math.max(...map.rows.map((r) => r.length));
   const viewW = width * CELL_W;
@@ -61,21 +84,23 @@ export function MapView() {
                 className={classes.join(' ')}
                 style={{ left: x, top: y }}
                 disabled={!reachable.has(n.id)}
-                title={`${info.label}: ${info.text}`}
+                title={`${info.label}: ${textFor(n.type)}${stakeLabel(n)}`}
                 onClick={() => act({ type: 'CHOOSE_NODE', playerId, nodeId: n.id })}
               >
                 <span className="glyph">{info.glyph}</span>
                 <span className="node-label">{info.label}</span>
+                {n.encounter && <span className="node-pot">pot {n.encounter.stakes.length}</span>}
               </button>
             );
           })}
         </div>
       </div>
+      {rummy && <GadgetPanel />}
       <ul className="map-legend">
         {(Object.keys(NODE_INFO) as NodeType[]).map((t) => (
           <li key={t}>
             <span className={`glyph-chip ${t}`}>{NODE_INFO[t].glyph}</span> <b>{NODE_INFO[t].label}</b>{' '}
-            <span className="muted">{NODE_INFO[t].text}</span>
+            <span className="muted">{textFor(t)}</span>
           </li>
         ))}
       </ul>

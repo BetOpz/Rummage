@@ -383,3 +383,42 @@ export function meldMisfits(tokens: MeldToken[], req: MeldRequirement, rules: Me
   const kept = new Set(keep.map((n) => n.id));
   return naturals.filter((n) => !kept.has(n.id)).map((n) => n.id);
 }
+
+/**
+ * Rough measure of how close some cards are to a list of melds: greedily
+ * fill each requirement (largest first) with its best partial meld and
+ * count the cards placed. Used by the bot and by duel opponents.
+ */
+export function handProgress(tokens: MeldToken[], reqs: MeldRequirement[], gaugeMin: number, gaugeMax: number, banned: string[] = []): number {
+  let naturals = tokens.filter((t): t is Natural => t.role === 'natural' && !banned.includes(t.category));
+  let wilds = tokens.filter((t) => t.role === 'wild').length;
+  let total = 0;
+  for (const req of [...reqs].sort((a, b) => b.size - a.size)) {
+    const lo = Math.max(gaugeMin, req.minGauge ?? gaugeMin);
+    const hi = Math.min(gaugeMax, req.maxGauge ?? gaugeMax);
+    let bestIds: string[] = [];
+    if (req.type === 'set') {
+      for (let g = lo; g <= hi; g++) {
+        const ids = naturals.filter((n) => n.gauge === g && (!req.category || n.category === req.category)).map((n) => n.id);
+        if (ids.length > bestIds.length) bestIds = ids.slice(0, req.size);
+      }
+    } else {
+      const cats = req.category ? [req.category] : [...new Set(naturals.map((n) => n.category))];
+      for (const c of cats) {
+        for (let start = lo; start + req.size - 1 <= hi; start++) {
+          const ids: string[] = [];
+          for (let g = start; g < start + req.size; g++) {
+            const n = naturals.find((x) => x.category === c && x.gauge === g);
+            if (n) ids.push(n.id);
+          }
+          if (ids.length > bestIds.length) bestIds = ids;
+        }
+      }
+    }
+    const useWilds = Math.min(wilds, req.size - bestIds.length);
+    wilds -= useWilds;
+    total += bestIds.length + useWilds;
+    naturals = naturals.filter((n) => !bestIds.includes(n.id));
+  }
+  return total;
+}

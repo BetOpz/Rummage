@@ -3,6 +3,38 @@ import { ItemChip } from './ItemChip';
 
 export function RestView() {
   const { state, me, engine, act, playerId } = useGame();
+
+  if (state.config.battleStyle === 'rummy') {
+    const flat = me.items.filter((it) => {
+      const g = engine.content.items.find((d) => d.id === it.itemId)?.gadget;
+      return g && (it.charges ?? 0) < g.charges;
+    });
+    return (
+      <div className="panel summary">
+        <h2>Rest</h2>
+        <p className="muted">Recharge one gadget for free, then head back to the map.</p>
+        {flat.length === 0 ? (
+          <p className="muted">All your gadgets are fully charged.</p>
+        ) : (
+          <ul className="repair-list">
+            {flat.map((it) => {
+              const g = engine.content.items.find((d) => d.id === it.itemId)!.gadget!;
+              return (
+                <li key={it.uid}>
+                  <ItemChip item={it} />{' '}
+                  <button className="primary" onClick={() => act({ type: 'REST', playerId, choice: 'recharge', itemUid: it.uid })}>
+                    {g.rechargeName} for free
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <button onClick={() => act({ type: 'REST', playerId, choice: 'leave' })}>Move on</button>
+      </div>
+    );
+  }
+
   const heal = Math.round(me.maxHp * state.config.battle.restHealFraction);
   const repairable = me.items.filter((it) => {
     const max = engine.content.items.find((d) => d.id === it.itemId)?.battle?.uses;

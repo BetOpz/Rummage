@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { type ShopSlot, partName } from '../engine';
 import { CardView } from './CardView';
 import { useGame } from './context';
+import { GadgetPanel } from './GadgetPanel';
 
 export function ShopView() {
   const { state, me, engine, act, playerId } = useGame();
@@ -50,7 +51,7 @@ export function ShopView() {
     <div className="panel shop">
       <h2>Shop</h2>
       <p className="muted">
-        You have <b>{me.currency}</b> currency. Bought cards go into your deck.
+        You have <b>{me.currency}</b> credits. Bought cards go into your deck.
       </p>
       <ul className="shop-slots">
         {shop.slots.map((slot, i) => (
@@ -87,6 +88,7 @@ export function ShopView() {
           Next round
         </button>
       </div>
+      {state.config.battleStyle === 'rummy' && <GadgetPanel />}
       <DeckList />
     </div>
   );

@@ -1,0 +1,182 @@
+[
+  {
+    "id": "quick_job",
+    "name": "Quick Job",
+    "kind": "normal",
+    "maxAct": 1,
+    "requirements": [
+      {
+        "type": "set",
+        "size": 3
+      },
+      {
+        "type": "run",
+        "size": 3
+      }
+    ]
+  },
+  {
+    "id": "odd_job",
+    "name": "Odd Job",
+    "kind": "normal",
+    "maxAct": 1,
+    "requirements": [
+      {
+        "type": "run",
+        "size": 3
+      },
+      {
+        "type": "set",
+        "size": 3
+      }
+    ]
+  },
+  {
+    "id": "day_shift",
+    "name": "Day Shift",
+    "kind": "normal",
+    "minAct": 2,
+    "maxAct": 2,
+    "requirements": [
+      {
+        "type": "set",
+        "size": 4
+      },
+      {
+        "type": "run",
+        "size": 3
+      }
+    ]
+  },
+  {
+    "id": "night_shift",
+    "name": "Night Shift",
+    "kind": "normal",
+    "minAct": 2,
+    "maxAct": 2,
+    "requirements": [
+      {
+        "type": "run",
+        "size": 4
+      },
+      {
+        "type": "set",
+        "size": 3
+      }
+    ]
+  },
+  {
+    "id": "overtime",
+    "name": "Overtime",
+    "kind": "normal",
+    "minAct": 3,
+    "requirements": [
+      {
+        "type": "set",
+        "size": 4
+      },
+      {
+        "type": "run",
+        "size": 4
+      }
+    ]
+  },
+  {
+    "id": "rush_order",
+    "name": "Rush Order",
+    "kind": "elite",
+    "maxAct": 1,
+    "requirements": [
+      {
+        "type": "set",
+        "size": 4
+      },
+      {
+        "type": "run",
+        "size": 3
+      }
+    ]
+  },
+  {
+    "id": "big_order",
+    "name": "Big Order",
+    "kind": "elite",
+    "minAct": 2,
+    "maxAct": 2,
+    "requirements": [
+      {
+        "type": "set",
+        "size": 4
+      },
+      {
+        "type": "run",
+        "size": 4
+      }
+    ]
+  },
+  {
+    "id": "huge_order",
+    "name": "Huge Order",
+    "kind": "elite",
+    "minAct": 3,
+    "requirements": [
+      {
+        "type": "set",
+        "size": 5
+      },
+      {
+        "type": "run",
+        "size": 4
+      }
+    ]
+  },
+  {
+    "id": "inspection",
+    "name": "Inspection",
+    "kind": "boss",
+    "maxAct": 1,
+    "requirements": [
+      {
+        "type": "run",
+        "size": 4
+      },
+      {
+        "type": "set",
+        "size": 3
+      }
+    ]
+  },
+  {
+    "id": "audit",
+    "name": "Audit",
+    "kind": "boss",
+    "minAct": 2,
+    "maxAct": 2,
+    "requirements": [
+      {
+        "type": "set",
+        "size": 4
+      },
+      {
+        "type": "run",
+        "size": 4
+      }
+    ]
+  },
+  {
+    "id": "grand_assembly",
+    "name": "Grand Assembly",
+    "kind": "boss",
+    "minAct": 3,
+    "requirements": [
+      {
+        "type": "set",
+        "size": 5
+      },
+      {
+        "type": "run",
+        "size": 4
+      }
+    ]
+  }
+]

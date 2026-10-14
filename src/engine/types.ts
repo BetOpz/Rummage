@@ -75,8 +75,58 @@ export interface ItemDef {
   text: string;
   /** Passive effects (workshop rules, currency, ...). */
   effects: EffectRef[];
-  /** The item's battle card, if it has one. */
+  /** The item's battle card, if it has one (card-battle style). */
   battle?: BattleCardDef;
+  /**
+   * Gadget used during rummy duels: an effect you trigger, with charges
+   * that do NOT refill between fights (rest stops recharge them).
+   */
+  gadget?: GadgetDef;
+}
+
+export interface GadgetDef {
+  name: string;
+  text: string;
+  charges: number;
+  /** Credits to refill all charges between fights. */
+  rechargeCost: number;
+  /** What refilling is called, e.g. "Rewind". */
+  rechargeName: string;
+  /** Which opponent it needs, if any. */
+  target?: 'none' | 'opponent';
+  /** Effects implementing the `onGadget` hook. */
+  effects: EffectRef[];
+}
+
+/** An opponent in a rummy duel (minion, elite or boss). */
+export interface MinionDef {
+  id: string;
+  name: string;
+  kind: 'normal' | 'elite' | 'boss';
+  minAct?: number;
+  maxAct?: number;
+  text: string;
+  /** The minion's own deck, built fresh for each duel. */
+  deck: {
+    /** Category ids it uses; omit for all. */
+    categories?: string[];
+    gauges: [number, number];
+    copies: number;
+  };
+  /** How many cards it stakes into the pot. */
+  stakes: number;
+  /** Takes the top of the discard pile whenever it helps at all. */
+  greedy?: boolean;
+}
+
+/** The race target for a duel. */
+export interface DuelTargetDef {
+  id: string;
+  name: string;
+  kind: 'normal' | 'elite' | 'boss';
+  minAct?: number;
+  maxAct?: number;
+  requirements: MeldRequirement[];
 }
 
 export type EnemyIntent =
@@ -167,6 +217,8 @@ export interface ContentPack {
   shopPools: ShopTierPool[];
   starterCards: StarterCardDef[];
   enemies: EnemyDef[];
+  minions: MinionDef[];
+  duelTargets: DuelTargetDef[];
 }
 
 // ---------------------------------------------------------------------------
@@ -230,8 +282,10 @@ export interface ItemInstance {
   builtFrom: number;
   /** Power level (the blueprint's tier, +1 for master workshops). Scales battle effects. */
   level: number;
-  /** Plays left before it breaks; null = never breaks. */
+  /** Plays left before it breaks; null = never breaks (card-battle style). */
   usesLeft: number | null;
+  /** Gadget charges left; persist between duels (rummy-duel style). null = no gadget. */
+  charges: number | null;
 }
 
 export interface LockedMeld {
@@ -343,6 +397,14 @@ export interface MapNode {
   type: NodeType;
   /** Ids of nodes in the next row this node leads to. */
   next: string[];
+  /** Duel stops: who you'll face and what they stake (shown on the map). */
+  encounter?: Encounter;
+}
+
+export interface Encounter {
+  minions: string[];
+  /** Cards the opponents put into the pot. */
+  stakes: RewardOption[];
 }
 
 export interface MapState {
@@ -399,8 +461,66 @@ export interface BattleReward {
   options: RewardOption[];
 }
 
+// ---------------------------------------------------------------------------
+// Rummy duels (the battle layer in 'rummy' battle style)
+// ---------------------------------------------------------------------------
+
+export interface DuelOpponent {
+  defId: string;
+  name: string;
+  hand: CardId[];
+  drawPile: CardId[];
+  /** Turns to skip (Pocket Watch). */
+  skip: number;
+  /** Player can see this hand. */
+  revealed: boolean;
+  lastAction: string;
+}
+
+export interface DuelState {
+  kind: 'battle' | 'elite' | 'boss';
+  nodeId: string;
+  targetId: string;
+  requirements: MeldRequirement[];
+  /** Rule twists (boss modifiers), params resolved. */
+  modifiers: BossState[];
+  rules: RoundRules;
+  /** Cards in the pot (including the player's stake once placed). */
+  pot: CardId[];
+  /** The player's staked card (null during the ante). */
+  playerStake: CardId | null;
+  opponents: DuelOpponent[];
+  hand: CardId[];
+  drawPile: CardId[];
+  /** Shared discard pile; last element is the top. */
+  discard: CardId[];
+  turnPhase: 'draw' | 'main';
+  drawsTaken: number;
+  /** Ended: who won (null = still playing). 'player' or opponent index. */
+  winner: 'player' | number | null;
+  /** How it ended. */
+  endReason: string | null;
+  /** Winning melds, for display. */
+  winningMelds: CardId[][] | null;
+  /** Filled in when the duel ends. */
+  result: DuelResult | null;
+}
+
+export interface DuelResult {
+  won: boolean;
+  currency: number;
+  /** Pot cards that joined the player's parts deck. */
+  wonCards: CardId[];
+  /** The player's lost stake (destroyed when the result is dismissed). */
+  lostStake: CardId | null;
+  lifeLost: boolean;
+}
+
 export type GamePhase =
   | 'map'
+  | 'duelAnte'
+  | 'duel'
+  | 'duelResult'
   | 'blueprintSelect'
   | 'playing'
   | 'roundOver'
@@ -435,6 +555,7 @@ export interface GameState {
   map: MapState | null;
   battle: BattleState | null;
   reward: BattleReward | null;
+  duel: DuelState | null;
   /** Counter for ItemInstance / battle card uids. */
   nextUid: number;
   /** Human-readable event log (capped), for UI feedback. */
@@ -462,6 +583,12 @@ export type GameAction =
   | { type: 'PLAY_CARD'; playerId: PlayerId; cardUid: string; target?: number }
   | { type: 'END_TURN'; playerId: PlayerId }
   | { type: 'TAKE_REWARD'; playerId: PlayerId; index: number | null }
-  | { type: 'REST'; playerId: PlayerId; choice: 'heal' | 'repair'; itemUid?: string };
+  | { type: 'REST'; playerId: PlayerId; choice: 'heal' | 'repair' | 'recharge' | 'leave'; itemUid?: string }
+  | { type: 'DUEL_STAKE'; playerId: PlayerId; cardId: CardId }
+  | { type: 'DUEL_DRAW'; playerId: PlayerId; source: 'deck' | 'discard' }
+  | { type: 'DUEL_DISCARD'; playerId: PlayerId; cardId: CardId }
+  | { type: 'DUEL_GO_OUT'; playerId: PlayerId; groups: CardId[][] }
+  | { type: 'USE_GADGET'; playerId: PlayerId; itemUid: string; target?: number }
+  | { type: 'RECHARGE'; playerId: PlayerId; itemUid: string };
 
 export type ActionType = GameAction['type'];

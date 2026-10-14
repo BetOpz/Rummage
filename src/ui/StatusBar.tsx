@@ -16,12 +16,18 @@ export function StatusBar() {
           <span>
             Act <b>{state.tier + 1}</b>/{cfg.tiers}
           </span>
-          <span className="hp-stat" title={`${me.hp} of ${me.maxHp} HP`}>
-            HP <b>{me.hp}</b>/{me.maxHp}
-            <span className="hpbar small">
-              <span style={{ width: `${hpPct}%` }} />
+          {cfg.battleStyle === 'rummy' ? (
+            <span title="Losing a boss duel costs a life">
+              Lives <b>{me.lives}</b>
             </span>
-          </span>
+          ) : (
+            <span className="hp-stat" title={`${me.hp} of ${me.maxHp} HP`}>
+              HP <b>{me.hp}</b>/{me.maxHp}
+              <span className="hpbar small">
+                <span style={{ width: `${hpPct}%` }} />
+              </span>
+            </span>
+          )}
         </>
       ) : (
         <>
@@ -38,7 +44,7 @@ export function StatusBar() {
         </>
       )}
       <span>
-        Currency <b>{me.currency}</b>
+        Credits <b>{me.currency}</b>
       </span>
       {cfg.scoring === 'points' && (
         <span>

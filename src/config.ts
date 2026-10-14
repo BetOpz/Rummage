@@ -46,6 +46,19 @@ export interface BattleConfig {
   workshopFailDamage: number;
 }
 
+export interface DuelConfig {
+  /** Cards in each hand at the start of a duel, by act. */
+  handSizeByAct: number[];
+  /** Your draws per duel; when they run out, the best hand wins the pot. */
+  drawLimit: number;
+  /** Minions in a normal battle: [min, max]. */
+  minionsPerBattle: [number, number];
+  /** Currency for winning, by kind (multiplied by act number). */
+  currencyReward: { battle: number; elite: number; boss: number };
+  /** Rule twists a boss duel gets (boss modifier ids drawn at random). */
+  bossTwists: number;
+}
+
 export interface GameConfig {
   /** 'solo' is the MVP; 'versus' is reserved for multiplayer. */
   mode: 'solo' | 'versus';
@@ -55,6 +68,13 @@ export interface GameConfig {
    * linear run of rummy rounds with a boss blueprint per tier.
    */
   runStructure: 'map' | 'workshopOnly';
+  /**
+   * Map runs only. 'rummy': fights are rummy duels against minions for a pot
+   * of staked parts; items give passive bonuses and gadgets. 'cards': the
+   * energy-and-block card battles.
+   */
+  battleStyle: 'rummy' | 'cards';
+  duel: DuelConfig;
   map: MapConfig;
   battle: BattleConfig;
   tiers: number;
@@ -104,6 +124,14 @@ export interface GameConfig {
 export const defaultConfig: GameConfig = {
   mode: 'solo',
   runStructure: 'map',
+  battleStyle: 'rummy',
+  duel: {
+    handSizeByAct: [7, 8, 9, 10],
+    drawLimit: 12,
+    minionsPerBattle: [1, 2],
+    currencyReward: { battle: 3, elite: 6, boss: 12 },
+    bossTwists: 1,
+  },
   map: {
     rows: 8,
     width: 3,
@@ -170,6 +198,11 @@ export function makeConfig(overrides: Partial<GameConfig> = {}): GameConfig {
     startingDeck: { ...defaultConfig.startingDeck, ...overrides.startingDeck },
     deadwood: { ...defaultConfig.deadwood, ...overrides.deadwood },
     pivotCost: { ...defaultConfig.pivotCost, ...overrides.pivotCost },
+    duel: {
+      ...defaultConfig.duel,
+      ...overrides.duel,
+      currencyReward: { ...defaultConfig.duel.currencyReward, ...overrides.duel?.currencyReward },
+    },
     map: {
       ...defaultConfig.map,
       ...overrides.map,

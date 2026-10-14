@@ -12,6 +12,8 @@ import bossModifiers from './bosses.json';
 import shopPools from './shop.json';
 import starterCards from './starterCards.json';
 import enemies from './enemies.json';
+import minions from './minions.json';
+import duelTargets from './duelTargets.json';
 
 export const defaultContent: ContentPack = {
   categories,
@@ -22,4 +24,6 @@ export const defaultContent: ContentPack = {
   shopPools: shopPools as ContentPack['shopPools'],
   starterCards,
   enemies: enemies as ContentPack['enemies'],
+  minions: minions as ContentPack['minions'],
+  duelTargets: duelTargets as ContentPack['duelTargets'],
 };

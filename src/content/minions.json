@@ -1,0 +1,149 @@
+[
+  {
+    "id": "rust_rat",
+    "name": "Rust Rat",
+    "kind": "normal",
+    "text": "Scrappy and cheap. Plays low cards.",
+    "deck": {
+      "gauges": [
+        1,
+        6
+      ],
+      "copies": 1
+    },
+    "stakes": 1
+  },
+  {
+    "id": "iron_golem",
+    "name": "Iron Golem",
+    "kind": "normal",
+    "text": "Only collects Iron. Stakes Iron too.",
+    "deck": {
+      "categories": [
+        "iron"
+      ],
+      "gauges": [
+        1,
+        10
+      ],
+      "copies": 2
+    },
+    "stakes": 1
+  },
+  {
+    "id": "magpie",
+    "name": "Magpie",
+    "kind": "normal",
+    "text": "Grabs from the discard pile whenever it can.",
+    "deck": {
+      "gauges": [
+        2,
+        9
+      ],
+      "copies": 1
+    },
+    "stakes": 1,
+    "greedy": true
+  },
+  {
+    "id": "tin_beetle",
+    "name": "Tin Beetle",
+    "kind": "normal",
+    "minAct": 2,
+    "text": "Brass and Copper only.",
+    "deck": {
+      "categories": [
+        "brass",
+        "copper"
+      ],
+      "gauges": [
+        1,
+        10
+      ],
+      "copies": 2
+    },
+    "stakes": 1
+  },
+  {
+    "id": "junk_golem",
+    "name": "Junk Golem",
+    "kind": "elite",
+    "text": "A big deck and a big stake.",
+    "deck": {
+      "gauges": [
+        1,
+        10
+      ],
+      "copies": 2
+    },
+    "stakes": 2
+  },
+  {
+    "id": "steam_hound",
+    "name": "Steam Hound",
+    "kind": "elite",
+    "minAct": 2,
+    "text": "Hunts the discard pile.",
+    "deck": {
+      "gauges": [
+        1,
+        10
+      ],
+      "copies": 2
+    },
+    "stakes": 2,
+    "greedy": true
+  },
+  {
+    "id": "the_foreman",
+    "name": "The Foreman",
+    "kind": "boss",
+    "maxAct": 1,
+    "text": "Runs the workshop floor.",
+    "deck": {
+      "gauges": [
+        1,
+        10
+      ],
+      "copies": 2
+    },
+    "stakes": 3
+  },
+  {
+    "id": "boiler_titan",
+    "name": "Boiler Titan",
+    "kind": "boss",
+    "minAct": 2,
+    "maxAct": 2,
+    "text": "Hoards Iron and Copper.",
+    "deck": {
+      "categories": [
+        "iron",
+        "copper"
+      ],
+      "gauges": [
+        1,
+        10
+      ],
+      "copies": 3
+    },
+    "stakes": 3,
+    "greedy": true
+  },
+  {
+    "id": "clockwork_king",
+    "name": "Clockwork King",
+    "kind": "boss",
+    "minAct": 3,
+    "text": "Every gear in its place.",
+    "deck": {
+      "gauges": [
+        1,
+        10
+      ],
+      "copies": 2
+    },
+    "stakes": 3,
+    "greedy": true
+  }
+]

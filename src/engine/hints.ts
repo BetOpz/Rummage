@@ -8,7 +8,7 @@
 import { getBlueprint } from './blueprints';
 import type { Engine } from './game';
 import type { MeldToken } from './melds';
-import type { CardId, GameState, MeldRequirement, PlayerId } from './types';
+import type { CardId, GameState, MeldRequirement, PlayerId, RoundRules } from './types';
 
 type Natural = Extract<MeldToken, { role: 'natural' }>;
 
@@ -39,9 +39,20 @@ export function buildHints(engine: Engine, state: GameState, playerId: PlayerId,
   const player = state.players.find((p) => p.id === playerId);
   if (!player?.target) return null;
   const bp = getBlueprint(engine.content, player.target);
-  const rules = player.rules;
-
   const pool = cardIds ?? [...player.hand, ...player.lockedMelds.flatMap((m) => m.cardIds)];
+  const melds = meldHints(engine, state, bp.requirements, player.rules, pool);
+  return { ready: engine.suggestBuild(state, playerId, cardIds) !== null, melds };
+}
+
+/** Progress of a pool of cards toward a list of meld requirements. */
+export function meldHints(
+  engine: Engine,
+  state: GameState,
+  requirements: MeldRequirement[],
+  rules: RoundRules,
+  pool: CardId[],
+): MeldHint[] {
+  const bp = { requirements };
   const tokens = pool.map((id) => engine.token(state, id)).filter((t): t is MeldToken => !!t);
   let naturals = tokens.filter(
     (t): t is Natural => t.role === 'natural' && !rules.bannedCategories.includes(t.category),
@@ -125,5 +136,5 @@ export function buildHints(engine: Engine, state: GameState, playerId: PlayerId,
     melds[i] = hint;
   }
 
-  return { ready: engine.suggestBuild(state, playerId, cardIds) !== null, melds };
+  return melds;
 }

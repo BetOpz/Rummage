@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { type GameAction, type Session, dispatch, engine, newSession } from '../engine';
 import { BattleView } from './BattleView';
 import { BlueprintSelect } from './BlueprintSelect';
+import { DuelView } from './DuelView';
 import { GameContext } from './context';
 import { MapView } from './MapView';
 import { RestView } from './RestView';
@@ -123,6 +124,7 @@ export function App() {
         )}
         {state.phase === 'map' && <MapView />}
         {state.phase === 'battle' && <BattleView />}
+        {(state.phase === 'duelAnte' || state.phase === 'duel' || state.phase === 'duelResult') && <DuelView />}
         {state.phase === 'battleReward' && <RewardView />}
         {state.phase === 'rest' && <RestView />}
         {state.phase === 'blueprintSelect' && <BlueprintSelect />}
@@ -162,23 +164,24 @@ function HowToPlay() {
       <h2>How to play</h2>
       <ul>
         <li>
-          Each act is a <b>map</b>. Pick a route through workshops, battles, shops and rests to the boss.
+          Each act is a <b>map</b>. Pick a route through duels, workshops, shops and rests to the boss.
         </li>
         <li>
-          <b>Workshops</b> are rummy rounds. Pick a <b>blueprint</b> (such as “Set of 4 + Run of 3”), then draw and
-          discard until your hand completes it.
+          <b>Duels</b> are races of rummy. You and the minions each stake a part into the pot. Draw and discard until you
+          can complete the target (for example a set of 3 and a run of 3). First to go out takes the whole pot.
         </li>
         <li>
           <b>Set</b>: cards with the same number, any category. <b>Run</b>: one category, numbers in a row.
         </li>
         <li>
-          Building uses up the parts for good and gives you an <b>item</b>. Each item has a passive bonus and a{' '}
-          <b>battle card</b>. Some items wear out after a few uses.
+          <b>Workshops</b> turn parts into <b>items</b> by completing a blueprint. The parts are used up. Items give a passive
+          bonus and a <b>gadget</b>, like the Pocket Watch that makes an opponent miss a turn.
         </li>
         <li>
-          <b>Battles</b>: spend energy to play cards, block what enemies say they will do, and end your turn. Winning gives
-          currency and new parts.
+          Gadget charges don't refill after a fight. Spend them on minions, or save them for the boss. Recharging costs
+          credits (a rest stop does one for free).
         </li>
+        <li>Lose a boss duel and you lose a life. Run out of lives and the run is over.</li>
       </ul>
     </div>
   );

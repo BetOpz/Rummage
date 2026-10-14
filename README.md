@@ -1,9 +1,12 @@
 # Rummage
 
-A rummy-style building deckbuilder (working title) with two layers:
+A rummy-style building deckbuilder (working title). Rummy is the whole game:
 
-1. **Workshop layer (rummy):** draw and discard like gin rummy, meld **part cards** into **blueprints**, and turn finished blueprints into **items**. The parts you build with are gone for good, so each build trades parts-deck quality for power.
-2. **Adventure layer (map and battles):** each act is a branching map of workshops, battles, elites, shops, rests and a boss. Every item you build has a passive bonus *and* a **battle card**. Your battle deck is a few starter cards plus your items. Some items wear out after a number of uses and break.
+1. **Duels:** every fight is a race of rummy. You and the minions each stake a part into a pot, share a discard pile, and race to complete a small target (e.g. a set of 3 and a run of 3). The first to go out takes the pot. Losing costs your stake, and against a boss, a life.
+2. **Workshops:** turn parts into **items** by completing a blueprint (a longer rummy round). The parts are used up for good. Items give a passive bonus (like Balatro jokers) and a **gadget** you trigger in duels, such as the Pocket Watch, which makes an opponent miss a turn.
+3. **The map:** each act is a branching route of duels, elites, workshops, shops and rests to a boss.
+
+Gadget charges do not refill between fights, so every use is a choice: spend it to win a minion's pot now, or save it for the boss. Recharging costs credits (each gadget has its own price, e.g. 5 to rewind the Pocket Watch), and a rest stop recharges one for free.
 
 This repo is a **playable framework**, not a finished game: a pure, tested rules engine, data-driven content, a minimal React UI for a single-player run, and an architecture that leaves room for multiplayer.
 
@@ -29,7 +32,8 @@ src/
     types.ts           state, actions and content types (all plain JSON)
     game.ts            createEngine(): newGame, reduce, applyAction, suggestBuild
     map.ts             act map generation and reachability
-    battle.ts          battle layer (placeholder design; swappable)
+    duel.ts            rummy duels: stakes, pot, minion AI, going out, showdown
+    battle.ts          card-battle layer (alternative style, config battleStyle: 'cards')
     battleZones.ts     low-level battle helpers (draw, damage)
     hints.ts           "what does my blueprint still need" hints
     melds.ts           set/run validation, wilds/bulk/adaptor, build solver
@@ -90,7 +94,17 @@ Content references effects by name: `{ "type": "modifyRules", "params": { "handS
 
 Built-in effect types: `meldRole`, `drawChoice`, `reorderTop`, `takeFromDiscard`, `destroyCard`, `addRandomParts`, `modifyRules`, `banCategory`, `grantTempCard`, `gainCurrency`.
 
-### Map and battles
+### Duels (default battle style)
+
+- **Encounters** are rolled when an act's map is made, so the map shows who you'll face and what they stake (hover a stop).
+- **Ante** (`DUEL_STAKE`): you stake any card from your parts deck. Hands are dealt from each side's own deck; the discard pile is shared.
+- **Turns**: `DUEL_DRAW` (your deck or the discard), then `DUEL_GO_OUT` if your cards complete the target, else `DUEL_DISCARD`, after which every opponent takes a turn (seeded AI; `greedy` minions grab discards).
+- **End**: first to go out wins. If your draws (`config.duel.drawLimit`) run out, the closest hand wins and ties go to the opponents. Winning adds the pot to your parts deck plus credits.
+- **Items in duels**: passive `modifyRules` effects apply (e.g. Workbench gives +1 hand size). Gadgets (`ItemDef.gadget`) run `onGadget` effects: `skipTurn`, `revealHands`, `stealCard`, `raiseStakes`, `extraDraws`, `drawExtra`, `grantTempCard`. Charges live on `ItemInstance.charges`. `RECHARGE` costs `rechargeCost` on the map or in a shop; `REST` with `recharge` is free.
+- **Bosses** get `config.duel.bossTwists` random rule twists (the boss modifiers) and always stake a special card.
+- **Content**: `minions.json` (deck, stakes, greedy), `duelTargets.json` (race blueprints by kind and act).
+
+### Map and card battles (alternative style)
 
 - **Map** (`map.ts`): rows × lanes. Row 0 is workshops, the middle rows are drawn from `config.map.weights`, the second-to-last row is rest or **master workshop** (a boss blueprint plus a random hazard, which builds a stronger item), and the last row is the boss. Each node always links to its own lane in the next row, and sometimes diagonally.
 - **Items in battle**: `ItemDef.battle` is a `BattleCardDef` (`cost`, `effects`, optional `uses`, `targeted`). An `ItemInstance` has a `level` (blueprint tier, +1 from a master workshop) that adds each effect's `perLevel` bonus, and `usesLeft` (`null` = never breaks). When an item breaks, it is removed along with its passive effect. Rest stops can repair it.
@@ -106,7 +120,10 @@ All of these are JSON edits only; `npm test` runs `validateContent` to catch bro
 - **Item**: add to `items.json` with effects, e.g. `{ "type": "modifyRules", "params": { "drawLimit": 1 } }`.
 - **Special card**: add to `specials.json`. Use `meldRole` for meld behaviour; set `playable`, `target` (`none` / `handCard` / `discardCard`) and `consumeOnPlay` for played specials. It appears in shops according to `weight` and `minTier`.
 - **Boss modifier**: add to `bosses.json`. It is picked at random for boss rounds (respecting `minTier`). Modifiers listed in `config.challengeModifiers` apply to every round, which is the hook for future difficulty ladders.
-- **Enemy**: add to `enemies.json` with `kind` (`normal` / `elite` / `boss`), `hp`, optional `minAct`/`maxAct`, and an `intents` cycle.
+- **Minion**: add to `minions.json` with `kind`, a `deck` spec, `stakes`, optional `greedy` and `minAct`/`maxAct`.
+- **Duel target**: add to `duelTargets.json`.
+- **Gadget**: add a `gadget` block to an item in `items.json` (`charges`, `rechargeCost`, `rechargeName`, `target`, `effects`).
+- **Enemy** (card battles): add to `enemies.json` with `kind` (`normal` / `elite` / `boss`), `hp`, optional `minAct`/`maxAct`, and an `intents` cycle.
 - **Starter battle card**: add to `starterCards.json` and list it in `config.battle.starterDeck`.
 - **Item battle card**: add a `battle` block to the item in `items.json`.
 - **Shop**: `shop.json` has one pool per tier (the highest pool ≤ current tier is used): slot counts, prices, category weights and services.
@@ -143,6 +160,7 @@ Still to do for real multiplayer: per-player shop turns, hidden-information view
 ## Known gaps / next steps
 
 - Placeholder art and flavour text only; the bot is a basic heuristic.
-- The battle system is a placeholder until the combat style is decided.
+- Duel balance and minion AI are a first pass. The card-battle style is kept as an alternative (`battleStyle: 'cards'`).
+- Ideas not built yet: luck/event stops, a bonus for staking a better card.
 - Hidden requirements are revealed when chosen (or by the Magnifier item); there is no "reveal" special card yet.
 - Balance (rewards, prices, draw limits) is a first pass.

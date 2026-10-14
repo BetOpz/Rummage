@@ -47,7 +47,16 @@ export function validateContent(content: ContentPack, effects: EffectRegistry, c
   }
   for (const kind of ['normal', 'elite', 'boss'] as const) {
     if (!content.enemies.some((e) => e.kind === kind)) problems.push(`No ${kind} enemies`);
+    if (!content.minions.some((m) => m.kind === kind)) problems.push(`No ${kind} minions`);
+    if (!content.duelTargets.some((t) => t.kind === kind)) problems.push(`No ${kind} duel targets`);
   }
+  dupes('minion', content.minions.map((m) => m.id));
+  dupes('duel target', content.duelTargets.map((t) => t.id));
+  for (const m of content.minions) {
+    for (const c of m.deck.categories ?? []) if (!catIds.has(c)) problems.push(`minion ${m.id}: unknown category "${c}"`);
+    if (m.deck.gauges[0] > m.deck.gauges[1]) problems.push(`minion ${m.id}: bad gauge range`);
+  }
+  for (const i of content.items) if (i.gadget) checkEffects(`item ${i.id} gadget`, i.gadget.effects);
   for (const pool of content.shopPools) {
     for (const svc of pool.services) checkEffects(`shop service ${svc.id}`, [svc.effect]);
     for (const c of Object.keys(pool.categoryWeights ?? {})) {

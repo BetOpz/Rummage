@@ -1,0 +1,340 @@
+import { useState } from 'react';
+import { type CardId, type GameState, describeRequirement, meldHints, partName } from '../engine';
+import { hintText } from './BlueprintPanel';
+import { CardView } from './CardView';
+import { useGame } from './context';
+
+const KIND_TITLE = { battle: 'Duel', elite: 'Elite duel', boss: 'Boss duel' } as const;
+
+function sortedIds(state: GameState, ids: CardId[]): CardId[] {
+  return [...ids].sort((a, b) => {
+    const ca = state.cards[a];
+    const cb = state.cards[b];
+    if (!ca || !cb) return 0;
+    if (ca.kind !== cb.kind) return ca.kind === 'part' ? -1 : 1;
+    if (ca.kind === 'part' && cb.kind === 'part') return ca.category.localeCompare(cb.category) || ca.gauge - cb.gauge;
+    return 0;
+  });
+}
+
+/** Target, twists and pot: shown on every duel screen. */
+function DuelHeader() {
+  const { state, engine } = useGame();
+  const duel = state.duel!;
+  const target = engine.content.duelTargets.find((t) => t.id === duel.targetId);
+  const catName = (id: string) => engine.content.categories.find((c) => c.id === id)?.name ?? id;
+  return (
+    <div className="panel duel-head">
+      <div className="map-head">
+        <h2>
+          {KIND_TITLE[duel.kind]} vs {duel.opponents.map((o) => o.name).join(' & ')}
+        </h2>
+      </div>
+      <div className="duel-target">
+        <span className="eyebrow">First to go out wins</span>{' '}
+        <b>{target?.name}</b>: {duel.requirements.map((r) => describeRequirement(r, catName)).join(' + ')}
+      </div>
+      {duel.modifiers.map((m, i) => {
+        const def = engine.content.bossModifiers.find((b) => b.id === m.modifierId);
+        const cat = typeof m.params.category === 'string' ? ` (${catName(m.params.category)})` : '';
+        return (
+          <div key={i} className="boss-mod">
+            Twist: <b>{def?.name}</b>
+            {cat} — {def?.text}
+          </div>
+        );
+      })}
+      <div className="pot">
+        <span className="muted">Pot ({duel.pot.length}):</span>
+        <div className="cards small">
+          {duel.pot.map((id) => (
+            <CardView key={id} id={id} badge={id === duel.playerStake ? 'yours' : undefined} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function DuelView() {
+  const { state } = useGame();
+  if (state.phase === 'duelAnte') return <DuelAnte />;
+  if (state.phase === 'duelResult') return <DuelResult />;
+  return <DuelTable />;
+}
+
+function DuelAnte() {
+  const { state, me, act, playerId } = useGame();
+  return (
+    <div className="duel">
+      <DuelHeader />
+      <div className="panel">
+        <h3>Your stake</h3>
+        <p className="muted">
+          Choose a card from your parts deck to put in the pot. Win and you keep it plus everything else in the pot. Lose and
+          it's gone for good.
+        </p>
+        <div className="cards small">
+          {sortedIds(state, me.deck).map((id) => (
+            <CardView key={id} id={id} onClick={() => act({ type: 'DUEL_STAKE', playerId, cardId: id })} title="Stake this card" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DuelTable() {
+  const { state, me, engine, act, playerId } = useGame();
+  const duel = state.duel!;
+  const [selected, setSelected] = useState<CardId[]>([]);
+  const [aiming, setAiming] = useState<string | null>(null);
+  const [noOut, setNoOut] = useState(false);
+  const catName = (id: string) => engine.content.categories.find((c) => c.id === id)?.name ?? id;
+
+  const sel = selected.filter((id) => duel.hand.includes(id));
+  const toggle = (id: CardId) => {
+    setNoOut(false);
+    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  };
+  const out = sel.length > 0 ? engine.suggestDuelOut(state, sel) : null;
+  const hints = sel.length > 0 && !out ? meldHints(engine, state, duel.requirements, duel.rules, sel) : null;
+  const meldCards = duel.requirements.map((_, i) => out?.[i] ?? hints?.[i]?.cardIds ?? []);
+  const inMeld = (id: CardId) => meldCards.findIndex((m) => m.includes(id));
+  const drawsLeft = duel.rules.drawLimit - duel.drawsTaken;
+  const top = duel.discard.at(-1);
+  const phase = duel.turnPhase;
+
+  const gadgets = me.items
+    .map((it) => ({ it, g: engine.content.items.find((d) => d.id === it.itemId)?.gadget }))
+    .filter((x) => x.g);
+
+  const useGadget = (uid: string, needsTarget: boolean) => {
+    if (needsTarget) {
+      setAiming(aiming === uid ? null : uid);
+      return;
+    }
+    act({ type: 'USE_GADGET', playerId, itemUid: uid });
+  };
+
+  return (
+    <div className="duel">
+      <DuelHeader />
+
+      <div className="panel">
+        <div className="opponents">
+          {duel.opponents.map((o, i) => (
+            <div
+              key={i}
+              className={`opponent ${aiming ? 'aimable' : ''}`}
+              onClick={
+                aiming
+                  ? () => {
+                      act({ type: 'USE_GADGET', playerId, itemUid: aiming, target: i });
+                      setAiming(null);
+                    }
+                  : undefined
+              }
+            >
+              <div className="opp-head">
+                <b>{o.name}</b>
+                <span className="muted">{o.hand.length} cards</span>
+                {o.skip > 0 && <span className="block-badge">Frozen</span>}
+              </div>
+              {o.revealed ? (
+                <div className="cards small">
+                  {sortedIds(state, o.hand).map((id) => (
+                    <CardView key={id} id={id} />
+                  ))}
+                </div>
+              ) : (
+                <div className="card-backs">
+                  {o.hand.map((id) => (
+                    <span key={id} className="card-back-mini" />
+                  ))}
+                </div>
+              )}
+              <div className="muted small-text">{o.lastAction || 'Waiting…'}</div>
+            </div>
+          ))}
+        </div>
+        {aiming && (
+          <div className="targeting">
+            Choose an opponent. <button onClick={() => setAiming(null)}>Cancel</button>
+          </div>
+        )}
+      </div>
+
+      <div className="panel piles">
+        <div className="pile">
+          <div className="pile-label">Your deck ({duel.drawPile.length})</div>
+          <button className="card back clickable" disabled={phase !== 'draw' || drawsLeft <= 0} onClick={() => act({ type: 'DUEL_DRAW', playerId, source: 'deck' })}>
+            Draw
+          </button>
+        </div>
+        <div className="pile">
+          <div className="pile-label">Discard ({duel.discard.length})</div>
+          {top ? (
+            <CardView
+              id={top}
+              onClick={phase === 'draw' && duel.rules.allowDiscardDraw ? () => act({ type: 'DUEL_DRAW', playerId, source: 'discard' }) : undefined}
+              title={duel.rules.allowDiscardDraw ? 'Take from the discard pile' : 'Discard draws are banned in this fight'}
+            />
+          ) : (
+            <div className="card empty">empty</div>
+          )}
+        </div>
+        <div className="turn-info">
+          <div>
+            Draws left: <b className={drawsLeft <= 2 ? 'warn' : ''}>{drawsLeft}</b>/{duel.rules.drawLimit}
+          </div>
+          <div className="muted">
+            {phase === 'draw'
+              ? 'Draw from your deck or take the discard.'
+              : 'Go out if you can, otherwise discard a card. Then the opponents play.'}
+          </div>
+          <div className="muted small-text">If your draws run out, the closest hand wins the pot.</div>
+        </div>
+      </div>
+
+      {gadgets.length > 0 && (
+        <div className="panel gadgets">
+          <b>Gadgets</b> <span className="muted">Charges don't refill after a fight. Recharge costs credits.</span>
+          <div className="gadget-list">
+            {gadgets.map(({ it, g }) => (
+              <button
+                key={it.uid}
+                className={`gadget ${aiming === it.uid ? 'selected' : ''}`}
+                disabled={(it.charges ?? 0) <= 0}
+                onClick={() => useGadget(it.uid, g!.target === 'opponent')}
+                title={g!.text}
+              >
+                <b>{g!.name}</b> <span className="charges">{'●'.repeat(it.charges ?? 0)}{'○'.repeat(Math.max(0, g!.charges - (it.charges ?? 0)))}</span>
+                <span className="small-text muted">{g!.text}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="panel hand">
+        <div className="hand-head">
+          <b>Your hand</b> <span className="muted">({duel.hand.length} cards) Tap cards to go out with.</span>
+        </div>
+        <div className="cards">
+          {sortedIds(state, duel.hand).map((id) => {
+            const m = inMeld(id);
+            return <CardView key={id} id={id} selected={sel.includes(id)} badge={m >= 0 ? `M${m + 1}` : undefined} onClick={() => toggle(id)} />;
+          })}
+        </div>
+        <div className="actions">
+          <button
+            className="primary"
+            disabled={phase !== 'main' || sel.length !== 1}
+            onClick={() => {
+              if (act({ type: 'DUEL_DISCARD', playerId, cardId: sel[0] })) setSelected([]);
+            }}
+          >
+            Discard selected
+          </button>
+          <button
+            onClick={() => {
+              const found = engine.suggestDuelOut(state);
+              setNoOut(!found);
+              if (found) setSelected(found.flat());
+            }}
+          >
+            Find a way out
+          </button>
+          {sel.length > 0 && <button onClick={() => setSelected([])}>Clear selection</button>}
+        </div>
+        {noOut && <div className="sort-message">You can't go out yet.</div>}
+      </div>
+
+      <div className={`panel build ${out ? 'ready' : ''}`}>
+        <div className="hand-head">
+          <b>Go out</b>
+          <span className="muted small-text">{sel.length === 0 ? 'Select cards in your hand.' : `${sel.length} cards selected.`}</span>
+        </div>
+        <div className="melds">
+          {duel.requirements.map((req, i) => {
+            const h = hints?.[i];
+            const done = !!out || (h ? h.filled >= req.size : false);
+            return (
+              <div key={i} className={`meld ${sel.length === 0 ? '' : done ? 'ok' : 'bad'}`}>
+                <div className="meld-head">
+                  <b>M{i + 1}</b> {describeRequirement(req, catName)}
+                </div>
+                <div className="cards small">
+                  {meldCards[i].map((id) => (
+                    <CardView key={id} id={id} onClick={() => toggle(id)} />
+                  ))}
+                </div>
+                <div className="meld-status">{sel.length === 0 ? '' : done ? '✓ complete' : h ? hintText(h, catName) : ''}</div>
+              </div>
+            );
+          })}
+        </div>
+        <button
+          className="primary big"
+          disabled={!out}
+          onClick={() => {
+            if (out && act({ type: 'DUEL_GO_OUT', playerId, groups: out })) setSelected([]);
+          }}
+        >
+          Go out and take the pot!
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DuelResult() {
+  const { state, me, engine, act, playerId } = useGame();
+  const duel = state.duel!;
+  const r = duel.result!;
+  const winnerName = duel.winner === 'player' ? 'You' : duel.opponents[duel.winner as number]?.name;
+  return (
+    <div className="duel">
+      <div className={`panel summary ${r.won ? 'won' : 'lost'}`}>
+        <h2>{r.won ? 'You win the pot!' : `${winnerName} wins the pot`}</h2>
+        <p>{duel.endReason}</p>
+        {duel.winningMelds && (
+          <div className="cards small">
+            {duel.winningMelds.flat().map((id) => (
+              <CardView key={id} id={id} />
+            ))}
+          </div>
+        )}
+        {r.won ? (
+          <p>
+            +<b>{r.currency}</b> credits. New parts in your deck:{' '}
+            {r.wonCards.map((id) => {
+              const c = state.cards[id];
+              return c?.kind === 'part' ? partName(engine.content, c.category, c.gauge) + ` (${c.gauge})` : engine.content.specials.find((s) => c?.kind === 'special' && s.id === c.specialId)?.name;
+            }).join(', ') || 'none'}
+            .
+          </p>
+        ) : (
+          <p>
+            Your stake is lost.
+            {r.lifeLost && (
+              <>
+                {' '}
+                You lose a life (<b>{me.lives}</b> left).
+              </>
+            )}
+          </p>
+        )}
+        {!r.won && r.lostStake && (
+          <div className="cards small">
+            <CardView id={r.lostStake} dim />
+          </div>
+        )}
+        <button className="primary" onClick={() => act({ type: 'CONTINUE', playerId })}>
+          {duel.kind === 'boss' && r.won ? (state.tier + 1 >= state.config.tiers ? 'Finish the run' : 'On to the next act') : 'Back to the map'}
+        </button>
+      </div>
+    </div>
+  );
+}
