@@ -258,7 +258,7 @@ describe('items', () => {
   });
 
   it('Coin Press pays out at round end', () => {
-    const hand = ['iron:5', 'wood:5', 'brass:5', 'copper:5', 'brass:1', 'brass:2', 'brass:3'];
+    const hand = ['iron:5', 'wood:5', 'tin:5', 'copper:5', 'tin:1', 'tin:2', 'tin:3'];
     const s0 = setTarget(startedGame('coin'), 'music_box');
     const { state, ids } = withHand(s0, hand);
     const before = p1(state).currency;

@@ -234,7 +234,7 @@ describe('gadgets', () => {
       return card.id;
     });
     s = engine.reduce(s, { type: 'BUILD', playerId: P, groups: [ids.slice(0, 4), ids.slice(4)] });
-    expect(me(s).items.at(-1)).toMatchObject({ itemId: 'pocket_watch', charges: 2 });
+    expect(me(s).items.at(-1)).toMatchObject({ itemId: 'pocket_watch', grade: 4, charges: 3 });
   });
 });
 

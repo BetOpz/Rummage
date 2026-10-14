@@ -1,8 +1,10 @@
 /**
  * Materials and item grades. Every part category is a material with a
- * grade (Wood 1 ... Gold 6). An item's grade is the average grade of the
+ * grade, one material per grade: Tin 1, Wood 2, Iron 3, Copper 4, Brass 5,
+ * Silver 6, Gold 7, Platinum 8. An item's grade is the average grade of the
  * parts it was built from, plus any gem bonuses (Ruby Bearing, Diamond
- * Movement). Higher grades give gadgets more charges and stronger effects.
+ * Movement), up to the top material. Higher grades give gadgets more
+ * charges and stronger effects.
  */
 
 import type { GameConfig } from '../config';
@@ -19,8 +21,13 @@ export function randomCategory(content: ContentPack, rng: Rng, weights?: Record<
   return rng.weightedPick(content.categories, (c) => weights?.[c.id] ?? c.weight ?? 1);
 }
 
+/** Highest grade an item can reach: the top material, plus any extra grade names. */
+export function maxGrade(content: ContentPack, config: GameConfig): number {
+  return Math.max(...content.categories.map((c) => c.grade)) + config.quality.extraGradeNames.length;
+}
+
 /** Grade an item built from these cards would have. */
-export function gradeOf(state: GameState, content: ContentPack, cardIds: CardId[]): number {
+export function gradeOf(state: GameState, content: ContentPack, cardIds: CardId[], config: GameConfig): number {
   let total = 0;
   let parts = 0;
   let bonus = 0;
@@ -35,7 +42,8 @@ export function gradeOf(state: GameState, content: ContentPack, cardIds: CardId[
     }
   }
   const base = parts > 0 ? Math.round(total / parts) : 1;
-  return Math.max(1, base + bonus);
+  const top = maxGrade(content, config);
+  return Math.min(top, Math.max(1, base + bonus));
 }
 
 export function materialName(content: ContentPack, config: GameConfig, grade: number): string {
@@ -87,11 +95,13 @@ export function checkUpgrade(
   const cards = cardIds.map((id) => state.cards[id]).filter(Boolean);
   if (cards.length !== cardIds.length || new Set(cardIds).size !== cardIds.length) return fail('Choose cards from your parts deck');
 
+  const top = maxGrade(content, config);
+  if (item.grade >= top) return fail(`Already ${materialName(content, config, top)}, the top grade`);
   let newGrade = item.grade + 1;
   if (cards.length === 1 && cards[0].kind === 'special') {
     const bonus = content.specials.find((s) => cards[0].kind === 'special' && s.id === cards[0].specialId)?.gradeBonus ?? 0;
     if (bonus <= 0) return fail('Only gems can upgrade an item on their own');
-    newGrade = item.grade + bonus;
+    newGrade = Math.min(top, item.grade + bonus);
   } else {
     const need = config.quality.upgradeParts;
     if (cards.length !== need) return fail(`Choose ${need} parts`);

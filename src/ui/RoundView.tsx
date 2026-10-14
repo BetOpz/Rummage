@@ -352,12 +352,12 @@ export function RoundView() {
 /** What the selected cards would make: material, grade and gadget charges. */
 function BuildPreview({ cardIds, itemId }: { cardIds: CardId[]; itemId: string }) {
   const { state, engine } = useGame();
-  const grade = gradeOf(state, engine.content, cardIds);
+  const grade = gradeOf(state, engine.content, cardIds, state.config);
   const item = engine.content.items.find((i) => i.id === itemId);
   const gadget = state.config.battleStyle === 'rummy' ? item?.gadget : undefined;
   return (
     <div className="build-preview">
-      This makes a <b className={`grade-text grade-${Math.min(grade, 7)}`}>{materialName(engine.content, state.config, grade)} {item?.name}</b>{' '}
+      This makes a <b className={`grade-text grade-${Math.min(grade, 8)}`}>{materialName(engine.content, state.config, grade)} {item?.name}</b>{' '}
       <span className="muted">(grade {grade})</span>
       {gadget && (
         <>

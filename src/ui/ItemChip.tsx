@@ -18,7 +18,7 @@ export function ItemChip({ item }: { item: ItemInstance }) {
   }
   const low = rummy ? gadget && (item.charges ?? 0) === 0 : item.usesLeft === 1;
   return (
-    <span className={`item-chip grade-${Math.min(item.grade, 7)} ${low ? 'fragile' : ''}`} title={lines.join('\n')}>
+    <span className={`item-chip grade-${Math.min(item.grade, 8)} ${low ? 'fragile' : ''}`} title={lines.join('\n')}>
       {item.material} {def?.name ?? item.itemId}
       {item.level > 1 && <sup> L{item.level}</sup>}
       {rummy && gadget && (

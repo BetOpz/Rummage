@@ -475,7 +475,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     assertRule(check.ok, check.reason ?? 'Build does not match the blueprint');
 
     const used = groups.flat();
-    const grade = gradeOf(state, content, used);
+    const grade = gradeOf(state, content, used, state.config);
     for (const id of used) destroyCard(state, id);
     const ctx = context(state, player);
     runHook(effects, 'onBuild', itemEffects(content, player), ctx);

@@ -50,10 +50,10 @@
     "name": "Tin Beetle",
     "kind": "normal",
     "minAct": 2,
-    "text": "Brass and Copper only.",
+    "text": "Tin and Copper only.",
     "deck": {
       "categories": [
-        "brass",
+        "tin",
         "copper"
       ],
       "gauges": [

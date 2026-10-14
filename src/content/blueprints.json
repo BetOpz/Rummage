@@ -2,7 +2,7 @@
   { "id": "go_kart", "name": "Go-Kart", "tier": 1, "itemId": "workbench",
     "requirements": [{ "type": "set", "size": 4 }, { "type": "run", "size": 3 }] },
   { "id": "music_box", "name": "Music Box", "tier": 1, "itemId": "coin_press",
-    "requirements": [{ "type": "set", "size": 4 }, { "type": "run", "size": 3, "category": "brass" }] },
+    "requirements": [{ "type": "set", "size": 4 }, { "type": "run", "size": 3, "category": "tin" }] },
   { "id": "birdhouse", "name": "Birdhouse", "tier": 1, "itemId": "glue_pot",
     "requirements": [{ "type": "set", "size": 4, "maxGauge": 5 }, { "type": "run", "size": 3 }] },
   { "id": "lantern", "name": "Lantern", "tier": 1, "itemId": "magnifier",
@@ -28,7 +28,7 @@
   { "id": "automaton", "name": "Automaton", "tier": 3, "itemId": "workbench",
     "requirements": [{ "type": "set", "size": 6 }, { "type": "run", "size": 5 }] },
   { "id": "orrery", "name": "Orrery", "tier": 3, "itemId": "magnifier",
-    "requirements": [{ "type": "run", "size": 5, "category": "brass" }, { "type": "set", "size": 6, "hidden": true }] },
+    "requirements": [{ "type": "run", "size": 5, "category": "copper" }, { "type": "set", "size": 6, "hidden": true }] },
   { "id": "diving_bell", "name": "Diving Bell", "tier": 3, "itemId": "glue_pot",
     "requirements": [{ "type": "set", "size": 6, "maxGauge": 6 }, { "type": "run", "size": 5, "hidden": true }] },
 

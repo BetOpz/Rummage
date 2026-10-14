@@ -19,21 +19,25 @@ function cards(s: GameState, specs: string[]) {
 describe('materials and grades', () => {
   it('an item is graded by the average material of its parts', () => {
     const s = structuredClone(engine.newGame({ seed: 'q' }));
-    expect(gradeOf(s, defaultContent, cards(s, ['wood:1', 'wood:2', 'wood:3']))).toBe(1);
-    expect(gradeOf(s, defaultContent, cards(s, ['gold:1', 'gold:2', 'gold:3']))).toBe(6);
-    expect(gradeOf(s, defaultContent, cards(s, ['brass:1', 'brass:2', 'iron:3', 'iron:4']))).toBe(3);
+    const grade = (specs: string[]) => gradeOf(s, defaultContent, cards(s, specs), defaultConfig);
+    expect(grade(['tin:1', 'tin:2', 'tin:3'])).toBe(1);
+    expect(grade(['wood:1', 'wood:2', 'wood:3'])).toBe(2);
+    expect(grade(['gold:1', 'gold:2', 'gold:3'])).toBe(7);
+    expect(grade(['brass:1', 'brass:2', 'iron:3', 'iron:4'])).toBe(4);
   });
 
   it('gems add grades', () => {
     const s = structuredClone(engine.newGame({ seed: 'gems' }));
-    expect(gradeOf(s, defaultContent, cards(s, ['brass:1', 'brass:2', 'diamond_movement']))).toBe(6);
-    expect(gradeOf(s, defaultContent, cards(s, ['gold:1', 'gold:2', 'diamond_movement']))).toBe(8);
+    const grade = (specs: string[]) => gradeOf(s, defaultContent, cards(s, specs), defaultConfig);
+    expect(grade(['brass:1', 'brass:2', 'diamond_movement'])).toBe(7);
+    // Platinum is the top grade: gems can't push past it.
+    expect(grade(['gold:1', 'gold:2', 'diamond_movement'])).toBe(8);
+    expect(grade(['platinum:1', 'platinum:2', 'diamond_movement'])).toBe(8);
   });
 
-  it('names grades after materials, then the extra names', () => {
-    expect(materialName(defaultContent, defaultConfig, 1)).toBe('Wood');
-    expect(materialName(defaultContent, defaultConfig, 6)).toBe('Gold');
-    expect(materialName(defaultContent, defaultConfig, 7)).toBe('Jewelled');
+  it('one material per grade, Tin to Platinum', () => {
+    const names = [1, 2, 3, 4, 5, 6, 7, 8].map((g) => materialName(defaultContent, defaultConfig, g));
+    expect(names).toEqual(['Tin', 'Wood', 'Iron', 'Copper', 'Brass', 'Silver', 'Gold', 'Platinum']);
   });
 
   it('higher grades mean more gadget charges', () => {
@@ -64,9 +68,9 @@ describe('graded items in play', () => {
   }
 
   it('a gold pocket watch makes the opponent miss 2 turns; a wooden one, 1', () => {
-    const gold = engine.reduce(duelWithWatch(6), { type: 'USE_GADGET', playerId: P, itemUid: 'w', target: 0 });
+    const gold = engine.reduce(duelWithWatch(7), { type: 'USE_GADGET', playerId: P, itemUid: 'w', target: 0 });
     expect(gold.duel!.opponents[0].skip).toBe(2);
-    const wood = engine.reduce(duelWithWatch(1), { type: 'USE_GADGET', playerId: P, itemUid: 'w', target: 0 });
+    const wood = engine.reduce(duelWithWatch(2), { type: 'USE_GADGET', playerId: P, itemUid: 'w', target: 0 });
     expect(wood.duel!.opponents[0].skip).toBe(1);
   });
 
@@ -91,8 +95,8 @@ describe('graded items in play', () => {
     me(s).deck.push(...ids);
     me(s).hand.push(...ids);
     s = engine.reduce(s, { type: 'BUILD', playerId: P, groups: [ids.slice(0, 4), ids.slice(4)] });
-    expect(me(s).items.at(-1)).toMatchObject({ itemId: 'pocket_watch', grade: 6, material: 'Gold' });
-    expect(me(s).items.at(-1)!.charges).toBe(gadgetCharges(watch, 6, defaultConfig));
+    expect(me(s).items.at(-1)).toMatchObject({ itemId: 'pocket_watch', grade: 7, material: 'Gold' });
+    expect(me(s).items.at(-1)!.charges).toBe(gadgetCharges(watch, 7, defaultConfig));
   });
 });
 
@@ -114,7 +118,7 @@ describe('upgrading items', () => {
     const ids = cards(s, ['copper:1', 'brass:2', 'gold:9']);
     me(s).deck.push(...ids);
     const out = engine.reduce(s, { type: 'UPGRADE_ITEM', playerId: P, itemUid: 'w', cardIds: ids });
-    expect(me(out).items[0]).toMatchObject({ grade: 3, material: 'Copper' });
+    expect(me(out).items[0]).toMatchObject({ grade: 3, material: 'Iron' });
     expect(me(out).currency).toBe(50 - 3 * defaultConfig.quality.upgradeCreditsPerGrade);
     for (const id of ids) expect(me(out).deck).not.toContain(id);
   });
@@ -125,7 +129,7 @@ describe('upgrading items', () => {
     me(s).deck.push(...ids);
     const r = engine.applyAction(s, { type: 'UPGRADE_ITEM', playerId: P, itemUid: 'w', cardIds: ids });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toMatch(/Brass parts or better/);
+    if (!r.ok) expect(r.error).toMatch(/Copper parts or better/);
   });
 
   it('a single gem upgrades by its bonus', () => {
@@ -133,8 +137,23 @@ describe('upgrading items', () => {
     const ids = cards(s, ['diamond_movement']);
     me(s).deck.push(...ids);
     const out = engine.reduce(s, { type: 'UPGRADE_ITEM', playerId: P, itemUid: 'w', cardIds: ids });
-    expect(me(out).items[0]).toMatchObject({ grade: 6, material: 'Gold' });
+    expect(me(out).items[0]).toMatchObject({ grade: 6, material: 'Silver' });
     expect(me(out).items[0].charges).toBe(gadgetCharges(watch, 6, defaultConfig));
+  });
+
+  it('gems stop at Platinum, and Platinum items cannot be upgraded', () => {
+    const s = inShopWith(7);
+    const gem = cards(s, ['diamond_movement']);
+    me(s).deck.push(...gem);
+    const out = engine.reduce(s, { type: 'UPGRADE_ITEM', playerId: P, itemUid: 'w', cardIds: gem });
+    expect(me(out).items[0]).toMatchObject({ grade: 8, material: 'Platinum' });
+
+    const top = inShopWith(8);
+    const ids = cards(top, ['platinum:1', 'platinum:2', 'platinum:3']);
+    me(top).deck.push(...ids);
+    const r = engine.applyAction(top, { type: 'UPGRADE_ITEM', playerId: P, itemUid: 'w', cardIds: ids });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/top grade/);
   });
 
   it('only at shops and rest stops', () => {

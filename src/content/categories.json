@@ -1,5 +1,23 @@
 [
   {
+    "id": "tin",
+    "name": "Tin",
+    "color": "#5f8a8b",
+    "nouns": [
+      "Tack",
+      "Tab",
+      "Clip",
+      "Lid",
+      "Strip",
+      "Can",
+      "Funnel",
+      "Tray",
+      "Canister",
+      "Drum"
+    ],
+    "grade": 1
+  },
+  {
     "id": "wood",
     "name": "Wood",
     "color": "#a0703c",
@@ -15,12 +33,12 @@
       "Joist",
       "Timber"
     ],
-    "grade": 1
+    "grade": 2
   },
   {
     "id": "iron",
     "name": "Iron",
-    "color": "#6b7280",
+    "color": "#545a62",
     "nouns": [
       "Nail",
       "Rivet",
@@ -33,25 +51,7 @@
       "Girder",
       "Anvil"
     ],
-    "grade": 2
-  },
-  {
-    "id": "brass",
-    "name": "Brass",
-    "color": "#c9a227",
-    "nouns": [
-      "Pin",
-      "Screw",
-      "Washer",
-      "Nut",
-      "Valve",
-      "Fitting",
-      "Cog",
-      "Dial",
-      "Bell",
-      "Cylinder"
-    ],
-    "grade": 4
+    "grade": 3
   },
   {
     "id": "copper",
@@ -69,12 +69,32 @@
       "Boiler",
       "Kettle"
     ],
-    "grade": 3
+    "grade": 4
+  },
+  {
+    "id": "brass",
+    "name": "Brass",
+    "color": "#a8902e",
+    "nouns": [
+      "Pin",
+      "Screw",
+      "Washer",
+      "Nut",
+      "Valve",
+      "Fitting",
+      "Cog",
+      "Dial",
+      "Bell",
+      "Cylinder"
+    ],
+    "grade": 5,
+    "rare": true,
+    "weight": 0.5
   },
   {
     "id": "silver",
     "name": "Silver",
-    "color": "#8f9aa6",
+    "color": "#8d9db3",
     "nouns": [
       "Pin",
       "Spring",
@@ -87,14 +107,14 @@
       "Chain",
       "Crown"
     ],
-    "grade": 5,
+    "grade": 6,
     "rare": true,
-    "weight": 0.25
+    "weight": 0.2
   },
   {
     "id": "gold",
     "name": "Gold",
-    "color": "#d4a017",
+    "color": "#d99a06",
     "nouns": [
       "Pin",
       "Screw",
@@ -107,8 +127,28 @@
       "Crown",
       "Chronometer"
     ],
-    "grade": 6,
+    "grade": 7,
     "rare": true,
-    "weight": 0.1
+    "weight": 0.08
+  },
+  {
+    "id": "platinum",
+    "name": "Platinum",
+    "color": "#8e84b8",
+    "nouns": [
+      "Filament",
+      "Pin",
+      "Nib",
+      "Contact",
+      "Spring",
+      "Bearing",
+      "Wire Coil",
+      "Crucible",
+      "Ingot",
+      "Bar"
+    ],
+    "grade": 8,
+    "rare": true,
+    "weight": 0.04
   }
 ]

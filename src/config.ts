@@ -62,7 +62,7 @@ export interface DuelConfig {
 export interface QualityConfig {
   /** Extra gadget charges per grade above 1 (rounded down). */
   chargesPerGrade: number;
-  /** Names for grades above the best material (reached with gems). */
+  /** Names for grades above the best material (reached with gems). Empty: Platinum is the top. */
   extraGradeNames: string[];
   /** Parts of the next grade (or better) needed to upgrade an item one grade. */
   upgradeParts: number;
@@ -146,7 +146,7 @@ export const defaultConfig: GameConfig = {
   },
   quality: {
     chargesPerGrade: 0.34,
-    extraGradeNames: ['Jewelled', 'Masterwork'],
+    extraGradeNames: [],
     upgradeParts: 3,
     upgradeCreditsPerGrade: 1,
   },
