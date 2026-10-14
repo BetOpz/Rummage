@@ -95,3 +95,15 @@ describe('hints pick the best split across melds', () => {
     expect(run).toMatchObject({ category: 'copper', missingGauges: [6] });
   });
 });
+
+describe('number limits', () => {
+  it('Birdhouse set ignores 8s (must be 5 or less) and prefers the higher pair', () => {
+    const { hints } = hintsFor('birdhouse', [
+      'copper:2', 'brass:3', 'wood:3', 'wood:4', 'wood:5', 'wood:5', 'brass:6', 'wood:7', 'iron:8', 'iron:8', 'brass:8', 'duct_tape',
+    ]);
+    const [set, run] = hints.melds;
+    expect(set.gauge).toBeLessThanOrEqual(5);
+    expect(set.gauge).toBe(5);
+    expect(run).toMatchObject({ category: 'wood', filled: 3 });
+  });
+});

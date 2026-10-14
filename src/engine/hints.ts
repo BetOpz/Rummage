@@ -73,7 +73,7 @@ export function meldHints(
     if (i === requirements.length) {
       for (const order of orders) {
         const hints = evaluate(requirements, choice, order, naturals, wilds, bulks);
-        const score = scoreOf(hints);
+        const score = scoreOf(hints, naturals);
         if (!best || score > best.score) best = { score, hints };
       }
       return;
@@ -189,15 +189,20 @@ function evaluate(
   return hints;
 }
 
-/** Most melds complete, then most required slots filled, then most cards used. */
-function scoreOf(hints: MeldHint[]): number {
+/**
+ * Most melds complete, then most required slots filled, then most cards
+ * used, then (as a tie-break) higher numbers, which leave less deadwood.
+ */
+function scoreOf(hints: MeldHint[], naturals: Natural[]): number {
   let complete = 0;
   let filled = 0;
   let cards = 0;
+  let gauges = 0;
   for (const h of hints) {
     if (h.filled >= h.requirement.size) complete += 1;
     filled += h.filled;
     cards += h.cardIds.length;
+    for (const id of h.cardIds) gauges += naturals.find((n) => n.id === id)?.gauge ?? 0;
   }
-  return complete * 1_000_000 + filled * 1_000 + cards;
+  return complete * 1_000_000 + filled * 10_000 + cards * 100 + gauges / 100;
 }

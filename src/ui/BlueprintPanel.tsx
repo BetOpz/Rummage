@@ -83,6 +83,57 @@ function shapeWarnings(
       );
     }
   }
+  // Cards that look right but break a number or category limit.
+  reqs.forEach((req, i) => {
+    if (hints.melds[i].filled >= req.size) return;
+    const breaks = (p: { category: string; gauge: number }) =>
+      (req.minGauge !== undefined && p.gauge < req.minGauge) ||
+      (req.maxGauge !== undefined && p.gauge > req.maxGauge) ||
+      (req.category !== undefined && p.category !== req.category);
+    const limit = [
+      req.category ? (req.type === 'set' ? `all ${catName(req.category)}` : `${catName(req.category)} only`) : null,
+      req.minGauge !== undefined && req.maxGauge !== undefined
+        ? `numbers ${req.minGauge}–${req.maxGauge}`
+        : req.minGauge !== undefined
+          ? `numbers ${req.minGauge} or more`
+          : req.maxGauge !== undefined
+            ? `numbers ${req.maxGauge} or less`
+            : null,
+    ]
+      .filter(Boolean)
+      .join(', ');
+    if (!limit) return;
+    if (req.type === 'set') {
+      const counts = new Map<number, typeof parts>();
+      for (const p of parts) {
+        if (inRuns.has(p.id) || !breaks(p)) continue;
+        counts.set(p.gauge, [...(counts.get(p.gauge) ?? []), p]);
+      }
+      for (const [g, group] of counts) {
+        if (group.length >= 2) {
+          out.push(`Your ${group.length} × ${g} can't count here: this set must be ${limit}.`);
+        }
+      }
+    } else {
+      const byCat = new Map<string, Set<number>>();
+      for (const p of parts) {
+        if (inSets.has(p.id) || !breaks(p)) continue;
+        if (!byCat.has(p.category)) byCat.set(p.category, new Set());
+        byCat.get(p.category)!.add(p.gauge);
+      }
+      for (const [cat, gauges] of byCat) {
+        const sorted = [...gauges].sort((a, b) => a - b);
+        let start = 0;
+        for (let k = 1; k <= sorted.length; k++) {
+          if (k === sorted.length || sorted[k] !== sorted[k - 1] + 1) {
+            if (k - start >= 2) out.push(`Your ${catName(cat)} ${sorted.slice(start, k).join('·')} can't count here: this run must be ${limit}.`);
+            start = k;
+          }
+        }
+      }
+    }
+  });
+
   if (setShort) {
     // Runs of 3+ in one category that aren't already doing a run's job.
     const byCat = new Map<string, Set<number>>();
@@ -117,6 +168,9 @@ export function hintText(h: MeldHint, catName: (id: string) => string): string {
     if (h.gauge === undefined) return 'Collect cards that share a number.';
     if (need <= 0) return `Complete: ${h.have ?? req.size} × ${h.gauge}.`;
     const what = req.category ? `${catName(req.category)} ${h.gauge}` : `${h.gauge} (any category)`;
+    if (req.maxGauge !== undefined || req.minGauge !== undefined) {
+      return `You have ${h.filled} × ${h.gauge}. Need ${need} more ${what}, or another number in range.`;
+    }
     return `You have ${h.filled} × ${h.gauge}. Need ${need} more ${what}.`;
   }
   if (!h.category || !h.missingGauges) {

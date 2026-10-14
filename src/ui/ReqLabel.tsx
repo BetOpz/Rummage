@@ -23,24 +23,24 @@ export function ReqLabel({ req, compact = false }: { req: MeldRequirement; compa
   );
 
   const rule = isSet
-    ? `${req.size} cards with the same number${fixed ? `, all ${fixed.name}` : ', any category'}`
-    : `${req.size} ${fixed ? fixed.name : 'cards of one category'} with numbers in a row`;
-  const gaugeNote =
-    req.minGauge !== undefined && req.maxGauge !== undefined
-      ? ` (numbers ${req.minGauge}-${req.maxGauge})`
-      : req.minGauge !== undefined
-        ? ` (numbers ${req.minGauge}+)`
-        : req.maxGauge !== undefined
-          ? ` (numbers ${req.maxGauge} or less)`
-          : '';
+    ? `${req.size} cards with the same number${fixed ? '' : ', any category'}`
+    : `${req.size} ${fixed ? '' : 'cards of one category '}with numbers in a row`;
+  // Limits are easy to miss, so they get their own highlighted tag.
+  const limits: string[] = [];
+  if (fixed) limits.push(isSet ? `all ${fixed.name}` : `${fixed.name} only`);
+  if (req.minGauge !== undefined && req.maxGauge !== undefined) limits.push(`numbers ${req.minGauge}–${req.maxGauge} only`);
+  else if (req.minGauge !== undefined) limits.push(`numbers ${req.minGauge} or more only`);
+  else if (req.maxGauge !== undefined) limits.push(`numbers ${req.maxGauge} or less only`);
 
   return (
     <span className={`req ${compact ? 'compact' : ''}`}>
       <span className={`req-kind ${req.type}`}>{isSet ? 'SET' : 'RUN'}</span>
-      <span className="req-rule">
-        {rule}
-        {gaugeNote}
-      </span>
+      <span className="req-rule">{rule}</span>
+      {limits.map((l) => (
+        <span key={l} className="req-limit">
+          {l}
+        </span>
+      ))}
       {!compact && (
         <span className="req-eg" aria-label="example">
           e.g.
