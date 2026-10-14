@@ -9,6 +9,7 @@ import { RestView } from './RestView';
 import { RewardView } from './RewardView';
 import { RoundOver, RunOver } from './RoundOver';
 import { RoundView } from './RoundView';
+import { RummageView, ScrapbookView } from './ScrapbookView';
 import { ShopView } from './ShopView';
 import { StatusBar } from './StatusBar';
 import { clearLocal, discardedOldSave, downloadSave, loadFromLocal, readSaveFile, saveToLocal } from './storage';
@@ -16,7 +17,7 @@ import { clearLocal, discardedOldSave, downloadSave, loadFromLocal, readSaveFile
 const PLAYER_ID = 'p1';
 
 /** Shown on screen so it's easy to tell which version is running. Bump on each release. */
-export const BUILD_LABEL = 'build 19';
+export const BUILD_LABEL = 'build 20';
 
 function randomSeed(): string {
   return Math.random().toString(36).slice(2, 8);
@@ -27,6 +28,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [seedInput, setSeedInput] = useState('');
   const [confirmQuit, setConfirmQuit] = useState(false);
+  const [showBook, setShowBook] = useState(false);
 
   useEffect(() => {
     if (session) saveToLocal(session);
@@ -102,6 +104,11 @@ export function App() {
           <h1>Rummage</h1>
           <span className="muted">seed “{state.seed}” · {BUILD_LABEL}</span>
           <span className="spacer" />
+          {state.config.itemSource === 'scrapbook' && state.config.runStructure === 'map' && (
+            <button className={showBook ? 'active' : ''} onClick={() => setShowBook((b) => !b)}>
+              Scrapbook
+            </button>
+          )}
           <button onClick={() => downloadSave(session)}>Export save</button>
           <label className="file-button">
             Import save
@@ -131,6 +138,8 @@ export function App() {
             {error}
           </div>
         )}
+        {showBook && <ScrapbookView onClose={() => setShowBook(false)} />}
+        {state.phase === 'rummage' && <RummageView />}
         {state.phase === 'map' && <MapView />}
         {state.phase === 'battle' && <BattleView />}
         {(state.phase === 'duelAnte' || state.phase === 'duel' || state.phase === 'duelResult') && <DuelView />}
@@ -173,24 +182,30 @@ function HowToPlay() {
       <h2>How to play</h2>
       <ul>
         <li>
-          Each act is a <b>map</b>. Pick a route through duels, workshops, shops and rests to the boss.
+          Each act is a <b>map</b>. Every duel stop is fought over a <b>lot</b>: a shoebox, a tea chest, a loft box, or if
+          you're lucky a barn find. The catalogue tells you more or less about what's inside. Sealed lots hide everything but
+          have the best odds.
         </li>
         <li>
-          <b>Duels</b> are races of rummy. You and the minions each stake a part into the pot. Draw and discard until you
-          can complete the target (for example a set of 3 and a run of 3). First to go out takes the whole pot.
+          <b>Duels</b> are races of rummy. Everyone at the table stakes the same thing (for example 2 Copper parts), and you
+          must match it with that material or better. First to go out takes the lot and every stake.
         </li>
         <li>
           <b>Set</b>: cards with the same number, any category. <b>Run</b>: one category, numbers in a row.
         </li>
         <li>
-          <b>Workshops</b> turn parts into <b>items</b> by completing a blueprint. The parts are used up. Items give a passive
-          bonus and a <b>gadget</b>, like the Pocket Watch that makes an opponent miss a turn.
+          Win and you <b>dig</b> into the lot: always the top half, deeper for going out quickly, with a clean hand, or with a
+          bigger meld than needed. Rare pieces sit at the bottom.
         </li>
         <li>
-          Gadget charges don't refill after a fight. Spend them on minions, or save them for the boss. Recharging costs
-          credits (a rest stop does one for free).
+          Sort what you find: onto a <b>scrapbook</b> page, into your deck, or sell it. Each page has a stage per material, Tin
+          to Platinum. Fill a stage and that item comes to life at that grade, with a <b>gadget</b> like the Pocket Watch that
+          makes an opponent miss a turn.
         </li>
-        <li>Lose a boss duel and you lose a life. Run out of lives and the run is over.</li>
+        <li>
+          Gadget charges don't refill after a fight. Recharging costs credits (a rest stop does one for free). Lose a boss duel
+          and you lose a life.
+        </li>
       </ul>
     </div>
   );

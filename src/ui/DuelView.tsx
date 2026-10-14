@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { type CardId, type GameState, itemMaxCharges, meldHints, partName } from '../engine';
+import { type CardId, type Engine, type GameState, eligibleStakeCards, itemMaxCharges, meldHints, partName } from '../engine';
 import { hintText } from './BlueprintPanel';
 import { Charges } from './GadgetPanel';
 import { CardView } from './CardView';
+import { LotCard, PieceView } from './LotView';
 import { useGame } from './context';
 import { ReqLabel } from './ReqLabel';
 
@@ -17,6 +18,15 @@ function sortedIds(state: GameState, ids: CardId[]): CardId[] {
     if (ca.kind === 'part' && cb.kind === 'part') return ca.category.localeCompare(cb.category) || ca.gauge - cb.gauge;
     return 0;
   });
+}
+
+/** Cheapest material first (what you'd normally stake), then by number. */
+function byGrade(state: GameState, content: Engine['content'], ids: CardId[]): CardId[] {
+  const g = (id: CardId) => {
+    const c = state.cards[id];
+    return c?.kind === 'part' ? (content.categories.find((x) => x.id === c.category)?.grade ?? 0) * 100 + c.gauge : 10_000;
+  };
+  return [...ids].sort((a, b) => g(a) - g(b));
 }
 
 /** Target, twists and pot: shown on every duel screen. */
@@ -53,11 +63,12 @@ function DuelHeader() {
           </div>
         );
       })}
+      {duel.lot && <LotCard lot={duel.lot} />}
       <div className="pot">
-        <span className="muted">Pot ({duel.pot.length}):</span>
+        <span className="muted">Stakes in the pot ({duel.pot.length}):</span>
         <div className="cards small">
           {duel.pot.map((id) => (
-            <CardView key={id} id={id} badge={id === duel.playerStake ? 'yours' : undefined} />
+            <CardView key={id} id={id} badge={duel.playerStake.includes(id) ? 'yours' : undefined} />
           ))}
         </div>
       </div>
@@ -73,20 +84,76 @@ export function DuelView() {
 }
 
 function DuelAnte() {
-  const { state, me, act, playerId } = useGame();
+  const { state, me, engine, act, playerId } = useGame();
+  const duel = state.duel!;
+  const rule = duel.stakeRule;
+  const [picked, setPicked] = useState<CardId[]>([]);
+  if (!rule) {
+    return (
+      <div className="duel">
+        <DuelHeader />
+        <div className="panel">
+          <h3>Your stake</h3>
+          <p className="muted">
+            Choose a card from your parts deck to put in the pot. Win and you keep it plus everything else in the pot. Lose and
+            it's gone for good.
+          </p>
+          <div className="cards small">
+            {sortedIds(state, me.deck).map((id) => (
+              <CardView key={id} id={id} onClick={() => act({ type: 'DUEL_STAKE', playerId, cardIds: [id] })} title="Stake this card" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+  const mat = engine.content.categories.find((c) => c.id === rule.category)?.name ?? rule.category;
+  const eligible = eligibleStakeCards(state, engine.content, me, rule);
+  const isBoss = duel.kind === 'boss';
+  const short = eligible.length < rule.count;
+  const allowed = new Set(short && isBoss ? me.deck.filter((id) => state.cards[id]?.kind === 'part') : eligible);
+  const toggle = (id: CardId) =>
+    setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : p.length < rule.count ? [...p, id] : p));
   return (
     <div className="duel">
       <DuelHeader />
       <div className="panel">
         <h3>Your stake</h3>
-        <p className="muted">
-          Choose a card from your parts deck to put in the pot. Win and you keep it plus everything else in the pot. Lose and
-          it's gone for good.
+        <p>
+          Everyone at the table stakes{' '}
+          <b>
+            {rule.count} × {mat}
+          </b>{' '}
+          parts. You must match it with {mat} or better. Win and you take the lot plus every stake. Lose and your stake is gone
+          for good.
         </p>
+        {short && !isBoss && (
+          <p className="shape-warning">
+            You only have {eligible.length} {mat}-or-better part{eligible.length === 1 ? '' : 's'}, so you can't match the stake.
+            Walk past this lot.
+          </p>
+        )}
+        {short && isBoss && <p className="shape-warning">You can't match the boss's stake, so any {rule.count} parts will do.</p>}
+        <div className="actions">
+          <button className="primary" disabled={picked.length !== rule.count} onClick={() => act({ type: 'DUEL_STAKE', playerId, cardIds: picked })}>
+            Stake {picked.length}/{rule.count}
+          </button>
+          {!isBoss && <button onClick={() => act({ type: 'DUEL_WALK_AWAY', playerId })}>Walk past</button>}
+        </div>
         <div className="cards small">
-          {sortedIds(state, me.deck).map((id) => (
-            <CardView key={id} id={id} onClick={() => act({ type: 'DUEL_STAKE', playerId, cardId: id })} title="Stake this card" />
-          ))}
+          {byGrade(state, engine.content, me.deck).map((id) => {
+            const ok = allowed.has(id);
+            return (
+              <CardView
+                key={id}
+                id={id}
+                dim={!ok}
+                selected={picked.includes(id)}
+                onClick={ok ? () => toggle(id) : undefined}
+                title={ok ? 'Stake this card' : `Not ${mat} or better`}
+              />
+            );
+          })}
         </div>
       </div>
     </div>
@@ -307,7 +374,7 @@ function DuelResult() {
   return (
     <div className="duel">
       <div className={`panel summary ${r.won ? 'won' : 'lost'}`}>
-        <h2>{r.won ? 'You win the pot!' : `${winnerName} wins the pot`}</h2>
+        <h2>{r.won ? `You win the ${duel.lot?.name ?? 'pot'}!` : `${winnerName} wins the ${duel.lot?.name ?? 'pot'}`}</h2>
         <p>{duel.endReason}</p>
         {duel.winningMelds && (
           <div className="cards small">
@@ -316,9 +383,33 @@ function DuelResult() {
             ))}
           </div>
         )}
+        {r.dig && duel.lot && (
+          <div className="dig">
+            <h3>
+              You dig out {r.dig.taken} of {r.dig.total} pieces
+            </h3>
+            <ul className="dig-parts">
+              {r.dig.parts.map((p) => (
+                <li key={p.label}>
+                  <b>+{p.amount}</b> {p.label}
+                </li>
+              ))}
+            </ul>
+            {r.dig.taken < r.dig.total && (
+              <p className="muted">
+                {r.dig.total - r.dig.taken} piece{r.dig.total - r.dig.taken === 1 ? '' : 's'} stay at the bottom of the box.
+              </p>
+            )}
+            <div className="cards small">
+              {duel.lot.pieces.slice(0, r.dig.taken).map((p, i) => (
+                <PieceView key={i} piece={p} />
+              ))}
+            </div>
+          </div>
+        )}
         {r.won ? (
           <p>
-            +<b>{r.currency}</b> credits. New parts in your deck:{' '}
+            +<b>{r.currency}</b> credits. {duel.lot ? 'Stakes won (now in your deck)' : 'New parts in your deck'}:{' '}
             {r.wonCards.map((id) => {
               const c = state.cards[id];
               return c?.kind === 'part' ? partName(engine.content, c.category, c.gauge) + ` (${c.gauge})` : engine.content.specials.find((s) => c?.kind === 'special' && s.id === c.specialId)?.name;
@@ -336,13 +427,21 @@ function DuelResult() {
             )}
           </p>
         )}
-        {!r.won && r.lostStake && (
+        {!r.won && r.lostStake.length > 0 && (
           <div className="cards small">
-            <CardView id={r.lostStake} dim />
+            {r.lostStake.map((id) => (
+              <CardView key={id} id={id} dim />
+            ))}
           </div>
         )}
         <button className="primary" onClick={() => act({ type: 'CONTINUE', playerId })}>
-          {duel.kind === 'boss' && r.won ? (state.tier + 1 >= state.config.tiers ? 'Finish the run' : 'On to the next act') : 'Back to the map'}
+          {r.dig && r.dig.taken > 0
+            ? 'Sort your finds'
+            : duel.kind === 'boss' && r.won
+              ? state.tier + 1 >= state.config.tiers
+                ? 'Finish the run'
+                : 'On to the next act'
+              : 'Back to the map'}
         </button>
       </div>
     </div>

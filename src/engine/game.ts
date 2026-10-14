@@ -22,7 +22,9 @@ import {
   placeStake,
   startDuel,
   useGadget,
+  walkAway,
 } from './duel';
+import { applyRummage } from './scrapbook';
 import {
   type EffectContext,
   type EffectRegistry,
@@ -38,6 +40,7 @@ import { checkUpgrade, commonCategories, gadgetCharges, gradeOf, materialName, r
 import { type MeldRules, type MeldToken, type MeldUnit, checkBuild, findBuild, validateMeld } from './melds';
 import { Rng, seedToState } from './rng';
 import type {
+  PieceDestination,
   BossState,
   CardId,
   ContentPack,
@@ -128,6 +131,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
         drawsTaken: 0,
         exhausted: false,
         rules: baseRules(config, 0),
+        scrapbook: {},
       })),
       activePlayer: 0,
       cards: {},
@@ -139,6 +143,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       battle: null,
       reward: null,
       duel: null,
+      rummage: null,
       nextUid: 1,
       messages: [],
     };
@@ -730,7 +735,8 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     state.tier = act;
     state.round = 0;
     const rng = new Rng(state);
-    state.map = generateMap(act, state.config.map, rng);
+    const scrapbookRun = state.config.battleStyle === 'rummy' && state.config.itemSource === 'scrapbook';
+    state.map = generateMap(act, state.config.map, rng, scrapbookRun);
     if (state.config.battleStyle === 'rummy') {
       for (const node of state.map.rows.flat()) {
         if (node.type === 'battle' || node.type === 'elite' || node.type === 'boss') {
@@ -916,17 +922,23 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
   function continueAfterDuel(state: GameState, player: PlayerState) {
     const duel = finishDuel(state);
     const won = duel.result?.won ?? false;
+    // A won lot: sort what you dug out before moving on.
+    if (won && duel.lot && duel.result?.dig && duel.result.dig.taken > 0) {
+      state.rummage = {
+        lotName: duel.lot.name,
+        pieces: duel.lot.pieces.slice(0, duel.result.dig.taken),
+        leftBehind: duel.lot.pieces.length - duel.result.dig.taken,
+        afterBoss: duel.kind === 'boss',
+      };
+      state.phase = 'rummage';
+      return;
+    }
     if (duel.kind !== 'boss') {
       state.phase = 'map';
       return;
     }
     if (won) {
-      if (state.tier + 1 >= state.config.tiers) {
-        state.phase = 'runWon';
-        log(state, 'Run complete!');
-      } else {
-        enterAct(state, state.tier + 1);
-      }
+      afterBossWin(state);
       return;
     }
     if (player.lives <= 0) {
@@ -940,6 +952,24 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     map.current = map.visited.at(-1) ?? null;
     state.phase = 'map';
     log(state, `Regroup and try the boss again (${player.lives} ${player.lives === 1 ? 'life' : 'lives'} left).`);
+  }
+
+  function afterBossWin(state: GameState) {
+    if (state.tier + 1 >= state.config.tiers) {
+      state.phase = 'runWon';
+      log(state, 'Run complete!');
+    } else {
+      enterAct(state, state.tier + 1);
+    }
+  }
+
+  function rummageDone(state: GameState, playerId: PlayerId, destinations: PieceDestination[]) {
+    const player = getPlayer(state, playerId);
+    applyRummage(state, content, player, destinations);
+    const afterBoss = state.rummage!.afterBoss;
+    state.rummage = null;
+    if (afterBoss) afterBossWin(state);
+    else state.phase = 'map';
   }
 
   // -------------------------------------------------------------------------
@@ -1009,7 +1039,14 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
         upgradeItem(state, action.playerId, action.itemUid, action.cardIds);
         break;
       case 'DUEL_STAKE':
-        placeStake(state, content, duelPlayer(state, action.playerId), action.cardId, new Rng(state));
+        placeStake(state, content, effects, duelPlayer(state, action.playerId), action.cardIds, new Rng(state));
+        break;
+      case 'DUEL_WALK_AWAY':
+        duelPlayer(state, action.playerId);
+        walkAway(state);
+        break;
+      case 'RUMMAGE_DONE':
+        rummageDone(state, action.playerId, action.destinations);
         break;
       case 'DUEL_DRAW':
         duelPlayer(state, action.playerId);

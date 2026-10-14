@@ -8,6 +8,7 @@ import { battleCardDef, incomingDamage } from './battle';
 import { blueprintSize, getBlueprint } from './blueprints';
 import { reachableNodes } from './map';
 import { itemMaxCharges } from './quality';
+import { eligibleStakeCards, suggestDestinations } from './scrapbook';
 import type { Engine } from './game';
 import { type MeldToken, handProgress } from './melds';
 import type { CardId, GameAction, GameState, MeldRequirement, NodeType, PlayerId, PlayerState } from './types';
@@ -116,11 +117,24 @@ export function botAction(engine: Engine, state: GameState, playerId: PlayerId):
       return { type: 'TAKE_REWARD', playerId, index: state.reward && state.reward.options.length > 0 ? 0 : null };
 
     case 'duelAnte': {
-      // Stake the lowest part we own.
+      const duel = state.duel!;
       const parts = player.deck.filter((id) => state.cards[id]?.kind === 'part');
-      const pick = [...(parts.length ? parts : player.deck)].sort((a, b) => gaugeOf(state, a) - gaugeOf(state, b))[0];
-      return { type: 'DUEL_STAKE', playerId, cardId: pick };
+      const rule = duel.stakeRule;
+      if (!rule) {
+        // Stake the lowest part we own.
+        const pick = [...(parts.length ? parts : player.deck)].sort((a, b) => gaugeOf(state, a) - gaugeOf(state, b))[0];
+        return { type: 'DUEL_STAKE', playerId, cardIds: [pick] };
+      }
+      // Matched stakes: the cheapest parts that qualify (lowest material, then lowest number).
+      const eligible = eligibleStakeCards(state, engine.content, player, rule);
+      const pool = eligible.length >= rule.count ? eligible : duel.kind === 'boss' ? parts : null;
+      if (!pool || pool.length < rule.count) return { type: 'DUEL_WALK_AWAY', playerId };
+      const cheap = [...pool].sort((a, b) => gradeOfCard(engine, state, a) - gradeOfCard(engine, state, b) || gaugeOf(state, a) - gaugeOf(state, b));
+      return { type: 'DUEL_STAKE', playerId, cardIds: cheap.slice(0, rule.count) };
     }
+
+    case 'rummage':
+      return { type: 'RUMMAGE_DONE', playerId, destinations: suggestDestinations(state, engine.content, player, state.rummage!.pieces) };
 
     case 'duel':
       return duelAction(engine, state, playerId);
@@ -256,6 +270,11 @@ function battleAction(engine: Engine, state: GameState, player: PlayerState): Ga
   const attacker = playable.find((x) => has(x, 'damage') || has(x, 'damageAll'));
   if (attacker) return play(attacker);
   return play(playable[0]);
+}
+
+function gradeOfCard(engine: Engine, state: GameState, id: CardId): number {
+  const c = state.cards[id];
+  return c?.kind === 'part' ? (engine.content.categories.find((x) => x.id === c.category)?.grade ?? 1) : 99;
 }
 
 function gaugeOf(state: GameState, id: CardId): number {

@@ -226,12 +226,17 @@ const grantTempCard: EffectHandler = {
   },
   onRoundStart(ctx, params) {
     const { state, player } = ctx;
+    // In a duel the card goes to the duel hand; in a workshop round, to the player's hand.
+    const hand = state.duel && state.phase === 'duel' ? state.duel.hand : player.hand;
     for (let i = 0; i < num(params.count, 1); i++) {
       const card = createSpecial(state, player.id, String(params.specialId), true);
-      player.hand.push(card.id);
+      hand.push(card.id);
     }
   },
 };
+
+/** Lots are catalogued this many levels better (see catalogueFor in scrapbook.ts). No hooks. */
+const lotInsight: EffectHandler = {};
 
 const gainCurrency: EffectHandler = {
   onBuild(ctx, params) {
@@ -393,6 +398,7 @@ export const defaultEffects: EffectRegistry = {
   banCategory,
   grantTempCard,
   gainCurrency,
+  lotInsight,
 };
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import { createEngine, type Engine } from '../src/engine/game';
 import type { Card, CardId, GameState, PlayerId } from '../src/engine/types';
+import { eligibleStakeCards, suggestDestinations } from '../src/engine/scrapbook';
 import { createPart, createSpecial } from '../src/engine/zones';
 
 const realEngine: Engine = createEngine();
@@ -77,3 +78,19 @@ export function setTarget(state: GameState, blueprintId: string, playerId: Playe
 }
 
 export const p1 = (s: GameState) => s.players[0];
+
+/** A legal stake for the duel in its ante: the cheapest parts that meet the matched-stake rule. */
+export function stakeFor(state: GameState, playerId: PlayerId = 'p1'): CardId[] {
+  const player = state.players.find((p) => p.id === playerId)!;
+  const rule = state.duel!.stakeRule;
+  if (!rule) return [player.deck[0]];
+  return eligibleStakeCards(state, realEngine.content, player, rule).slice(0, rule.count);
+}
+
+/** Sort a won lot with the default destinations (no-op outside the rummage phase). */
+export function sortLot(state: GameState, playerId: PlayerId = 'p1'): GameState {
+  if (state.phase !== 'rummage') return state;
+  const player = state.players.find((p) => p.id === playerId)!;
+  const destinations = suggestDestinations(state, realEngine.content, player, state.rummage!.pieces);
+  return realEngine.reduce(state, { type: 'RUMMAGE_DONE', playerId, destinations });
+}

@@ -59,6 +59,32 @@ export interface DuelConfig {
   bossTwists: number;
 }
 
+export interface ScrapbookConfig {
+  /** Pieces each page stage needs, by material grade (index 0 = Tin ... 7 = Platinum). */
+  piecesByGrade: number[];
+  /** Credits for selling a found part, per material grade. */
+  sellPerGrade: number;
+  /** Credits for selling a found special card. */
+  sellSpecial: number;
+  /** How deep you dig into a won lot. */
+  dig: {
+    /** Pieces you always take: this fraction of the lot, rounded up. */
+    baseFraction: number;
+    /** Went out having used at most half your draws. */
+    quickBonus: number;
+    /** Went out with at most this many cards left in hand... */
+    cleanHandMax: number;
+    /** ...for this many extra pieces. */
+    cleanBonus: number;
+    /** A meld bigger than the target asked for. */
+    bigMeldBonus: number;
+  };
+  /** Relative odds of each catalogue level (1 itemised ... 4 sealed). */
+  catalogueWeights: [number, number, number, number];
+  /** Per catalogue level above 1: extra pieces (fractional, rounded down) and rare-odds boost. */
+  sealedBonus: { pieces: number; rareMultiplier: number };
+}
+
 export interface QualityConfig {
   /** Extra gadget charges per grade above 1 (rounded down). */
   chargesPerGrade: number;
@@ -85,6 +111,14 @@ export interface GameConfig {
    * energy-and-block card battles.
    */
   battleStyle: 'rummy' | 'cards';
+  /**
+   * Rummy-duel map runs only. 'scrapbook': duels are fought over lots
+   * (boxes of parts); found parts fill scrapbook pages, and a finished page
+   * stage brings that item to life. 'workshop': the older workshop stops,
+   * where a rummy round builds a blueprint into an item.
+   */
+  itemSource: 'scrapbook' | 'workshop';
+  scrapbook: ScrapbookConfig;
   duel: DuelConfig;
   quality: QualityConfig;
   map: MapConfig;
@@ -137,6 +171,15 @@ export const defaultConfig: GameConfig = {
   mode: 'solo',
   runStructure: 'map',
   battleStyle: 'rummy',
+  itemSource: 'scrapbook',
+  scrapbook: {
+    piecesByGrade: [4, 5, 6, 7, 8, 10, 12, 14],
+    sellPerGrade: 1,
+    sellSpecial: 2,
+    dig: { baseFraction: 0.5, quickBonus: 2, cleanHandMax: 2, cleanBonus: 1, bigMeldBonus: 1 },
+    catalogueWeights: [3, 3, 2, 2],
+    sealedBonus: { pieces: 0.7, rareMultiplier: 0.4 },
+  },
   duel: {
     handSizeByAct: [7, 8, 9, 10],
     drawLimit: 12,
@@ -217,6 +260,12 @@ export function makeConfig(overrides: Partial<GameConfig> = {}): GameConfig {
     deadwood: { ...defaultConfig.deadwood, ...overrides.deadwood },
     pivotCost: { ...defaultConfig.pivotCost, ...overrides.pivotCost },
     quality: { ...defaultConfig.quality, ...overrides.quality },
+    scrapbook: {
+      ...defaultConfig.scrapbook,
+      ...overrides.scrapbook,
+      dig: { ...defaultConfig.scrapbook.dig, ...overrides.scrapbook?.dig },
+      sealedBonus: { ...defaultConfig.scrapbook.sealedBonus, ...overrides.scrapbook?.sealedBonus },
+    },
     duel: {
       ...defaultConfig.duel,
       ...overrides.duel,

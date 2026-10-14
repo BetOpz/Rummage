@@ -4,7 +4,7 @@ import { defaultContent } from '../src/content';
 import { autoplay } from '../src/engine/bot';
 import type { CardId, GameState, NodeType } from '../src/engine/types';
 import { createPart } from '../src/engine/zones';
-import { mapEngine as engine } from './helpers';
+import { mapEngine as engine, sortLot, stakeFor } from './helpers';
 
 const P = 'p1';
 const me = (s: GameState) => s.players[0];
@@ -25,7 +25,7 @@ function enterDuel(kind: NodeType = 'battle', seed = 'duel'): GameState {
 /** Stake the first deck card and start playing, with a fixed simple target. */
 function playing(kind: NodeType = 'battle', seed = 'duel'): GameState {
   let s = enterDuel(kind, seed);
-  s = engine.reduce(s, { type: 'DUEL_STAKE', playerId: P, cardId: me(s).deck[0] });
+  s = engine.reduce(s, { type: 'DUEL_STAKE', playerId: P, cardIds: stakeFor(s) });
   s = structuredClone(s);
   s.duel!.requirements = SIMPLE;
   return s;
@@ -59,7 +59,7 @@ describe('encounters on the map', () => {
       expect(n.encounter!.stakes.length).toBeGreaterThan(0);
     }
     const boss = s.map!.rows.at(-1)![0];
-    expect(boss.encounter!.stakes.some((o) => o.kind === 'special')).toBe(true);
+    expect(boss.encounter!.lot!.lotId).toBe('estate_sale');
   });
 });
 
@@ -69,16 +69,16 @@ describe('duel setup', () => {
     expect(s.phase).toBe('duelAnte');
     const potBefore = s.duel!.pot.length;
     expect(potBefore).toBeGreaterThan(0);
-    expect(engine.applyAction(s, { type: 'DUEL_STAKE', playerId: P, cardId: 'nope' }).ok).toBe(false);
-    const stake = me(s).deck[3];
-    s = engine.reduce(s, { type: 'DUEL_STAKE', playerId: P, cardId: stake });
+    expect(engine.applyAction(s, { type: 'DUEL_STAKE', playerId: P, cardIds: ['nope'] }).ok).toBe(false);
+    const stake = stakeFor(s);
+    s = engine.reduce(s, { type: 'DUEL_STAKE', playerId: P, cardIds: stake });
     const d = s.duel!;
     expect(s.phase).toBe('duel');
-    expect(d.pot).toHaveLength(potBefore + 1);
+    expect(d.pot).toHaveLength(potBefore + stake.length);
     expect(d.hand).toHaveLength(defaultConfig.duel.handSizeByAct[0]);
     expect(d.opponents.every((o) => o.hand.length === defaultConfig.duel.handSizeByAct[0])).toBe(true);
     expect(d.discard).toHaveLength(1);
-    expect(d.drawPile).not.toContain(stake);
+    for (const id of stake) expect(d.drawPile).not.toContain(id);
   });
 
   it('item passives apply to duels (Workbench: +1 hand)', () => {
@@ -86,7 +86,7 @@ describe('duel setup', () => {
     me(s).items.push({ uid: 'w', itemId: 'workbench', fromBlueprint: 'x', builtFrom: 7, level: 1, usesLeft: null, charges: null, grade: 1, material: 'Wood' });
     s.map!.rows[0][0].type = 'battle';
     s = engine.reduce(s, { type: 'CHOOSE_NODE', playerId: P, nodeId: s.map!.rows[0][0].id });
-    s = engine.reduce(s, { type: 'DUEL_STAKE', playerId: P, cardId: me(s).deck[0] });
+    s = engine.reduce(s, { type: 'DUEL_STAKE', playerId: P, cardIds: stakeFor(s) });
     expect(s.duel!.hand).toHaveLength(defaultConfig.duel.handSizeByAct[0] + 1);
   });
 });
@@ -100,12 +100,14 @@ describe('playing a duel', () => {
     const ids = setHand(s, ['iron:5', 'wood:5', 'brass:5', 'copper:1', 'copper:2', 'copper:3', 'iron:9']);
     s = engine.reduce(s, { type: 'DUEL_GO_OUT', playerId: P, groups: [ids.slice(0, 3), ids.slice(3, 6)] });
     expect(s.phase).toBe('duelResult');
-    expect(s.duel!.result).toMatchObject({ won: true, lostStake: null });
-    expect(me(s).deck).toHaveLength(deckBefore + pot.length - 1); // stake was already yours
+    expect(s.duel!.result).toMatchObject({ won: true, lostStake: [] });
+    expect(me(s).deck).toHaveLength(deckBefore + pot.length - s.duel!.playerStake.length); // the stake was already yours
     expect(me(s).currency).toBe(currency + defaultConfig.duel.currencyReward.battle);
     s = engine.reduce(s, { type: 'CONTINUE', playerId: P });
-    expect(s.phase).toBe('map');
+    expect(s.phase).toBe('rummage');
     expect(s.duel).toBeNull();
+    s = sortLot(s);
+    expect(s.phase).toBe('map');
     // Won cards survive the clean-up; temporary duel cards don't.
     for (const id of me(s).deck) expect(s.cards[id]).toBeDefined();
     expect(Object.values(s.cards).some((c) => c.temporary)).toBe(false);
@@ -129,7 +131,7 @@ describe('playing a duel', () => {
 
   it('if an opponent goes out you lose your stake for good', () => {
     let s = playing('battle', 'lose');
-    const stake = s.duel!.playerStake!;
+    const stake = s.duel!.playerStake;
     // Opponent 0 is one card from going out; the discard top completes it.
     setHand(s, ['iron:7', 'wood:7', 'brass:1', 'brass:2', 'brass:3', 'iron:1', 'iron:2'], 0);
     s = engine.reduce(s, { type: 'DUEL_DRAW', playerId: P, source: 'deck' });
@@ -138,10 +140,12 @@ describe('playing a duel', () => {
     s = engine.reduce(s, { type: 'DUEL_DISCARD', playerId: P, cardId: gift.id });
     expect(s.phase).toBe('duelResult');
     expect(s.duel!.winner).toBe(0);
-    expect(s.duel!.result!.lostStake).toBe(stake);
+    expect(s.duel!.result!.lostStake).toEqual(stake);
     s = engine.reduce(s, { type: 'CONTINUE', playerId: P });
-    expect(me(s).deck).not.toContain(stake);
-    expect(s.cards[stake]).toBeUndefined();
+    for (const id of stake) {
+      expect(me(s).deck).not.toContain(id);
+      expect(s.cards[id]).toBeUndefined();
+    }
   });
 
   it('when your draws run out, the closest hand wins', () => {
@@ -187,7 +191,7 @@ describe('gadgets', () => {
     s = engine.reduce(s, { type: 'USE_GADGET', playerId: P, itemUid: 'g-pocket_watch', target: 0 });
     const ids = setHand(s, ['iron:5', 'wood:5', 'brass:5', 'copper:1', 'copper:2', 'copper:3', 'iron:9']);
     s = engine.reduce(s, { type: 'DUEL_GO_OUT', playerId: P, groups: [ids.slice(0, 3), ids.slice(3, 6)] });
-    s = engine.reduce(s, { type: 'CONTINUE', playerId: P });
+    s = sortLot(engine.reduce(s, { type: 'CONTINUE', playerId: P }));
     expect(me(s).items[0].charges).toBe(1);
 
     s = structuredClone(s);
@@ -221,7 +225,7 @@ describe('gadgets', () => {
   });
 
   it('built items get their gadget charges', () => {
-    let s = structuredClone(engine.newGame({ seed: 'build' }));
+    let s = structuredClone(engine.newGame({ seed: 'build', config: { itemSource: 'workshop' } }));
     s = engine.reduce(s, { type: 'CHOOSE_NODE', playerId: P, nodeId: s.map!.rows[0][0].id });
     s = engine.reduce(s, { type: 'SELECT_BLUEPRINT', playerId: P, blueprintId: s.roundState!.offers[0] });
     s = structuredClone(s);
@@ -264,6 +268,8 @@ describe('boss duels', () => {
     const ids = setHand(s, ['iron:5', 'wood:5', 'brass:5', 'copper:1', 'copper:2', 'copper:3', 'iron:9']);
     s = engine.reduce(s, { type: 'DUEL_GO_OUT', playerId: P, groups: [ids.slice(0, 3), ids.slice(3, 6)] });
     s = engine.reduce(s, { type: 'CONTINUE', playerId: P });
+    expect(s.phase).toBe('rummage');
+    s = sortLot(s);
     expect(s.tier).toBe(1);
     expect(s.phase).toBe('map');
   });

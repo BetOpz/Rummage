@@ -14,10 +14,11 @@
  */
 
 import { perTier } from '../config';
-import { type EffectRegistry, applyRuleModifiers, cardToken, getHandler, itemEffects } from './effects';
+import { type EffectRegistry, applyRuleModifiers, cardToken, getHandler, itemEffects, runHook } from './effects';
 import { type MeldRules, type MeldToken, checkBuild, findBuild, handProgress } from './melds';
 import { commonCategories, randomCategory } from './quality';
-import type { Rng } from './rng';
+import { digDepth, makeLot, makeStakeRule, stakeProblem } from './scrapbook';
+import { Rng } from './rng';
 import type {
   BossState,
   CardId,
@@ -60,6 +61,16 @@ export function makeEncounter(state: GameState, content: ContentPack, kind: Duel
   const [lo, hi] = state.config.duel.minionsPerBattle;
   const count = kind === 'battle' ? rng.int(lo, hi) : 1;
   const minions = Array.from({ length: count }, () => rng.pick(pool));
+  if (state.config.itemSource === 'scrapbook') {
+    // Matched stakes: every minion puts in the same number of parts of the same material.
+    const stakeRule = makeStakeRule(state, content, kind, Math.max(...minions.map((m) => m.stakes)), rng);
+    const stakes: RewardOption[] = [];
+    for (const m of minions) {
+      const [lo, hi] = m.deck.gauges;
+      for (let i = 0; i < stakeRule.count; i++) stakes.push({ kind: 'part', category: stakeRule.category, gauge: rng.int(lo, Math.min(hi, 10)) });
+    }
+    return { minions: minions.map((m) => m.id), stakes, stakeRule, lot: makeLot(state, content, kind, rng) };
+  }
   const stakes: RewardOption[] = [];
   for (const m of minions) {
     for (let i = 0; i < m.stakes; i++) stakes.push(randomFromDeck(m, content, state, rng));
@@ -173,7 +184,9 @@ export function startDuel(
     modifiers,
     rules: duelRules(state, content, effects, player, modifiers),
     pot,
-    playerStake: null,
+    playerStake: [],
+    stakeRule: encounter.stakeRule ?? null,
+    lot: encounter.lot ?? null,
     opponents,
     hand: [],
     drawPile: [],
@@ -189,14 +202,31 @@ export function startDuel(
   log(state, `${kind === 'boss' ? 'Boss duel' : kind === 'elite' ? 'Elite duel' : 'Duel'} against ${opponents.map((o) => o.name).join(' and ')}: ${target.name}.`);
 }
 
-/** The player stakes a card from their parts deck; hands are dealt and play starts. */
-export function placeStake(state: GameState, content: ContentPack, player: PlayerState, cardId: CardId, rng: Rng): void {
+/**
+ * The player stakes from their parts deck (matched stakes: the same number
+ * of parts of the same material or better; otherwise any one card). Hands
+ * are dealt and play starts.
+ */
+export function placeStake(
+  state: GameState,
+  content: ContentPack,
+  effects: EffectRegistry,
+  player: PlayerState,
+  cardIds: CardId[],
+  rng: Rng,
+): void {
   const duel = state.duel!;
   assertRule(state.phase === 'duelAnte', 'The stakes are already down');
-  assertRule(player.deck.includes(cardId), 'Stake a card from your parts deck');
-  duel.playerStake = cardId;
-  duel.pot.push(cardId);
-  duel.drawPile = rng.shuffle(player.deck.filter((id) => id !== cardId));
+  if (duel.stakeRule) {
+    const problem = stakeProblem(state, content, player, duel.stakeRule, cardIds, duel.kind === 'boss');
+    assertRule(!problem, problem ?? '');
+  } else {
+    assertRule(cardIds.length === 1, 'Stake one card');
+    assertRule(player.deck.includes(cardIds[0]), 'Stake a card from your parts deck');
+  }
+  duel.playerStake = [...cardIds];
+  duel.pot.push(...cardIds);
+  duel.drawPile = rng.shuffle(player.deck.filter((id) => !cardIds.includes(id)));
   const n = duel.rules.handSize;
   for (let i = 0; i < n; i++) {
     const id = duel.drawPile.pop();
@@ -212,7 +242,22 @@ export function placeStake(state: GameState, content: ContentPack, player: Playe
   if (first) duel.discard.push(first);
   duel.turnPhase = 'draw';
   state.phase = 'duel';
-  log(state, `You stake ${cardLabel(state, content, cardId)}. The pot holds ${duel.pot.length} cards.`);
+  // Item passives that hand you a card at the start of a round do so in duels too.
+  runHook(effects, 'onRoundStart', itemEffects(content, player), { state, content, rng, player });
+  log(state, `You stake ${cardIds.map((id) => cardLabel(state, content, id)).join(', ')}. The pot holds ${duel.pot.length} cards.`);
+}
+
+/** Leave a duel stop without staking anything (not possible at the boss). */
+export function walkAway(state: GameState): void {
+  const duel = state.duel;
+  assertRule(state.phase === 'duelAnte' && duel, 'You can only walk away before staking');
+  assertRule(duel.kind !== 'boss', "You can't walk away from the boss");
+  for (const id of Object.keys(state.cards)) {
+    if (state.cards[id].temporary) delete state.cards[id];
+  }
+  state.duel = null;
+  state.phase = 'map';
+  log(state, 'You walk away from the lot.');
 }
 
 function takeFrom(pile: CardId[], discard: CardId[], rng: Rng): CardId | null {
@@ -296,7 +341,7 @@ export function duelGoOut(
   );
   const check = checkBuild(tokens, duel.requirements, meldRulesOf(duel.rules));
   assertRule(check.ok, check.reason ?? 'Those melds do not complete the target');
-  endDuel(state, content, player, 'player', 'You went out first!', groups);
+  endDuel(state, content, effects, player, 'player', 'You went out first!', groups);
 }
 
 /** The player discards; then every opponent takes a turn. */
@@ -361,7 +406,7 @@ function opponentTurn(
 
   const out = findDuelOut(state, content, effects, opp.hand);
   if (out) {
-    endDuel(state, content, player, index, `${opp.name} went out.`, out);
+    endDuel(state, content, effects, player, index, `${opp.name} went out.`, out);
     return;
   }
 
@@ -389,15 +434,16 @@ function showdown(state: GameState, content: ContentPack, effects: EffectRegistr
     .map((o, i) => ({ i, p: progressOf(state, content, effects, duel, o.hand) }))
     .sort((a, b) => b.p - a.p)[0];
   if (!best || mine > best.p) {
-    endDuel(state, content, player, 'player', `Out of draws. Your hand was closest (${mine} cards placed).`, null);
+    endDuel(state, content, effects, player, 'player', `Out of draws. Your hand was closest (${mine} cards placed).`, null);
   } else {
-    endDuel(state, content, player, best.i, `Out of draws. ${duel.opponents[best.i].name}'s hand was as close or closer (${best.p} vs ${mine}).`, null);
+    endDuel(state, content, effects, player, best.i, `Out of draws. ${duel.opponents[best.i].name}'s hand was as close or closer (${best.p} vs ${mine}).`, null);
   }
 }
 
 function endDuel(
   state: GameState,
   content: ContentPack,
+  effects: EffectRegistry,
   player: PlayerState,
   winner: 'player' | number,
   reason: string,
@@ -408,7 +454,7 @@ function endDuel(
   duel.endReason = reason;
   duel.winningMelds = melds;
   const won = winner === 'player';
-  const result = { won, currency: 0, wonCards: [] as CardId[], lostStake: null as CardId | null, lifeLost: false };
+  const result: DuelState['result'] = { won, currency: 0, wonCards: [] as CardId[], lostStake: [], lifeLost: false, dig: null };
 
   if (won) {
     result.currency = state.config.duel.currencyReward[duel.kind] * (state.tier + 1);
@@ -422,14 +468,22 @@ function endDuel(
       result.wonCards.push(id);
     }
     log(state, `You win the pot: ${result.wonCards.map((id) => cardLabel(state, content, id)).join(', ')} and ${result.currency} credits.`);
+    if (duel.lot) {
+      result.dig = digDepth(state.config, duel);
+      log(state, `You dig ${result.dig.taken} of ${result.dig.total} pieces out of the ${duel.lot.name}.`);
+    }
   } else {
-    result.lostStake = duel.playerStake;
+    result.lostStake = [...duel.playerStake];
     if (duel.kind === 'boss') {
       player.lives -= 1;
       result.lifeLost = true;
     }
     log(state, `You lose the pot${result.lifeLost ? ' and a life' : ''}.`);
   }
+  // Item passives: going out counts as completing a build; every duel ends a "round".
+  const ctx = { state, content, rng: new Rng(state), player };
+  if (won && melds) runHook(effects, 'onBuild', itemEffects(content, player), ctx);
+  runHook(effects, 'onRoundEnd', itemEffects(content, player), ctx);
   duel.result = result;
   state.phase = 'duelResult';
 }
@@ -437,7 +491,7 @@ function endDuel(
 /** Clear up after the result screen: destroy the lost stake and all temporary cards. */
 export function finishDuel(state: GameState): DuelState {
   const duel = state.duel!;
-  if (duel.result?.lostStake) destroyCard(state, duel.result.lostStake);
+  for (const id of duel.result?.lostStake ?? []) destroyCard(state, id);
   for (const id of Object.keys(state.cards)) {
     if (state.cards[id].temporary) delete state.cards[id];
   }

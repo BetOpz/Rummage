@@ -1,6 +1,7 @@
 import { type MapNode, type NodeType, reachableNodes } from '../engine';
 import { useGame } from './context';
 import { GadgetPanel } from './GadgetPanel';
+import { LotCard, StakeLine } from './LotView';
 
 export const NODE_INFO: Record<NodeType, { label: string; glyph: string; text: string }> = {
   workshop: { label: 'Workshop', glyph: 'W', text: 'Rummy round: build a blueprint into an item.' },
@@ -14,9 +15,9 @@ export const NODE_INFO: Record<NodeType, { label: string; glyph: string; text: s
 
 /** Duel stops read differently from card battles. */
 const RUMMY_TEXT: Partial<Record<NodeType, string>> = {
-  battle: 'Rummy duel against minions. Everyone stakes a part; first to go out takes the pot.',
-  elite: 'A tougher duel for a bigger pot.',
-  boss: 'Boss duel with a rule twist. Win to finish the act; lose and you lose a life.',
+  battle: 'Rummy duel against minions for a lot (a box of parts). Everyone stakes the same; first to go out takes it all.',
+  elite: 'A tougher duel for a better lot.',
+  boss: 'Boss duel with a rule twist, for an estate sale. Win to finish the act; lose and you lose a life.',
   rest: 'Recharge one gadget for free.',
 };
 
@@ -89,21 +90,56 @@ export function MapView() {
               >
                 <span className="glyph">{info.glyph}</span>
                 <span className="node-label">{info.label}</span>
-                {n.encounter && <span className="node-pot">pot {n.encounter.stakes.length}</span>}
+                {n.encounter?.lot ? (
+                  <span className="node-pot">{n.encounter.lot.name}</span>
+                ) : (
+                  n.encounter && <span className="node-pot">pot {n.encounter.stakes.length}</span>
+                )}
               </button>
             );
           })}
         </div>
       </div>
+      <NextStops />
       {rummy && <GadgetPanel />}
       <ul className="map-legend">
-        {(Object.keys(NODE_INFO) as NodeType[]).map((t) => (
+        {(Object.keys(NODE_INFO) as NodeType[]).filter((t) => all.some((n) => n.type === t)).map((t) => (
           <li key={t}>
             <span className={`glyph-chip ${t}`}>{NODE_INFO[t].glyph}</span> <b>{NODE_INFO[t].label}</b>{' '}
             <span className="muted">{textFor(t)}</span>
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/** The lots up for grabs at the stops you can reach next. */
+function NextStops() {
+  const { state, engine, act, playerId } = useGame();
+  const stops = reachableNodes(state.map!).filter((n) => n.encounter?.lot);
+  if (stops.length === 0) return null;
+  const minionNames = (ids: string[]) => ids.map((id) => engine.content.minions.find((m) => m.id === id)?.name ?? id).join(' & ');
+  return (
+    <div className="next-stops">
+      <h3>Up for grabs next</h3>
+      <div className="lot-grid">
+        {stops.map((n) => (
+          <div key={n.id} className="lot-stop">
+            <div className="lot-stop-head">
+              <span className={`glyph-chip ${n.type}`}>{NODE_INFO[n.type].glyph}</span>
+              <span>
+                {NODE_INFO[n.type].label} vs <b>{minionNames(n.encounter!.minions)}</b>
+              </span>
+            </div>
+            <LotCard lot={n.encounter!.lot!} />
+            <StakeLine encounter={n.encounter!} isBoss={n.type === 'boss'} />
+            <button className="primary" onClick={() => act({ type: 'CHOOSE_NODE', playerId, nodeId: n.id })}>
+              Go for the {n.encounter!.lot!.name}
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

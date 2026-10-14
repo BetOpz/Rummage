@@ -30,6 +30,11 @@
   --error-bg: #f4d8cf;
   --error-ink: #6d1f10;
   --error-line: #dd9f8e;
+  /* Scrapbook paper: the one warm, aged surface in the game */
+  --paper: #e9dfc2;
+  --paper-ink: #3a2f1e;
+  --paper-line: #c4b388;
+  --paper-muted: #6e5f43;
   /* Blueprint paper (same idea in both themes) */
   --bp-paper: #1f4d78;
   --bp-deep: #183f63;
@@ -77,6 +82,10 @@
     --error-line: #7a4034;
     --bp-paper: #173b5e;
     --bp-deep: #11304d;
+    --paper: #3b3527;
+    --paper-ink: #efe6cf;
+    --paper-line: #5e533b;
+    --paper-muted: #bfb193;
     --shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 2px 0 rgba(0, 0, 0, 0.35);
     color-scheme: dark;
   }
@@ -103,6 +112,10 @@
   --error-line: #7a4034;
   --bp-paper: #173b5e;
   --bp-deep: #11304d;
+  --paper: #3b3527;
+  --paper-ink: #efe6cf;
+  --paper-line: #5e533b;
+  --paper-muted: #bfb193;
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 2px 0 rgba(0, 0, 0, 0.35);
   color-scheme: dark;
 }
@@ -504,3 +517,76 @@ h3 { margin: 14px 0 6px; font-size: 1rem; }
 .map-node:disabled { opacity: 0.78; }
 .map-node.visited { opacity: 0.6; }
 .map-node:active:not(:disabled) { transform: translate(-50%, calc(-50% + 2px)); }
+
+/* ---------- Lots ---------- */
+.lot { display: grid; gap: 6px; margin-top: 8px; }
+.lot-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.lot-name { font-family: var(--font-display); font-weight: 400; font-size: 1.15rem; letter-spacing: 0.02em; }
+.catalogue {
+  font-family: var(--font-label); font-weight: 700; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 1px 7px; border-radius: 2px; border: 1.5px solid currentColor;
+}
+.catalogue.c1 { color: var(--ok); }
+.catalogue.c2 { color: var(--accent); }
+.catalogue.c3 { color: var(--ochre); }
+.catalogue.c4 { color: var(--warn); border-style: dashed; }
+.sealed { padding: 8px 10px; border: 2px dashed var(--line); border-radius: 4px; background: repeating-linear-gradient(45deg, transparent 0 8px, color-mix(in srgb, var(--ink) 4%, transparent) 8px 9px); }
+.lot-pieces { margin: 2px 0; }
+.card.piece { cursor: default; }
+.card.hidden-piece {
+  justify-content: center; gap: 2px; border: 2px dashed var(--line); box-shadow: none;
+  background: repeating-linear-gradient(45deg, transparent 0 5px, color-mix(in srgb, var(--ink) 6%, transparent) 5px 6px), var(--panel);
+}
+.card.hidden-piece .gauge { color: var(--muted); }
+.stake-line { font-size: 0.92rem; }
+.stake-line.short { color: var(--warn); font-weight: 600; }
+.next-stops { margin-top: 12px; }
+.lot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+.lot-stop { display: grid; gap: 8px; align-content: start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 4px; background: color-mix(in srgb, var(--ink) 3%, var(--panel)); min-width: 0; }
+.lot-stop-head { display: flex; gap: 8px; align-items: center; }
+.lot-stop button { justify-self: start; }
+.dig { margin: 10px 0; padding: 10px 12px; border: 1px dashed var(--ochre); border-radius: 4px; }
+.dig h3 { margin-top: 0; }
+.dig-parts { list-style: none; padding: 0; margin: 0 0 6px; display: grid; gap: 2px; }
+.dig-parts b { color: var(--ochre); font-family: var(--font-display); font-weight: 400; }
+
+/* ---------- Rummage ---------- */
+.finds { list-style: none; padding: 0; margin: 10px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 10px; }
+.finds li { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.find-dest { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.find-dest select { width: 100%; font: inherit; padding: 5px 6px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); max-width: 100%; }
+
+/* ---------- Scrapbook: aged paper pages ---------- */
+.pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 14px; margin-top: 8px; }
+.page {
+  --ink: var(--paper-ink); --muted: var(--paper-muted); --line: var(--paper-line);
+  position: relative; color: var(--paper-ink); padding: 14px 14px 12px; border-radius: 2px;
+  background:
+    radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--paper-line) 55%, transparent), transparent 40%),
+    radial-gradient(ellipse at 0% 100%, color-mix(in srgb, var(--paper-line) 45%, transparent), transparent 45%),
+    var(--paper);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 3px 3px 0 color-mix(in srgb, var(--paper-line) 60%, transparent);
+  transform: rotate(-0.4deg);
+}
+.page:nth-child(even) { transform: rotate(0.5deg); }
+.page::before {
+  content: ''; position: absolute; top: -7px; left: 50%; width: 64px; height: 16px; transform: translateX(-50%) rotate(2deg);
+  background: var(--tape); opacity: 0.85; clip-path: polygon(2% 0, 98% 6%, 100% 50%, 97% 100%, 1% 94%, 0 45%);
+}
+.page.blank { opacity: 0.72; }
+.page.blank .stages { filter: grayscale(0.8); }
+.page-head { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+.page-title { font-family: var(--font-marker); font-weight: 400; font-size: 1.15rem; }
+.page.alive .page-title { color: var(--ochre); }
+.page-text { font-size: 0.82rem; color: var(--paper-muted); margin: 4px 0 8px; }
+.page-blank { font-family: var(--font-marker); color: var(--paper-muted); font-size: 0.85rem; margin-bottom: 6px; }
+.stages { list-style: none; padding: 0; margin: 0; display: grid; gap: 3px; }
+.stage { display: grid; grid-template-columns: 70px 1fr 44px; gap: 8px; align-items: center; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.stage-name { font-family: var(--font-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.74rem; }
+.stage-bar { position: relative; height: 8px; border-radius: 1px; background: color-mix(in srgb, var(--paper-ink) 10%, transparent); border: 1px solid color-mix(in srgb, var(--paper-ink) 25%, transparent); overflow: hidden; }
+.stage-bar > span { position: absolute; top: 0; bottom: 0; left: 0; background: color-mix(in srgb, var(--cat) 80%, var(--paper-ink)); }
+.stage-bar > span.adding { background: repeating-linear-gradient(45deg, var(--ochre) 0 3px, transparent 3px 6px); }
+.stage-count { text-align: right; }
+.stage.complete .stage-count { color: var(--ok); font-weight: 700; }
+.stage.best .stage-name { color: var(--ochre); }
+.scrapbook h2 { color: var(--ink); }

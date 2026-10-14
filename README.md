@@ -1,14 +1,19 @@
 # Rummage
 
-A rummy-style building deckbuilder (working title). Rummy is the whole game:
+A rummy-style collecting deckbuilder (working title). Rummy is the whole game:
 
-1. **Duels:** every fight is a race of rummy. You and the minions each stake a part into a pot, share a discard pile, and race to complete a small target (e.g. a set of 3 and a run of 3). The first to go out takes the pot. Losing costs your stake, and against a boss, a life.
-2. **Workshops:** turn parts into **items** by completing a blueprint (a longer rummy round). The parts are used up for good. Items give a passive bonus (like Balatro jokers) and a **gadget** you trigger in duels, such as the Pocket Watch, which makes an opponent miss a turn.
-3. **The map:** each act is a branching route of duels, elites, workshops, shops and rests to a boss.
+1. **The map:** each act is a branching route of duels, elites, shops and rests to a boss. Every duel stop is fought over a **lot**: a box of parts (shoebox, tea chest, loft box, workshop clearance, barn find, and an estate sale at the boss).
+2. **Duels:** every fight is a race of rummy. Everyone at the table stakes the same thing (for example 2 Copper parts), and you must match it with that material or better. You share a discard pile and race to complete a small target (e.g. a set of 3 and a run of 3). The first to go out takes the lot and every stake. Losing costs your stake, and against a boss, a life.
+3. **Rummaging:** win and you dig into the lot. You always get the top half; going out quickly, with a clean hand or with a bigger meld than needed digs deeper. Rare pieces sit at the bottom.
+4. **The scrapbook:** each item has a page with a stage per material, Tin to Platinum. Found parts go onto pages (or into your deck, or get sold). Fill a stage and the item comes to life at that grade, or rises to it. Items give a passive bonus (like Balatro jokers) and a **gadget** you trigger in duels, such as the Pocket Watch, which makes an opponent miss a turn.
 
-**Materials and grades.** Each part category is a material, one per grade: Tin 1, Wood 2, Iron 3, Copper 4, then the rarer Brass 5, Silver 6, Gold 7 and Platinum 8 (rare materials only come from shops, rewards and pots; starting decks are Tin to Copper). An item's grade is the average grade of the parts it's built from, plus gem bonuses (Ruby Bearing +1, Diamond Movement +2), up to Platinum. Higher grades give gadgets more charges and stronger effects; a Gold Pocket Watch stops time for 2 turns. At shops and rest stops you can **upgrade** an item one grade with 3 parts of the next material (or one gem) plus credits.
+**Catalogues.** A lot is itemised (every piece shown), partly itemised (some pieces exact, the rest only their metal), contents only (what the pieces are, not their metal) or sealed (only the odds). The less you can see, the bigger the lot and the better its odds. The Magnifier item improves every catalogue by one level.
 
-Gadget charges do not refill between fights, so every use is a choice: spend it to win a minion's pot now, or save it for the boss. Recharging costs credits (each gadget has its own price, e.g. 5 to rewind the Pocket Watch), and a rest stop recharges one for free.
+**Materials and grades.** Each part category is a material, one per grade: Tin 1, Wood 2, Iron 3, Copper 4, then the rarer Brass 5, Silver 6, Gold 7 and Platinum 8 (starting decks are Tin to Copper). An item's grade is the highest scrapbook stage you've filled. Higher grades give gadgets more charges and stronger effects; a Gold Pocket Watch stops time for 2 turns.
+
+Gadget charges do not refill between fights, so every use is a choice: spend it to win a lot now, or save it for the boss. Recharging costs credits (each gadget has its own price, e.g. 5 to rewind the Pocket Watch), and a rest stop recharges one for free.
+
+The older **workshop** mode (`config.itemSource: 'workshop'`) is still available: workshop stops where a longer rummy round builds a blueprint into an item, graded by the average material of its parts, with upgrades at shops and rests.
 
 This repo is a **playable framework**, not a finished game: a pure, tested rules engine, data-driven content, a minimal React UI for a single-player run, and an architecture that leaves room for multiplayer.
 
@@ -99,13 +104,14 @@ Built-in effect types: `meldRole`, `drawChoice`, `reorderTop`, `takeFromDiscard`
 
 ### Duels (default battle style)
 
-- **Encounters** are rolled when an act's map is made, so the map shows who you'll face and what they stake (hover a stop).
-- **Ante** (`DUEL_STAKE`): you stake any card from your parts deck. Hands are dealt from each side's own deck; the discard pile is shared.
+- **Encounters** are rolled when an act's map is made, so the map shows who you'll face, what everyone stakes and the lot (see "Up for grabs next" under the map).
+- **Ante** (`DUEL_STAKE` with `cardIds`): with matched stakes (`Encounter.stakeRule`), you stake `count` parts of the stake material or better; the material climbs with the act. If you can't match it you can `DUEL_WALK_AWAY` (not from the boss, which takes any parts instead). Hands are dealt from each side's own deck; the discard pile is shared.
 - **Turns**: `DUEL_DRAW` (your deck or the discard), then `DUEL_GO_OUT` if your cards complete the target, else `DUEL_DISCARD`, after which every opponent takes a turn (seeded AI; `greedy` minions grab discards).
-- **End**: first to go out wins. If your draws (`config.duel.drawLimit`) run out, the closest hand wins and ties go to the opponents. Winning adds the pot to your parts deck plus credits.
-- **Items in duels**: passive `modifyRules` effects apply (e.g. Workbench gives +1 hand size). Gadgets (`ItemDef.gadget`) run `onGadget` effects: `skipTurn`, `revealHands`, `stealCard`, `raiseStakes`, `extraDraws`, `drawExtra`, `grantTempCard`. Charges live on `ItemInstance.charges`. `RECHARGE` costs `rechargeCost` on the map or in a shop; `REST` with `recharge` is free.
-- **Bosses** get `config.duel.bossTwists` random rule twists (the boss modifiers) and always stake a special card.
-- **Content**: `minions.json` (deck, stakes, greedy), `duelTargets.json` (race blueprints by kind and act).
+- **End**: first to go out wins. If your draws (`config.duel.drawLimit`) run out, the closest hand wins and ties go to the opponents. Winning adds the stakes to your parts deck plus credits, and digs into the lot (`digDepth` in `scrapbook.ts`, tuned by `config.scrapbook.dig`).
+- **Rummage** (`RUMMAGE_DONE`): each dug-out piece goes to a scrapbook page (`{ to: 'page', itemId }`), the deck, or is sold. A part fills the stage of its own material, or the best lower stage still open. Stage sizes are `config.scrapbook.piecesByGrade`.
+- **Items in duels**: passive `modifyRules` effects apply (e.g. Workbench gives +1 hand size); `onRoundStart` effects fire when hands are dealt, `onRoundEnd` when a duel ends, and `onBuild` when you go out. Gadgets (`ItemDef.gadget`) run `onGadget` effects: `skipTurn`, `revealHands`, `stealCard`, `raiseStakes`, `extraDraws`, `drawExtra`, `grantTempCard`. Charges live on `ItemInstance.charges`. `RECHARGE` costs `rechargeCost` on the map or in a shop; `REST` with `recharge` is free.
+- **Bosses** get `config.duel.bossTwists` random rule twists (the boss modifiers).
+- **Content**: `minions.json` (deck, stakes, greedy), `duelTargets.json` (race blueprints by kind and act), `lots.json` (size, material odds, rare and gem chances, which duel kinds and acts).
 
 ### Map and card battles (alternative style)
 
@@ -125,6 +131,7 @@ All of these are JSON edits only; `npm test` runs `validateContent` to catch bro
 - **Boss modifier**: add to `bosses.json`. It is picked at random for boss rounds (respecting `minTier`). Modifiers listed in `config.challengeModifiers` apply to every round, which is the hook for future difficulty ladders.
 - **Minion**: add to `minions.json` with `kind`, a `deck` spec, `stakes`, optional `greedy` and `minAct`/`maxAct`.
 - **Duel target**: add to `duelTargets.json`.
+- **Lot**: add to `lots.json` with `kinds`, `size`, `materials` (everyday material odds), `rareChance`, `gemChance`, `gauges` and optional `minAct`/`maxAct`. Every item automatically gets a scrapbook page.
 - **Gadget**: add a `gadget` block to an item in `items.json` (`charges`, `rechargeCost`, `rechargeName`, `target`, `effects`). Effect params can include `perGrade`, which adds `floor(perGrade × (grade − 1))`.
 - **Material**: add to `categories.json` with a `grade`; mark `rare: true` (and a low `weight`) to keep it out of starting and minion decks. Gems are specials with `gradeBonus`.
 - **Enemy** (card battles): add to `enemies.json` with `kind` (`normal` / `elite` / `boss`), `hp`, optional `minAct`/`maxAct`, and an `intents` cycle.
@@ -165,6 +172,6 @@ Still to do for real multiplayer: per-player shop turns, hidden-information view
 
 - Placeholder art and flavour text only; the bot is a basic heuristic.
 - Duel balance and minion AI are a first pass. The card-battle style is kept as an alternative (`battleStyle: 'cards'`).
-- Ideas not built yet: luck/event stops, a bonus for staking a better card.
+- Ideas not built yet: luck/event stops, an Appraiser stop that itemises lots for credits, gadgets that reveal a lot before the fight, a scrapbook that carries over between runs, item art per stage.
 - Hidden requirements are revealed when chosen (or by the Magnifier item); there is no "reveal" special card yet.
 - Balance (rewards, prices, draw limits) is a first pass.

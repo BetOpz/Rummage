@@ -70,7 +70,7 @@ export function deserializeSession(
   if (!data.initial || !data.actions || !data.state) throw new Error('Save file is incomplete');
   // Saves from before rummy duels and item grades can't be continued.
   const cfg = data.state.config as Partial<typeof data.state.config> | undefined;
-  if (!cfg?.runStructure || !cfg.battleStyle || !cfg.quality || !cfg.duel) {
+  if (!cfg?.runStructure || !cfg.battleStyle || !cfg.quality || !cfg.duel || !cfg.itemSource || !cfg.scrapbook) {
     throw new Error('This save is from an older version of the game');
   }
   if (verify) {

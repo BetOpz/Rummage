@@ -29,7 +29,7 @@
   {
     "id": "pocket_watch",
     "name": "Pocket Watch",
-    "text": "+2 draws per round.",
+    "text": "+2 draws per round or duel.",
     "effects": [
       {
         "type": "modifyRules",
@@ -79,7 +79,7 @@
   {
     "id": "glue_pot",
     "name": "Glue Pot",
-    "text": "Start each round with a free Duct Tape (it vanishes at round end).",
+    "text": "Start each round or duel with a free Duct Tape (it vanishes afterwards).",
     "effects": [
       {
         "type": "grantTempCard",
@@ -132,7 +132,7 @@
   {
     "id": "coin_press",
     "name": "Coin Press",
-    "text": "+2 currency at the end of each round.",
+    "text": "+2 credits at the end of each round or duel.",
     "effects": [
       {
         "type": "gainCurrency",
@@ -185,12 +185,18 @@
   {
     "id": "magnifier",
     "name": "Magnifier",
-    "text": "Hidden blueprint requirements are always shown.",
+    "text": "Lots are catalogued one level better (a sealed box lists its contents). Hidden blueprint requirements are always shown.",
     "effects": [
       {
         "type": "modifyRules",
         "params": {
           "revealHidden": true
+        }
+      },
+      {
+        "type": "lotInsight",
+        "params": {
+          "levels": 1
         }
       }
     ],
@@ -226,7 +232,7 @@
   {
     "id": "sorting_tray",
     "name": "Sorting Tray",
-    "text": "Start each round with an extra card in hand (+1 hand size) and +1 draw.",
+    "text": "Start each round or duel with an extra card in hand (+1 hand size) and +1 draw.",
     "effects": [
       {
         "type": "modifyRules",
@@ -276,7 +282,7 @@
   {
     "id": "salvage_rig",
     "name": "Salvage Rig",
-    "text": "+1 currency whenever you complete a build.",
+    "text": "+1 credit whenever you complete a build or go out in a duel.",
     "effects": [
       {
         "type": "gainCurrency",
@@ -321,7 +327,7 @@
   {
     "id": "spare_reel",
     "name": "Spare Reel",
-    "text": "Start each round with a free Adaptor (it vanishes at round end).",
+    "text": "Start each round or duel with a free Adaptor (it vanishes afterwards).",
     "effects": [
       {
         "type": "grantTempCard",

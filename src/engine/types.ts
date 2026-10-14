@@ -127,6 +127,32 @@ export interface MinionDef {
   greedy?: boolean;
 }
 
+/**
+ * A lot: a box of parts fought over in a duel (shoebox, tea chest, loft
+ * box, barn find, estate sale). Contents are rolled when the map is made.
+ */
+export interface LotDef {
+  id: string;
+  name: string;
+  /** Flavour shown with the lot. */
+  text: string;
+  /** Duel kinds this lot can be the prize for. */
+  kinds: ('battle' | 'elite' | 'boss')[];
+  minAct?: number;
+  maxAct?: number;
+  /** Relative odds among the lots that fit. */
+  weight: number;
+  /** Pieces in the lot: [min, max]. */
+  size: [number, number];
+  /** Everyday materials and their relative odds. */
+  materials: Record<string, number>;
+  /** Chance each piece is a rare material instead (Brass or better, by rarity). */
+  rareChance: number;
+  /** Chance the lot also holds a gem. */
+  gemChance: number;
+  gauges: [number, number];
+}
+
 /** The race target for a duel. */
 export interface DuelTargetDef {
   id: string;
@@ -227,6 +253,7 @@ export interface ContentPack {
   enemies: EnemyDef[];
   minions: MinionDef[];
   duelTargets: DuelTargetDef[];
+  lots: LotDef[];
 }
 
 // ---------------------------------------------------------------------------
@@ -331,6 +358,8 @@ export interface PlayerState {
   exhausted: boolean;
   /** Effective rules for this player this round. */
   rules: RoundRules;
+  /** Scrapbook: per item id, pieces placed on each stage (index 0 = Tin ... 7 = Platinum). */
+  scrapbook: Record<string, number[]>;
 }
 
 export type PendingChoice =
@@ -417,6 +446,46 @@ export interface Encounter {
   minions: string[];
   /** Cards the opponents put into the pot. */
   stakes: RewardOption[];
+  /**
+   * Matched stakes: everyone (you included) stakes `count` parts of this
+   * material, or better. Absent = any one card (workshop item source).
+   */
+  stakeRule?: { category: string; count: number };
+  /** The lot fought over (scrapbook item source). */
+  lot?: Lot;
+}
+
+/**
+ * How much of a lot you can see before the fight:
+ * 1 itemised (every piece), 2 partly itemised (some exact, the rest only
+ * their metal), 3 contents only (what the pieces are, not their metal),
+ * 4 sealed (only the odds).
+ */
+export type CatalogueLevel = 1 | 2 | 3 | 4;
+
+export interface Lot {
+  lotId: string;
+  name: string;
+  catalogue: CatalogueLevel;
+  /** Top of the box first; rare pieces sit at the bottom. */
+  pieces: RewardOption[];
+  /** For sealed lots: the size range and odds shown instead of the contents. */
+  sizeRange: [number, number];
+  rareChance: number;
+  gemChance: number;
+}
+
+/** Where a found piece goes. */
+export type PieceDestination = { to: 'page'; itemId: string } | { to: 'deck' } | { to: 'sell' };
+
+/** Sorting the pieces dug out of a won lot. */
+export interface RummageState {
+  lotName: string;
+  pieces: RewardOption[];
+  /** Pieces left in the box (you didn't dig deep enough). */
+  leftBehind: number;
+  /** The lot was a boss prize: the act ends after sorting. */
+  afterBoss: boolean;
 }
 
 export interface MapState {
@@ -499,8 +568,12 @@ export interface DuelState {
   rules: RoundRules;
   /** Cards in the pot (including the player's stake once placed). */
   pot: CardId[];
-  /** The player's staked card (null during the ante). */
-  playerStake: CardId | null;
+  /** The player's staked cards (empty during the ante). */
+  playerStake: CardId[];
+  /** Matched-stake rule, if any (see Encounter.stakeRule). */
+  stakeRule: { category: string; count: number } | null;
+  /** The lot fought over, if any. */
+  lot: Lot | null;
   opponents: DuelOpponent[];
   hand: CardId[];
   drawPile: CardId[];
@@ -524,8 +597,10 @@ export interface DuelResult {
   /** Pot cards that joined the player's parts deck. */
   wonCards: CardId[];
   /** The player's lost stake (destroyed when the result is dismissed). */
-  lostStake: CardId | null;
+  lostStake: CardId[];
   lifeLost: boolean;
+  /** Lot won: how deep you dug, and why. */
+  dig: { taken: number; total: number; parts: { label: string; amount: number }[] } | null;
 }
 
 export type GamePhase =
@@ -533,6 +608,7 @@ export type GamePhase =
   | 'duelAnte'
   | 'duel'
   | 'duelResult'
+  | 'rummage'
   | 'blueprintSelect'
   | 'playing'
   | 'roundOver'
@@ -568,6 +644,8 @@ export interface GameState {
   battle: BattleState | null;
   reward: BattleReward | null;
   duel: DuelState | null;
+  /** Sorting a won lot's pieces (scrapbook item source). */
+  rummage: RummageState | null;
   /** Counter for ItemInstance / battle card uids. */
   nextUid: number;
   /** Human-readable event log (capped), for UI feedback. */
@@ -596,7 +674,11 @@ export type GameAction =
   | { type: 'END_TURN'; playerId: PlayerId }
   | { type: 'TAKE_REWARD'; playerId: PlayerId; index: number | null }
   | { type: 'REST'; playerId: PlayerId; choice: 'heal' | 'repair' | 'recharge' | 'leave'; itemUid?: string }
-  | { type: 'DUEL_STAKE'; playerId: PlayerId; cardId: CardId }
+  | { type: 'DUEL_STAKE'; playerId: PlayerId; cardIds: CardId[] }
+  /** Leave a duel stop before staking (not the boss). */
+  | { type: 'DUEL_WALK_AWAY'; playerId: PlayerId }
+  /** Send each dug-out piece to a scrapbook page, the parts deck, or sell it. */
+  | { type: 'RUMMAGE_DONE'; playerId: PlayerId; destinations: PieceDestination[] }
   | { type: 'DUEL_DRAW'; playerId: PlayerId; source: 'deck' | 'discard' }
   | { type: 'DUEL_DISCARD'; playerId: PlayerId; cardId: CardId }
   | { type: 'DUEL_GO_OUT'; playerId: PlayerId; groups: CardId[][] }

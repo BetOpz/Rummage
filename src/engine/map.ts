@@ -7,13 +7,16 @@
  *   rows 1..n-3      random mix by config weights (no elites in row 1)
  *   row n-2          rest or master workshop (big blueprint + hazard)
  *   row n-1          the boss (a single node)
+ *
+ * With `noWorkshops` (scrapbook runs, where items come from found parts)
+ * row 0 is duels and row n-2 is rest or elite.
  */
 
 import type { MapConfig } from '../config';
 import type { Rng } from './rng';
 import type { MapNode, MapState, NodeType } from './types';
 
-export function generateMap(act: number, cfg: MapConfig, rng: Rng): MapState {
+export function generateMap(act: number, cfg: MapConfig, rng: Rng, noWorkshops = false): MapState {
   const rowCount = Math.max(3, cfg.rows);
   const width = Math.max(1, cfg.width);
   const rows: MapNode[][] = [];
@@ -23,7 +26,7 @@ export function generateMap(act: number, cfg: MapConfig, rng: Rng): MapState {
     const cols = isBoss ? 1 : width;
     const row: MapNode[] = [];
     for (let c = 0; c < cols; c++) {
-      row.push({ id: `a${act}r${r}c${c}`, row: r, col: c, type: nodeType(r, rowCount, c, cfg, rng), next: [] });
+      row.push({ id: `a${act}r${r}c${c}`, row: r, col: c, type: nodeType(r, rowCount, c, cfg, rng, noWorkshops), next: [] });
     }
     rows.push(row);
   }
@@ -45,11 +48,12 @@ export function generateMap(act: number, cfg: MapConfig, rng: Rng): MapState {
   return { act, rows, current: null, visited: [] };
 }
 
-function nodeType(row: number, rowCount: number, col: number, cfg: MapConfig, rng: Rng): NodeType {
+function nodeType(row: number, rowCount: number, col: number, cfg: MapConfig, rng: Rng, noWorkshops: boolean): NodeType {
   if (row === rowCount - 1) return 'boss';
-  if (row === 0) return 'workshop';
-  if (row === rowCount - 2) return col % 2 === 0 ? 'rest' : 'masterWorkshop';
+  if (row === 0) return noWorkshops ? 'battle' : 'workshop';
+  if (row === rowCount - 2) return col % 2 === 0 ? 'rest' : noWorkshops ? 'elite' : 'masterWorkshop';
   const w = { ...cfg.weights };
+  if (noWorkshops) w.workshop = 0;
   if (row === 1) {
     w.elite = 0;
     w.shop = 0;

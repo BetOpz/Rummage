@@ -4,7 +4,7 @@ import { defaultContent } from '../src/content';
 import { gadgetCharges, gradeOf, materialName } from '../src/engine/quality';
 import type { GameState } from '../src/engine/types';
 import { createPart, createSpecial } from '../src/engine/zones';
-import { mapEngine as engine } from './helpers';
+import { mapEngine as engine, stakeFor } from './helpers';
 
 const P = 'p1';
 const me = (s: GameState) => s.players[0];
@@ -64,7 +64,7 @@ describe('graded items in play', () => {
     });
     s.map!.rows[0][0].type = 'battle';
     s = engine.reduce(s, { type: 'CHOOSE_NODE', playerId: P, nodeId: s.map!.rows[0][0].id });
-    return engine.reduce(s, { type: 'DUEL_STAKE', playerId: P, cardId: me(s).deck[0] });
+    return engine.reduce(s, { type: 'DUEL_STAKE', playerId: P, cardIds: stakeFor(s) });
   }
 
   it('a gold pocket watch makes the opponent miss 2 turns; a wooden one, 1', () => {
@@ -86,7 +86,7 @@ describe('graded items in play', () => {
   });
 
   it('building records the grade and material', () => {
-    let s = structuredClone(engine.newGame({ seed: 'gb' }));
+    let s = structuredClone(engine.newGame({ seed: 'gb', config: { itemSource: 'workshop' } }));
     s = engine.reduce(s, { type: 'CHOOSE_NODE', playerId: P, nodeId: s.map!.rows[0][0].id });
     s = engine.reduce(s, { type: 'SELECT_BLUEPRINT', playerId: P, blueprintId: s.roundState!.offers[0] });
     s = structuredClone(s);
