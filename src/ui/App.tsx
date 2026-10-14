@@ -16,7 +16,7 @@ import { clearLocal, discardedOldSave, downloadSave, loadFromLocal, readSaveFile
 const PLAYER_ID = 'p1';
 
 /** Shown on screen so it's easy to tell which version is running. Bump on each release. */
-export const BUILD_LABEL = 'build 17';
+export const BUILD_LABEL = 'build 18';
 
 function randomSeed(): string {
   return Math.random().toString(36).slice(2, 8);

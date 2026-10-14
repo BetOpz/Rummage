@@ -132,7 +132,7 @@ button, .file-button {
   color: var(--ink); cursor: pointer; transition: transform 0.06s, border-color 0.1s;
 }
 button:hover:not(:disabled), .file-button:hover { border-color: var(--accent); }
-button:active:not(:disabled) { transform: translateY(2px); border-bottom-width: 1px; margin-bottom: 2px; }
+button:active:not(:disabled):not(.map-node):not(.card) { transform: translateY(2px); border-bottom-width: 1px; margin-bottom: 2px; }
 button:disabled { opacity: 0.45; cursor: default; }
 button.primary {
   background: linear-gradient(color-mix(in srgb, var(--accent) 85%, #fff), var(--accent));
@@ -504,3 +504,4 @@ h3 { margin: 14px 0 6px; font-size: 1rem; }
 .reqs { list-style: none; padding-left: 0; display: grid; gap: 6px; }
 .map-node:disabled { opacity: 0.78; }
 .map-node.visited { opacity: 0.6; }
+.map-node:active:not(:disabled) { transform: translate(-50%, calc(-50% + 2px)); }
