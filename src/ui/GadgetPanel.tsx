@@ -4,8 +4,9 @@ import { useGame } from './context';
 export function Charges({ have, max }: { have: number; max: number }) {
   return (
     <span className="charges" title={`${have} of ${max} charges`}>
-      {'●'.repeat(have)}
-      {'○'.repeat(Math.max(0, max - have))}
+      {Array.from({ length: Math.max(have, max) }, (_, i) => (
+        <span key={i} className={i < have ? 'lamp lit' : 'lamp'} />
+      ))}
     </span>
   );
 }

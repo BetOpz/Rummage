@@ -30,7 +30,7 @@ export function CardView({ id, selected, dim, wanted, misfit, badge, onClick, ti
   if (card.kind === 'part') {
     const cat = engine.content.categories.find((c) => c.id === card.category);
     return (
-      <div className={classes.join(' ')} style={{ ['--cat' as string]: cat?.color ?? '#888' }} onClick={onClick} title={title ?? card.name}>
+      <div className={classes.join(' ')} data-cat={card.category} style={{ ['--cat' as string]: cat?.color ?? '#888' }} onClick={onClick} title={title ?? card.name}>
         <div className="gauge">{card.gauge}</div>
         <div className="cat">{cat?.name ?? card.category}</div>
         <div className="name">{card.name.split(' ').slice(1).join(' ')}</div>

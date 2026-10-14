@@ -1,74 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=Permanent+Marker&family=Saira+Stencil+One&display=swap');
+
+/*
+ * Rummage: scrapyard tinkerer.
+ * Layout: a workbench of riveted zinc plates; the blueprint you're building
+ * is the one sheet of real blueprint paper; parts are stamped tags, specials
+ * are scraps with masking tape and marker.
+ */
 :root {
-  --bg: #e9ece6;
-  --panel: #f8f9f5;
-  --ink: #23271f;
-  --muted: #6c7264;
-  --line: #cfd4c8;
-  --accent: #2f6f5e;
-  --accent-ink: #fff;
-  --warn: #b3412c;
-  --ok: #2f7d32;
+  /* Workbench neutrals: galvanised zinc with a patina-green bias */
+  --bg: #d6d9d0;
+  --panel: #eceee7;
+  --ink: #1e221e;
+  --muted: #5f665c;
+  --line: #b4bab0;
+  --rivet: #8d948a;
+  /* Verdigris: oxidised copper, the colour of "go" */
+  --accent: #1d6b62;
+  --accent-ink: #f2f7f4;
+  /* Rust ochre: worn paths, eyebrows, the lit stop */
+  --ochre: #a85f17;
+  /* Semantic */
+  --warn: #b0391f;
+  --ok: #2f7a33;
+  --hazard: #e0ad1e;
+  --hazard-ink: #1b1a14;
   --special: #5b4b8a;
-  --error-bg: #f7dcd5;
+  --tape: #e6d9a8;
+  --tape-ink: #2a2516;
+  --error-bg: #f4d8cf;
   --error-ink: #6d1f10;
-  --error-line: #e0a596;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --error-line: #dd9f8e;
+  /* Blueprint paper (same idea in both themes) */
+  --bp-paper: #1f4d78;
+  --bp-deep: #183f63;
+  --bp-grid: rgba(220, 236, 255, 0.11);
+  --bp-ink: #eef5fc;
+  --bp-muted: #b5cde4;
+  --bp-line: #6f9cc6;
+  --bp-accent: #9ee0d4;
+  --bp-warn: #ffb59e;
+  --bp-ok: #a8eaa9;
+  --bp-special: #dccbff;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.55) inset, 0 2px 0 rgba(30, 34, 30, 0.12);
+
+  --font-display: 'Saira Stencil One', 'Impact', 'Arial Narrow Bold', sans-serif;
+  --font-body: 'Barlow', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-label: 'Barlow Condensed', 'Arial Narrow', 'Barlow', sans-serif;
+  --font-marker: 'Permanent Marker', 'Comic Sans MS', 'Segoe Print', cursive;
+
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.45;
   color: var(--ink);
   background: var(--bg);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #1b1d1a;
-    --panel: #252823;
-    --ink: #e6e9e1;
-    --muted: #9ca394;
-    --line: #3a3e36;
-    --accent: #4fa58b;
-    --accent-ink: #0f1a16;
-    --warn: #e07a62;
-    --ok: #6cbf70;
-    --special: #a594dc;
+    --bg: #141614;
+    --panel: #20231f;
+    --ink: #e4e7df;
+    --muted: #9aa294;
+    --line: #3a3f38;
+    --rivet: #4d544a;
+    --accent: #4fb3a3;
+    --accent-ink: #0d1a17;
+    --ochre: #e2964a;
+    --warn: #ec7f62;
+    --ok: #74c477;
+    --hazard: #d9a520;
+    --hazard-ink: #17150e;
+    --special: #b3a2e6;
+    --tape: #5a5236;
+    --tape-ink: #f3ead0;
     --error-bg: #3d2420;
     --error-ink: #f3c9bd;
     --error-line: #7a4034;
+    --bp-paper: #173b5e;
+    --bp-deep: #11304d;
+    --shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 2px 0 rgba(0, 0, 0, 0.35);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #1b1d1a;
-  --panel: #252823;
-  --ink: #e6e9e1;
-  --muted: #9ca394;
-  --line: #3a3e36;
-  --accent: #4fa58b;
-  --accent-ink: #0f1a16;
-  --warn: #e07a62;
-  --ok: #6cbf70;
-  --special: #a594dc;
+  --bg: #141614;
+  --panel: #20231f;
+  --ink: #e4e7df;
+  --muted: #9aa294;
+  --line: #3a3f38;
+  --rivet: #4d544a;
+  --accent: #4fb3a3;
+  --accent-ink: #0d1a17;
+  --ochre: #e2964a;
+  --warn: #ec7f62;
+  --ok: #74c477;
+  --hazard: #d9a520;
+  --hazard-ink: #17150e;
+  --special: #b3a2e6;
+  --tape: #5a5236;
+  --tape-ink: #f3ead0;
   --error-bg: #3d2420;
   --error-ink: #f3c9bd;
   --error-line: #7a4034;
+  --bp-paper: #173b5e;
+  --bp-deep: #11304d;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 2px 0 rgba(0, 0, 0, 0.35);
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); }
-.app { max-width: 1200px; margin: 0 auto; padding: 12px 16px 40px; }
-h1 { margin: 0; font-size: 1.4rem; }
-h2 { margin: 0 0 8px; font-size: 1.15rem; }
+.app {
+  max-width: 1200px; margin: 0 auto;
+  padding-block: 12px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h1, h2 { font-family: var(--font-display); font-weight: 400; letter-spacing: 0.02em; text-wrap: balance; }
+h1 { margin: 0; font-size: 1.6rem; line-height: 1; }
+h2 { margin: 0 0 8px; font-size: 1.3rem; }
+h3 { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; }
+b { font-weight: 700; }
 .muted { color: var(--muted); }
 .spacer { flex: 1; }
 .warn { color: var(--warn); }
-button {
-  font: inherit; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line);
-  background: var(--panel); color: var(--ink); cursor: pointer;
+:focus-visible { outline: 3px solid var(--ochre); outline-offset: 2px; }
+
+/* Buttons: pressed-steel plates. Primary is verdigris. */
+button, .file-button {
+  font: inherit; font-family: var(--font-label); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; font-size: 0.9rem;
+  padding: 5px 12px; border-radius: 4px; border: 1px solid var(--line); border-bottom-width: 3px;
+  background: linear-gradient(var(--panel), color-mix(in srgb, var(--panel) 88%, var(--ink)));
+  color: var(--ink); cursor: pointer; transition: transform 0.06s, border-color 0.1s;
 }
-button:hover:not(:disabled) { border-color: var(--accent); }
+button:hover:not(:disabled), .file-button:hover { border-color: var(--accent); }
+button:active:not(:disabled) { transform: translateY(2px); border-bottom-width: 1px; margin-bottom: 2px; }
 button:disabled { opacity: 0.45; cursor: default; }
-button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-button.big { padding: 8px 18px; font-size: 1.05rem; margin-top: 8px; }
-button.active { border-color: var(--accent); font-weight: 600; }
-input { font: inherit; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
-.file-button { display: inline-block; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; background: var(--panel); }
+button.primary {
+  background: linear-gradient(color-mix(in srgb, var(--accent) 85%, #fff), var(--accent));
+  color: var(--accent-ink); border-color: color-mix(in srgb, var(--accent) 70%, #000);
+}
+button.big { padding: 8px 20px; font-size: 1.05rem; margin-top: 8px; }
+button.active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+input { font: inherit; padding: 5px 8px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.file-button { display: inline-block; }
 .file-button input { display: none; }
 
 .title { margin: 24px 0 12px; }
@@ -99,29 +172,67 @@ input { font: inherit; padding: 4px 8px; border-radius: 6px; border: 1px solid v
 .pivot { margin-top: 6px; font-size: 0.92rem; }
 
 .cards { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+/*
+ * Part cards are stamped tags cut from their material: a punched hole,
+ * two rivets, a stencilled number. --cat is the material colour.
+ */
 .card {
-  position: relative; width: 78px; height: 108px; border-radius: 8px; border: 2px solid var(--cat, var(--line));
-  background: var(--panel); padding: 6px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-  user-select: none; transition: transform 0.08s;
+  --tag: color-mix(in srgb, var(--cat, var(--line)) 22%, var(--panel));
+  position: relative; width: 78px; height: 108px; border-radius: 5px;
+  border: 2px solid color-mix(in srgb, var(--cat, var(--line)) 75%, var(--ink));
+  background: var(--panel); padding: 14px 4px 6px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  user-select: none; transition: transform 0.08s; box-shadow: var(--shadow);
 }
-.cards.small .card { width: 62px; height: 84px; padding: 4px; }
-.card.part { background: color-mix(in srgb, var(--cat) 12%, var(--panel)); }
-.card .gauge { font-size: 1.9rem; font-weight: 700; color: var(--cat); line-height: 1; }
-.cards.small .card .gauge { font-size: 1.4rem; }
-.card .cat { font-size: 0.78rem; font-weight: 600; }
-.card .name { font-size: 0.7rem; color: var(--muted); text-align: center; }
-.card.special { border-color: var(--special); border-style: dashed; justify-content: flex-start; gap: 4px; }
-.card .special-name { font-size: 0.8rem; font-weight: 700; color: var(--special); text-align: center; }
-.card .special-text { font-size: 0.6rem; color: var(--muted); text-align: center; overflow: hidden; }
+.cards.small .card { width: 62px; height: 84px; padding: 11px 3px 4px; }
+.card.part {
+  background:
+    radial-gradient(circle at 50% 7px, var(--bg) 0 3.5px, color-mix(in srgb, var(--cat) 60%, var(--ink)) 4px 5px, transparent 5.5px),
+    radial-gradient(circle at 7px calc(100% - 7px), var(--rivet) 0 2px, transparent 2.5px),
+    radial-gradient(circle at calc(100% - 7px) calc(100% - 7px), var(--rivet) 0 2px, transparent 2.5px),
+    linear-gradient(160deg, color-mix(in srgb, #fff 18%, transparent), transparent 45%),
+    var(--tag);
+}
+/* Wood gets grain; metals get a brushed sheen. */
+.card.part[data-cat="wood"] {
+  background:
+    radial-gradient(circle at 50% 7px, var(--bg) 0 3.5px, color-mix(in srgb, var(--cat) 60%, var(--ink)) 4px 5px, transparent 5.5px),
+    repeating-linear-gradient(97deg, transparent 0 5px, color-mix(in srgb, var(--cat) 14%, transparent) 5px 6px, transparent 6px 11px),
+    var(--tag);
+}
+.card .gauge {
+  font-family: var(--font-display); font-size: 2.1rem; line-height: 1;
+  color: color-mix(in srgb, var(--cat) 62%, var(--ink));
+}
+.cards.small .card .gauge { font-size: 1.55rem; }
+.card .cat { font-family: var(--font-label); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.card .name { font-size: 0.68rem; color: var(--muted); text-align: center; line-height: 1.15; }
+/* Specials are scraps with a strip of masking tape and a marker label. */
+.card.special {
+  background: repeating-linear-gradient(0deg, transparent 0 13px, color-mix(in srgb, var(--ink) 7%, transparent) 13px 14px), var(--panel);
+  border: 2px dashed color-mix(in srgb, var(--special) 70%, var(--line)); justify-content: flex-start; gap: 4px; padding-top: 16px;
+}
+.card.special::before {
+  content: ''; position: absolute; top: -6px; left: 12%; width: 76%; height: 16px; background: var(--tape);
+  opacity: 0.92; transform: rotate(-3deg); box-shadow: 0 1px 1px rgba(0, 0, 0, 0.15);
+  clip-path: polygon(2% 0, 98% 6%, 100% 50%, 97% 100%, 1% 94%, 0 45%);
+}
+.card .special-name { font-family: var(--font-marker); font-size: 0.82rem; line-height: 1.05; color: var(--special); text-align: center; }
+.card .special-text { font-size: 0.6rem; color: var(--muted); text-align: center; overflow: hidden; line-height: 1.2; }
 .cards.small .card .special-text { display: none; }
 .card.clickable { cursor: pointer; }
-.card.clickable:hover { transform: translateY(-3px); }
-.card.selected { outline: 3px solid var(--accent); transform: translateY(-6px); }
-.card.dim { opacity: 0.5; }
+.card.clickable:hover { transform: translateY(-3px) rotate(-1deg); }
+.card.selected { outline: 3px solid var(--ochre); outline-offset: 1px; transform: translateY(-7px); }
+.card.dim { opacity: 0.45; filter: grayscale(0.6); }
 .card.temporary { opacity: 0.85; }
-.card .badge { position: absolute; top: -8px; right: -8px; background: var(--accent); color: var(--accent-ink); font-size: 0.7rem; border-radius: 999px; padding: 1px 6px; }
-.card.back { justify-content: center; font-weight: 700; color: var(--accent-ink); background: var(--accent); border-color: var(--accent); font-size: 1rem; }
-.card.empty { justify-content: center; color: var(--muted); border-style: dotted; }
+.card .badge {
+  position: absolute; top: -8px; right: -8px; background: var(--ochre); color: var(--panel); font-family: var(--font-label);
+  font-weight: 700; font-size: 0.7rem; border-radius: 3px; padding: 1px 6px; z-index: 1;
+}
+.card.back {
+  justify-content: center; font-family: var(--font-display); color: var(--accent-ink); font-size: 1rem; border-color: color-mix(in srgb, var(--accent) 70%, #000);
+  background: repeating-linear-gradient(45deg, transparent 0 6px, rgba(0, 0, 0, 0.12) 6px 8px), repeating-linear-gradient(-45deg, transparent 0 6px, rgba(255, 255, 255, 0.08) 6px 8px), var(--accent);
+}
+.card.empty { justify-content: center; color: var(--muted); border-style: dotted; box-shadow: none; }
 
 .hand-head { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
@@ -263,3 +374,133 @@ h3 { margin: 14px 0 6px; font-size: 1rem; }
 .shape-warning { margin-top: 8px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--warn); color: var(--warn); font-weight: 600; }
 .req-limit { font-size: 0.78rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1.5px solid var(--warn); color: var(--warn); }
 .hazard-line { margin-top: 6px; padding: 4px 10px; border-radius: 8px; background: color-mix(in srgb, var(--warn) 12%, var(--panel)); color: var(--warn); }
+
+
+/* ---------- Scrapyard skin ---------- */
+
+/* Riveted zinc plates */
+.panel {
+  border-radius: 4px; box-shadow: var(--shadow);
+  background:
+    radial-gradient(circle at 7px 7px, var(--rivet) 0 2px, transparent 2.5px),
+    radial-gradient(circle at calc(100% - 7px) 7px, var(--rivet) 0 2px, transparent 2.5px),
+    radial-gradient(circle at 7px calc(100% - 7px), var(--rivet) 0 2px, transparent 2.5px),
+    radial-gradient(circle at calc(100% - 7px) calc(100% - 7px), var(--rivet) 0 2px, transparent 2.5px),
+    var(--panel);
+  padding: 14px 16px;
+  min-width: 0;
+}
+.eyebrow { font-family: var(--font-label); color: var(--ochre); letter-spacing: 0.12em; font-size: 0.78rem; }
+.topbar h1 { color: var(--ink); }
+.topbar .muted { font-size: 0.85rem; }
+.title h1 { font-size: clamp(2.6rem, 9vw, 4.2rem); }
+.title h1::after {
+  content: 'scrap · meld · build'; display: block; margin-top: 6px; font-family: var(--font-label); font-size: 0.9rem;
+  letter-spacing: 0.3em; text-transform: uppercase; color: var(--ochre);
+}
+.title p { max-width: 60ch; }
+.status { font-family: var(--font-label); font-size: 1rem; letter-spacing: 0.03em; gap: 6px 18px; }
+.status b { font-family: var(--font-display); font-weight: 400; font-size: 1.15rem; color: var(--ochre); margin-left: 2px; }
+.log summary { font-family: var(--font-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer; }
+.log ol { font-family: var(--font-body); }
+.howto h2 { color: var(--accent); }
+.notice { border: 2px solid var(--ochre); }
+.error { border-radius: 4px; }
+
+/* Item chips: little brass-edged nameplates */
+.item-chip {
+  border-radius: 3px; border: 1.5px solid color-mix(in srgb, var(--ochre) 70%, var(--line)); padding: 1px 8px;
+  font-family: var(--font-label); font-weight: 700; letter-spacing: 0.03em; background: color-mix(in srgb, var(--ochre) 8%, var(--panel));
+}
+.item-chip.grade-5 { border-color: #8f9aa6; background: color-mix(in srgb, #8f9aa6 14%, var(--panel)); }
+.item-chip.grade-6, .item-chip.grade-7 { border-color: #c99512; background: color-mix(in srgb, #c99512 16%, var(--panel)); }
+
+/* The blueprint you're building: real blueprint paper */
+.blueprint-panel, .blueprint {
+  --panel: var(--bp-paper); --bg: var(--bp-deep); --ink: var(--bp-ink); --muted: var(--bp-muted); --line: var(--bp-line);
+  --accent: var(--bp-accent); --accent-ink: #0c2a26; --warn: var(--bp-warn); --ok: var(--bp-ok); --special: var(--bp-special);
+  --ochre: var(--bp-accent); --rivet: transparent;
+  color: var(--ink);
+  background:
+    linear-gradient(var(--bp-grid) 1px, transparent 1px) 0 0 / 16px 16px,
+    linear-gradient(90deg, var(--bp-grid) 1px, transparent 1px) 0 0 / 16px 16px,
+    linear-gradient(rgba(220, 236, 255, 0.06) 1px, transparent 1px) 0 0 / 80px 80px,
+    var(--bp-paper);
+  border: 2px solid var(--bp-line); border-radius: 3px;
+  outline: 1px dashed color-mix(in srgb, var(--bp-ink) 35%, transparent); outline-offset: -7px;
+}
+.blueprint.boss { border-color: var(--bp-warn); }
+.blueprint-panel.ready { border-color: var(--bp-ok); }
+.blueprint-panel .bp-name, .blueprint .bp-head b { font-family: var(--font-display); font-weight: 400; font-size: 1.3rem; letter-spacing: 0.03em; }
+.blueprint-panel .eyebrow { color: var(--bp-muted); }
+.blueprint-panel .need-chip { background: var(--bp-deep); border-color: var(--bp-line); font-family: var(--font-label); }
+.blueprint-panel .req-kind { color: var(--bp-deep); }
+.blueprint-panel .mini-card, .blueprint .mini-card { color: var(--bp-ink); border-color: color-mix(in srgb, var(--cat) 60%, var(--bp-ink)); background: color-mix(in srgb, var(--cat) 35%, var(--bp-deep)); }
+.blueprint-panel .shape-warning, .blueprint-panel .req-limit { background: color-mix(in srgb, var(--bp-warn) 12%, transparent); }
+.blueprint-panel .hazard-line { color: var(--hazard-ink); }
+
+/* Set / Run stamps */
+.req-kind { font-family: var(--font-label); border-radius: 2px; font-size: 0.75rem; letter-spacing: 0.12em; }
+.req-limit { border-radius: 3px; font-family: var(--font-label); letter-spacing: 0.03em; }
+
+/* Hazards wear hazard tape */
+.hazard-line, .boss-mod {
+  border-radius: 3px; color: var(--hazard-ink); background: var(--hazard); padding: 4px 10px 4px 22px; position: relative;
+}
+.hazard-line::before, .boss-mod::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 14px; border-radius: 3px 0 0 3px;
+  background: repeating-linear-gradient(-45deg, var(--hazard-ink) 0 5px, var(--hazard) 5px 10px);
+}
+.boss-mod b { color: var(--hazard-ink); font-family: var(--font-body); font-size: inherit; font-weight: 700; }
+.shape-warning { border-radius: 3px; border-left-width: 5px; }
+
+/* Map: a route chalked across the yard */
+.map-scroll {
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--ink) 10%, transparent) 1px, transparent 1.5px) 0 0 / 20px 20px;
+  border-radius: 3px;
+}
+.map-lines line { stroke-dasharray: 5 5; stroke: var(--rivet); }
+.map-lines line.walked { stroke: var(--ochre); stroke-dasharray: none; }
+.map-node { border-radius: 4px; box-shadow: var(--shadow); font-family: var(--font-label); }
+.map-node .glyph, .glyph-chip { font-family: var(--font-display); font-weight: 400; border-radius: 3px; }
+.map-node .node-label { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.03em; }
+.map-node.current { border-color: var(--ochre); }
+.map-node.reachable { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent), var(--shadow); }
+.map-node.boss .glyph, .glyph-chip.boss {
+  background: repeating-linear-gradient(-45deg, var(--hazard-ink) 0 4px, var(--hazard) 4px 8px); color: var(--hazard); text-shadow: 0 0 3px var(--hazard-ink);
+}
+.node-pot { font-family: var(--font-body); color: var(--ochre); }
+
+/* Duels: the table is a scuffed bench top */
+.opponent { border-radius: 4px; background: color-mix(in srgb, var(--ink) 4%, var(--panel)); }
+.opp-head b { font-family: var(--font-display); font-weight: 400; font-size: 1.1rem; letter-spacing: 0.02em; }
+.card-back-mini { border-radius: 2px; background: repeating-linear-gradient(45deg, transparent 0 3px, rgba(0, 0, 0, 0.15) 3px 4px), var(--accent); opacity: 1; }
+.pot { padding: 8px 10px; border: 1px dashed var(--ochre); border-radius: 4px; }
+.gadget { text-transform: none; font-family: var(--font-body); font-weight: 400; letter-spacing: 0; }
+.gadget b { font-family: var(--font-label); font-size: 1rem; letter-spacing: 0.03em; }
+
+/* Gadget charges: indicator lamps */
+.charges { display: inline-flex; gap: 4px; vertical-align: middle; letter-spacing: 0; }
+.lamp { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--ink) 45%, transparent); background: color-mix(in srgb, var(--ink) 10%, var(--panel)); }
+.lamp.lit { background: radial-gradient(circle at 35% 35%, #fff6c9, var(--ochre) 70%); border-color: var(--ochre); box-shadow: 0 0 6px color-mix(in srgb, var(--ochre) 70%, transparent); }
+
+/* Bench sections */
+.meld, .unused, .locked-meld { border-radius: 4px; }
+.price { font-family: var(--font-display); font-weight: 400; border-radius: 3px; color: var(--ochre); }
+.build-preview { border-radius: 4px; border: 1px dashed var(--line); }
+.summary h2 { font-size: 1.6rem; }
+.summary.won h2 { color: var(--ok); }
+.summary.lost h2 { color: var(--warn); }
+
+@media (prefers-reduced-motion: reduce) {
+  .card, button { transition: none; }
+  .card.clickable:hover, .card.selected { transform: none; }
+}
+@media (max-width: 480px) {
+  .card { width: 66px; height: 94px; }
+  .card .gauge { font-size: 1.75rem; }
+}
+.reqs { list-style: none; padding-left: 0; display: grid; gap: 6px; }
+.map-node:disabled { opacity: 0.78; }
+.map-node.visited { opacity: 0.6; }
