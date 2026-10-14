@@ -3,6 +3,7 @@ import { type ShopSlot, partName } from '../engine';
 import { CardView } from './CardView';
 import { useGame } from './context';
 import { GadgetPanel } from './GadgetPanel';
+import { UpgradePanel } from './UpgradePanel';
 
 export function ShopView() {
   const { state, me, engine, act, playerId } = useGame();
@@ -89,6 +90,7 @@ export function ShopView() {
         </button>
       </div>
       {state.config.battleStyle === 'rummy' && <GadgetPanel />}
+      <UpgradePanel />
       <DeckList />
     </div>
   );

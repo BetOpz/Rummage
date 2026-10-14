@@ -59,6 +59,17 @@ export interface DuelConfig {
   bossTwists: number;
 }
 
+export interface QualityConfig {
+  /** Extra gadget charges per grade above 1 (rounded down). */
+  chargesPerGrade: number;
+  /** Names for grades above the best material (reached with gems). */
+  extraGradeNames: string[];
+  /** Parts of the next grade (or better) needed to upgrade an item one grade. */
+  upgradeParts: number;
+  /** Credits per upgrade, multiplied by the new grade. */
+  upgradeCreditsPerGrade: number;
+}
+
 export interface GameConfig {
   /** 'solo' is the MVP; 'versus' is reserved for multiplayer. */
   mode: 'solo' | 'versus';
@@ -75,6 +86,7 @@ export interface GameConfig {
    */
   battleStyle: 'rummy' | 'cards';
   duel: DuelConfig;
+  quality: QualityConfig;
   map: MapConfig;
   battle: BattleConfig;
   tiers: number;
@@ -131,6 +143,12 @@ export const defaultConfig: GameConfig = {
     minionsPerBattle: [1, 2],
     currencyReward: { battle: 3, elite: 6, boss: 12 },
     bossTwists: 1,
+  },
+  quality: {
+    chargesPerGrade: 0.34,
+    extraGradeNames: ['Jewelled', 'Masterwork'],
+    upgradeParts: 3,
+    upgradeCreditsPerGrade: 1,
   },
   map: {
     rows: 8,
@@ -198,6 +216,7 @@ export function makeConfig(overrides: Partial<GameConfig> = {}): GameConfig {
     startingDeck: { ...defaultConfig.startingDeck, ...overrides.startingDeck },
     deadwood: { ...defaultConfig.deadwood, ...overrides.deadwood },
     pivotCost: { ...defaultConfig.pivotCost, ...overrides.pivotCost },
+    quality: { ...defaultConfig.quality, ...overrides.quality },
     duel: {
       ...defaultConfig.duel,
       ...overrides.duel,

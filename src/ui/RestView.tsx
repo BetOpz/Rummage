@@ -1,4 +1,6 @@
+import { itemMaxCharges } from '../engine';
 import { useGame } from './context';
+import { UpgradePanel } from './UpgradePanel';
 import { ItemChip } from './ItemChip';
 
 export function RestView() {
@@ -7,12 +9,12 @@ export function RestView() {
   if (state.config.battleStyle === 'rummy') {
     const flat = me.items.filter((it) => {
       const g = engine.content.items.find((d) => d.id === it.itemId)?.gadget;
-      return g && (it.charges ?? 0) < g.charges;
+      return g && (it.charges ?? 0) < (itemMaxCharges(engine.content, state.config, it) ?? 0);
     });
     return (
       <div className="panel summary">
         <h2>Rest</h2>
-        <p className="muted">Recharge one gadget for free, then head back to the map.</p>
+        <p className="muted">Recharge one gadget for free (that ends your rest), or upgrade items at the bench below first.</p>
         {flat.length === 0 ? (
           <p className="muted">All your gadgets are fully charged.</p>
         ) : (
@@ -30,6 +32,7 @@ export function RestView() {
             })}
           </ul>
         )}
+        <UpgradePanel />
         <button onClick={() => act({ type: 'REST', playerId, choice: 'leave' })}>Move on</button>
       </div>
     );

@@ -13,6 +13,7 @@
 import type { MeldToken } from './melds';
 import type { Rng } from './rng';
 import { damageEnemy, drawBattleCards, livingEnemies } from './battleZones';
+import { byGrade, commonCategories, randomCategory } from './quality';
 import type { BattleState, CardId, ContentPack, DuelState, EffectRef, GameState, MeldRole, PlayerState, RoundRules } from './types';
 import {
   addToDeck,
@@ -51,6 +52,8 @@ export interface GadgetContext extends EffectContext {
   duel: DuelState;
   /** Opponent index chosen by the player, if the gadget needs one. */
   target?: number;
+  /** Grade of the item used; scales `perGrade` params. */
+  grade: number;
 }
 
 export interface EffectHandler {
@@ -164,7 +167,7 @@ const addRandomParts: EffectHandler = {
   onPurchase(ctx, params) {
     const { state, player, rng, content } = ctx;
     for (let i = 0; i < num(params.count, 3); i++) {
-      const category = rng.pick(content.categories).id;
+      const category = randomCategory(content, rng).id;
       const gauge = rng.int(state.config.gaugeMin, state.config.gaugeMax);
       const card = createPart(state, content, player.id, category, gauge);
       addToDeck(state, card);
@@ -204,7 +207,7 @@ const modifyRules: EffectHandler = {
 const banCategory: EffectHandler = {
   resolveParams(params, rng, content) {
     if (params.category === 'random' || params.category === undefined) {
-      return { ...params, category: rng.pick(content.categories).id };
+      return { ...params, category: rng.pick(commonCategories(content)).id };
     }
     return params;
   },
@@ -216,7 +219,7 @@ const banCategory: EffectHandler = {
 
 const grantTempCard: EffectHandler = {
   onGadget(ctx, params) {
-    for (let i = 0; i < num(params.count, 1); i++) {
+    for (let i = 0; i < byGrade(num(params.count, 1), params.perGrade, ctx.grade); i++) {
       const card = createSpecial(ctx.state, ctx.player.id, String(params.specialId), true);
       ctx.duel.hand.push(card.id);
     }
@@ -312,8 +315,9 @@ function gadgetTarget(ctx: GadgetContext) {
 const skipTurn: EffectHandler = {
   onGadget(ctx, params) {
     const opp = gadgetTarget(ctx);
-    opp.skip += num(params.turns, 1);
-    log(ctx.state, `${opp.name} is frozen in time.`);
+    const turns = byGrade(num(params.turns, 1), params.perGrade, ctx.grade);
+    opp.skip += turns;
+    log(ctx.state, `${opp.name} is frozen in time for ${turns} turn${turns === 1 ? '' : 's'}.`);
   },
 };
 
@@ -325,13 +329,13 @@ const revealHands: EffectHandler = {
 
 const extraDraws: EffectHandler = {
   onGadget(ctx, params) {
-    ctx.duel.rules.drawLimit += num(params.amount, 1);
+    ctx.duel.rules.drawLimit += byGrade(num(params.amount, 1), params.perGrade, ctx.grade);
   },
 };
 
 const drawExtra: EffectHandler = {
   onGadget(ctx, params) {
-    for (let i = 0; i < num(params.amount, 1); i++) {
+    for (let i = 0; i < byGrade(num(params.amount, 1), params.perGrade, ctx.grade); i++) {
       const id = ctx.duel.drawPile.pop();
       if (id) ctx.duel.hand.push(id);
     }
@@ -339,12 +343,15 @@ const drawExtra: EffectHandler = {
 };
 
 const stealCard: EffectHandler = {
-  onGadget(ctx) {
+  onGadget(ctx, params) {
     const opp = gadgetTarget(ctx);
     assertRule(opp.hand.length > 0, `${opp.name} has no cards`);
-    const [id] = opp.hand.splice(ctx.rng.int(0, opp.hand.length - 1), 1);
-    ctx.duel.hand.push(id);
-    log(ctx.state, `You snatch ${cardLabel(ctx.state, ctx.content, id)} from ${opp.name}.`);
+    const count = byGrade(num(params.count, 1), params.perGrade, ctx.grade);
+    for (let i = 0; i < count && opp.hand.length > 0; i++) {
+      const [id] = opp.hand.splice(ctx.rng.int(0, opp.hand.length - 1), 1);
+      ctx.duel.hand.push(id);
+      log(ctx.state, `You snatch ${cardLabel(ctx.state, ctx.content, id)} from ${opp.name}.`);
+    }
   },
 };
 
@@ -352,8 +359,8 @@ const raiseStakes: EffectHandler = {
   onGadget(ctx, params) {
     for (const opp of ctx.duel.opponents) {
       const def = ctx.content.minions.find((m) => m.id === opp.defId);
-      for (let i = 0; i < num(params.count, 1); i++) {
-        const category = ctx.rng.pick(def?.deck.categories ?? ctx.content.categories.map((c) => c.id));
+      for (let i = 0; i < byGrade(num(params.count, 1), params.perGrade, ctx.grade); i++) {
+        const category = def?.deck.categories ? ctx.rng.pick(def.deck.categories) : randomCategory(ctx.content, ctx.rng).id;
         const [lo, hi] = def?.deck.gauges ?? [ctx.state.config.gaugeMin, ctx.state.config.gaugeMax];
         const card = createPart(ctx.state, ctx.content, ctx.player.id, category, ctx.rng.int(lo, hi), true);
         ctx.duel.pot.push(card.id);

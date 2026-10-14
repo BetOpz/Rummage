@@ -34,6 +34,7 @@ import {
   runHook,
 } from './effects';
 import { findNode, generateMap, reachableNodes } from './map';
+import { checkUpgrade, commonCategories, gadgetCharges, gradeOf, materialName, randomCategory } from './quality';
 import { type MeldRules, type MeldToken, type MeldUnit, checkBuild, findBuild, validateMeld } from './melds';
 import { Rng, seedToState } from './rng';
 import type {
@@ -146,7 +147,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     }
 
     const deckCfg = config.startingDeck;
-    const categories = deckCfg.categories === 'all' ? content.categories.map((c) => c.id) : deckCfg.categories;
+    const categories = deckCfg.categories === 'all' ? commonCategories(content).map((c) => c.id) : deckCfg.categories;
     for (const player of state.players) {
       for (const category of categories) {
         for (let g = deckCfg.gauges[0]; g <= deckCfg.gauges[1]; g++) {
@@ -474,6 +475,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     assertRule(check.ok, check.reason ?? 'Build does not match the blueprint');
 
     const used = groups.flat();
+    const grade = gradeOf(state, content, used);
     for (const id of used) destroyCard(state, id);
     const ctx = context(state, player);
     runHook(effects, 'onBuild', itemEffects(content, player), ctx);
@@ -485,10 +487,12 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       builtFrom: used.length,
       level: bp.tier + (bp.boss ? 1 : 0),
       usesLeft: itemDef?.battle?.uses ?? null,
-      charges: itemDef?.gadget?.charges ?? null,
+      charges: itemDef?.gadget ? gadgetCharges(itemDef.gadget, grade, state.config) : null,
+      grade,
+      material: materialName(content, state.config, grade),
     });
     const item = content.items.find((i) => i.id === bp.itemId);
-    log(state, `${player.name} builds ${bp.name}! ${used.length} parts become ${item?.name ?? bp.itemId}.`);
+    log(state, `${player.name} builds ${bp.name}! ${used.length} parts become a ${materialName(content, state.config, grade)} ${item?.name ?? bp.itemId}.`);
     endRound(state, player.id);
   }
 
@@ -653,7 +657,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     const slots: ShopSlot[] = [];
     const [gLo, gHi] = pool.gaugeRange ?? [state.config.gaugeMin, state.config.gaugeMax];
     for (let i = 0; i < pool.partSlots; i++) {
-      const cat = rng.weightedPick(content.categories, (c) => pool.categoryWeights?.[c.id] ?? 1);
+      const cat = randomCategory(content, rng, pool.categoryWeights);
       slots.push({ kind: 'part', category: cat.id, gauge: rng.int(gLo, gHi), price: pool.partPrice, sold: false });
     }
     const specials = content.specials.filter((s) => (s.minTier ?? 1) <= tier);
@@ -867,13 +871,34 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     assertRule(item, 'Choose a gadget to recharge');
     const gadget = content.items.find((d) => d.id === item.itemId)?.gadget;
     assertRule(gadget, 'That item has no gadget');
-    assertRule((item.charges ?? 0) < gadget.charges, `${gadget.name} is already fully charged`);
+    const max = gadgetCharges(gadget, item.grade, state.config);
+    assertRule((item.charges ?? 0) < max, `${gadget.name} is already fully charged`);
     if (!free) {
       assertRule(player.currency >= gadget.rechargeCost, `${gadget.rechargeName} costs ${gadget.rechargeCost} credits`);
       player.currency -= gadget.rechargeCost;
     }
-    item.charges = gadget.charges;
+    item.charges = max;
     log(state, `${gadget.rechargeName}: ${gadget.name} is fully charged${free ? ' (free at the rest stop)' : ` for ${gadget.rechargeCost} credits`}.`);
+  }
+
+  function upgradeItem(state: GameState, playerId: PlayerId, itemUid: string, cardIds: CardId[]) {
+    assertRule(state.phase === 'shop' || state.phase === 'rest', 'Upgrade items at a shop or a rest stop');
+    const player = getPlayer(state, playerId);
+    const item = player.items.find((i) => i.uid === itemUid);
+    assertRule(item, 'Choose an item to upgrade');
+    assertRule(cardIds.every((id) => player.deck.includes(id)), 'Use cards from your parts deck');
+    const check = checkUpgrade(state, content, state.config, item, cardIds);
+    assertRule(check.ok, check.reason ?? 'Those cards cannot upgrade this item');
+    assertRule(player.currency >= check.credits, `Upgrading costs ${check.credits} credits`);
+    player.currency -= check.credits;
+    for (const id of cardIds) destroyCard(state, id);
+    const gadget = content.items.find((d) => d.id === item.itemId)?.gadget;
+    const oldMax = gadget ? gadgetCharges(gadget, item.grade, state.config) : 0;
+    item.grade = check.newGrade;
+    item.material = materialName(content, state.config, item.grade);
+    if (gadget) item.charges = (item.charges ?? 0) + (gadgetCharges(gadget, item.grade, state.config) - oldMax);
+    const name = content.items.find((d) => d.id === item.itemId)?.name ?? item.itemId;
+    log(state, `${player.name} upgrades it to a ${item.material} ${name}.`);
   }
 
   function recharge(state: GameState, playerId: PlayerId, itemUid: string) {
@@ -979,6 +1004,9 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
         break;
       case 'RECHARGE':
         recharge(state, action.playerId, action.itemUid);
+        break;
+      case 'UPGRADE_ITEM':
+        upgradeItem(state, action.playerId, action.itemUid, action.cardIds);
         break;
       case 'DUEL_STAKE':
         placeStake(state, content, duelPlayer(state, action.playerId), action.cardId, new Rng(state));

@@ -28,12 +28,20 @@ export interface CategoryDef {
   color: string;
   /** Flavour nouns, indexed by gauge (wraps if shorter than the gauge range). */
   nouns: string[];
+  /** Material grade: items built mostly from this material get this grade. */
+  grade: number;
+  /** Rare materials never appear in starting decks or minion decks. */
+  rare?: boolean;
+  /** Relative odds when a random part is made (shops, rewards, pots). Default 1. */
+  weight?: number;
 }
 
 export interface SpecialDef {
   id: string;
   name: string;
   text: string;
+  /** Gems: grades added to an item built with this card. */
+  gradeBonus?: number;
   price: number;
   /** Relative weight in shop pools. */
   weight: number;
@@ -286,6 +294,10 @@ export interface ItemInstance {
   usesLeft: number | null;
   /** Gadget charges left; persist between duels (rummy-duel style). null = no gadget. */
   charges: number | null;
+  /** Material grade from the parts it was built with (1 = Wood ... 6 = Gold, gems add more). */
+  grade: number;
+  /** Material name shown before the item name, e.g. "Gold". */
+  material: string;
 }
 
 export interface LockedMeld {
@@ -589,6 +601,8 @@ export type GameAction =
   | { type: 'DUEL_DISCARD'; playerId: PlayerId; cardId: CardId }
   | { type: 'DUEL_GO_OUT'; playerId: PlayerId; groups: CardId[][] }
   | { type: 'USE_GADGET'; playerId: PlayerId; itemUid: string; target?: number }
-  | { type: 'RECHARGE'; playerId: PlayerId; itemUid: string };
+  | { type: 'RECHARGE'; playerId: PlayerId; itemUid: string }
+  /** Spend better-material parts (or a gem) and credits to raise an item one grade. */
+  | { type: 'UPGRADE_ITEM'; playerId: PlayerId; itemUid: string; cardIds: CardId[] };
 
 export type ActionType = GameAction['type'];

@@ -7,6 +7,7 @@
 import { battleCardDef, incomingDamage } from './battle';
 import { blueprintSize, getBlueprint } from './blueprints';
 import { reachableNodes } from './map';
+import { itemMaxCharges } from './quality';
 import type { Engine } from './game';
 import { type MeldToken, handProgress } from './melds';
 import type { CardId, GameAction, GameState, MeldRequirement, NodeType, PlayerId, PlayerState } from './types';
@@ -99,7 +100,7 @@ export function botAction(engine: Engine, state: GameState, playerId: PlayerId):
       // Pay to recharge gadgets when there is money to spare.
       for (const item of player.items) {
         const g = engine.content.items.find((d) => d.id === item.itemId)?.gadget;
-        if (g && (item.charges ?? 0) < g.charges && player.currency >= g.rechargeCost + 4) {
+        if (g && (item.charges ?? 0) < (itemMaxCharges(engine.content, state.config, item) ?? 0) && player.currency >= g.rechargeCost + 4) {
           return { type: 'RECHARGE', playerId, itemUid: item.uid };
         }
       }
@@ -131,7 +132,7 @@ export function botAction(engine: Engine, state: GameState, playerId: PlayerId):
       if (state.config.battleStyle === 'rummy') {
         const flat = player.items.find((i) => {
           const g = engine.content.items.find((d) => d.id === i.itemId)?.gadget;
-          return g && (i.charges ?? 0) < g.charges;
+          return g && (i.charges ?? 0) < (itemMaxCharges(engine.content, state.config, i) ?? 0);
         });
         return flat ? { type: 'REST', playerId, choice: 'recharge', itemUid: flat.uid } : { type: 'REST', playerId, choice: 'leave' };
       }

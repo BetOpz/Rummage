@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type CardId, type GameState, buildHints, describeRequirement, getBlueprint } from '../engine';
+import { type CardId, type GameState, buildHints, describeRequirement, gadgetCharges, getBlueprint, gradeOf, materialName } from '../engine';
 import { BlueprintPanel, hintText } from './BlueprintPanel';
 import { CardView } from './CardView';
 import { useGame } from './context';
@@ -288,6 +288,7 @@ export function RoundView() {
           <div className="muted small-text">{sel.length} cards selected.</div>
         )}
         {noBuildFound && <div className="sort-message">No complete build in your hand yet. Keep drawing.</div>}
+        {selBuild && <BuildPreview cardIds={selBuild.flat()} itemId={bp.itemId} />}
         <div className="melds">
           {bp.requirements.map((req, i) => {
             const cards = meldCards[i];
@@ -332,6 +333,27 @@ export function RoundView() {
           Build it! (parts are used up)
         </button>
       </div>
+    </div>
+  );
+}
+
+/** What the selected cards would make: material, grade and gadget charges. */
+function BuildPreview({ cardIds, itemId }: { cardIds: CardId[]; itemId: string }) {
+  const { state, engine } = useGame();
+  const grade = gradeOf(state, engine.content, cardIds);
+  const item = engine.content.items.find((i) => i.id === itemId);
+  const gadget = state.config.battleStyle === 'rummy' ? item?.gadget : undefined;
+  return (
+    <div className="build-preview">
+      This makes a <b className={`grade-text grade-${Math.min(grade, 7)}`}>{materialName(engine.content, state.config, grade)} {item?.name}</b>{' '}
+      <span className="muted">(grade {grade})</span>
+      {gadget && (
+        <>
+          {' '}
+          with <b>{gadgetCharges(gadget, grade, state.config)}</b> {gadget.name} charges
+        </>
+      )}
+      . <span className="muted">Better materials and gems make better items.</span>
     </div>
   );
 }

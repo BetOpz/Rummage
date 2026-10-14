@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { type CardId, type GameState, describeRequirement, meldHints, partName } from '../engine';
+import { type CardId, type GameState, describeRequirement, itemMaxCharges, meldHints, partName } from '../engine';
 import { hintText } from './BlueprintPanel';
+import { Charges } from './GadgetPanel';
 import { CardView } from './CardView';
 import { useGame } from './context';
 
@@ -209,7 +210,8 @@ function DuelTable() {
                 onClick={() => useGadget(it.uid, g!.target === 'opponent')}
                 title={g!.text}
               >
-                <b>{g!.name}</b> <span className="charges">{'●'.repeat(it.charges ?? 0)}{'○'.repeat(Math.max(0, g!.charges - (it.charges ?? 0)))}</span>
+                <b>{g!.name}</b> <Charges have={it.charges ?? 0} max={itemMaxCharges(engine.content, state.config, it) ?? 0} />
+                <span className="small-text muted">{it.material} {engine.content.items.find((d) => d.id === it.itemId)?.name}</span>
                 <span className="small-text muted">{g!.text}</span>
               </button>
             ))}

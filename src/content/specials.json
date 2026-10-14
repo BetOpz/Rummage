@@ -5,7 +5,14 @@
     "text": "Wild: counts as any part in a meld. Consumed when used in a build.",
     "price": 5,
     "weight": 3,
-    "effects": [{ "type": "meldRole", "params": { "role": "wild" } }]
+    "effects": [
+      {
+        "type": "meldRole",
+        "params": {
+          "role": "wild"
+        }
+      }
+    ]
   },
   {
     "id": "bulk_pack",
@@ -13,7 +20,15 @@
     "text": "In a set, counts as two copies of the set's part. Not usable in runs.",
     "price": 5,
     "weight": 2,
-    "effects": [{ "type": "meldRole", "params": { "role": "bulk", "slots": 2 } }]
+    "effects": [
+      {
+        "type": "meldRole",
+        "params": {
+          "role": "bulk",
+          "slots": 2
+        }
+      }
+    ]
   },
   {
     "id": "adaptor",
@@ -21,7 +36,14 @@
     "text": "Add to a meld: one part in that meld counts as an adjacent gauge or a different category.",
     "price": 4,
     "weight": 2,
-    "effects": [{ "type": "meldRole", "params": { "role": "adaptor" } }]
+    "effects": [
+      {
+        "type": "meldRole",
+        "params": {
+          "role": "adaptor"
+        }
+      }
+    ]
   },
   {
     "id": "toolbox",
@@ -31,7 +53,16 @@
     "weight": 2,
     "playable": true,
     "target": "none",
-    "effects": [{ "type": "drawChoice", "params": { "draw": 2, "keep": 1, "rest": "discard" } }]
+    "effects": [
+      {
+        "type": "drawChoice",
+        "params": {
+          "draw": 2,
+          "keep": 1,
+          "rest": "discard"
+        }
+      }
+    ]
   },
   {
     "id": "parts_catalogue",
@@ -41,7 +72,14 @@
     "weight": 2,
     "playable": true,
     "target": "none",
-    "effects": [{ "type": "reorderTop", "params": { "count": 3 } }]
+    "effects": [
+      {
+        "type": "reorderTop",
+        "params": {
+          "count": 3
+        }
+      }
+    ]
   },
   {
     "id": "scavenger",
@@ -51,7 +89,11 @@
     "weight": 2,
     "playable": true,
     "target": "discardCard",
-    "effects": [{ "type": "takeFromDiscard" }]
+    "effects": [
+      {
+        "type": "takeFromDiscard"
+      }
+    ]
   },
   {
     "id": "scrapyard",
@@ -62,6 +104,43 @@
     "playable": true,
     "consumeOnPlay": true,
     "target": "handCard",
-    "effects": [{ "type": "destroyCard" }]
+    "effects": [
+      {
+        "type": "destroyCard"
+      }
+    ]
+  },
+  {
+    "id": "ruby_bearing",
+    "name": "Ruby Bearing",
+    "text": "Wild. An item built with it is 1 grade better.",
+    "price": 7,
+    "weight": 0.8,
+    "gradeBonus": 1,
+    "effects": [
+      {
+        "type": "meldRole",
+        "params": {
+          "role": "wild"
+        }
+      }
+    ]
+  },
+  {
+    "id": "diamond_movement",
+    "name": "Diamond Movement",
+    "text": "Wild. An item built with it is 2 grades better.",
+    "price": 10,
+    "weight": 0.4,
+    "minTier": 2,
+    "gradeBonus": 2,
+    "effects": [
+      {
+        "type": "meldRole",
+        "params": {
+          "role": "wild"
+        }
+      }
+    ]
   }
 ]

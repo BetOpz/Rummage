@@ -16,6 +16,7 @@
 import { perTier } from '../config';
 import { type EffectRegistry, applyRuleModifiers, cardToken, getHandler, itemEffects } from './effects';
 import { type MeldRules, type MeldToken, checkBuild, findBuild, handProgress } from './melds';
+import { commonCategories, randomCategory } from './quality';
 import type { Rng } from './rng';
 import type {
   BossState,
@@ -44,7 +45,7 @@ function minionKind(kind: DuelKind): MinionDef['kind'] {
 }
 
 function randomFromDeck(def: MinionDef | undefined, content: ContentPack, state: GameState, rng: Rng): RewardOption {
-  const category = rng.pick(def?.deck.categories ?? content.categories.map((c) => c.id));
+  const category = def?.deck.categories ? rng.pick(def.deck.categories) : randomCategory(content, rng).id;
   const [lo, hi] = def?.deck.gauges ?? [state.config.gaugeMin, state.config.gaugeMax];
   return { kind: 'part', category, gauge: rng.int(lo, hi) };
 }
@@ -154,7 +155,7 @@ export function startDuel(
 
   const opponents: DuelOpponent[] = encounter.minions.map((id) => {
     const def = content.minions.find((m) => m.id === id)!;
-    const cats = def.deck.categories ?? content.categories.map((c) => c.id);
+    const cats = def.deck.categories ?? commonCategories(content).map((c) => c.id);
     const deck: CardId[] = [];
     for (const c of cats) {
       for (let g = def.deck.gauges[0]; g <= def.deck.gauges[1]; g++) {
@@ -461,7 +462,7 @@ export function useGadget(
   if (def.gadget.target === 'opponent') {
     assertRule(target !== undefined && duel.opponents[target], 'Choose an opponent');
   }
-  const ctx = { state, content, rng, player, duel, target };
+  const ctx = { state, content, rng, player, duel, target, grade: item.grade };
   for (const ref of def.gadget.effects) getHandler(effects, ref).onGadget?.(ctx, ref.params ?? {});
   item.charges = (item.charges ?? 1) - 1;
   log(state, `You use ${def.gadget.name}. ${item.charges} charge${item.charges === 1 ? '' : 's'} left.`);

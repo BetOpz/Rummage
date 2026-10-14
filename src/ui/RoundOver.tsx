@@ -12,8 +12,17 @@ export function RoundOver() {
       <h2>{mine.built ? `Built: ${bp?.name}` : 'Round failed'}</h2>
       {mine.built ? (
         <p>
-          New item: <b>{item?.name}</b> — {item?.text}
-          {item?.battle && (
+          New item: <b>
+            {me.items.at(-1)?.material} {item?.name}
+          </b>{' '}
+          — {item?.text}
+          {item?.gadget && state.config.battleStyle === 'rummy' && (
+            <>
+              <br />
+              Gadget: <b>{item.gadget.name}</b> — {item.gadget.text} ({me.items.at(-1)?.charges} charges)
+            </>
+          )}
+          {item?.battle && state.config.battleStyle === 'cards' && (
             <>
               <br />
               Battle card: <b>{item.battle.name}</b> ({item.battle.cost} energy) — {item.battle.text}

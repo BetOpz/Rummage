@@ -41,7 +41,7 @@ describe('content', () => {
   it('reports broken references', () => {
     const broken = {
       ...defaultContent,
-      blueprints: [{ id: 'x', name: 'X', tier: 1, itemId: 'nope', requirements: [{ type: 'set' as const, size: 3, category: 'gold' }] }],
+      blueprints: [{ id: 'x', name: 'X', tier: 1, itemId: 'nope', requirements: [{ type: 'set' as const, size: 3, category: 'unobtainium' }] }],
     };
     const problems = validateContent(broken, defaultEffects);
     expect(problems.some((p) => p.includes('unknown item'))).toBe(true);
@@ -53,7 +53,7 @@ describe('new game', () => {
   it('builds the starting deck and offers blueprints', () => {
     const s = engine.newGame({ seed: 's1' });
     const { gauges, copies, specials } = defaultConfig.startingDeck;
-    const parts = defaultContent.categories.length * (gauges[1] - gauges[0] + 1) * copies;
+    const parts = defaultContent.categories.filter((c) => !c.rare).length * (gauges[1] - gauges[0] + 1) * copies;
     expect(p1(s).deck).toHaveLength(parts + specials.length);
     expect(s.phase).toBe('blueprintSelect');
     expect(s.roundState!.offers).toHaveLength(defaultConfig.offersPerRound);
@@ -382,7 +382,7 @@ describe('bosses and progression', () => {
     const banned = p1(base).rules.bannedCategories;
     expect(banned).toHaveLength(1);
     const cat = banned[0];
-    const [a, b, c] = defaultContent.categories.filter((x) => x.id !== cat).map((x) => x.id);
+    const [a, b, c] = defaultContent.categories.filter((x) => x.id !== cat && !x.rare).map((x) => x.id);
     const { state, ids } = withHand(setTarget(base, 'go_kart'), [
       `${cat}:5`, `${a}:5`, `${b}:5`, `${c}:5`, `${a}:5`, `${b}:1`, `${b}:2`, `${b}:3`,
     ]);

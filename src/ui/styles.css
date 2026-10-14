@@ -243,3 +243,10 @@ h3 { margin: 14px 0 6px; font-size: 1rem; }
 .node-pot { font-size: 0.65rem; color: var(--warn); font-weight: 600; }
 .summary.won { border: 2px solid var(--ok); }
 .summary.lost { border: 2px solid var(--warn); }
+.build-preview { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--bg); }
+.upgrade-items { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.upgrade-items button { padding: 2px; border-radius: 999px; }
+.upgrade-items button.active { outline: 2px solid var(--accent); }
+.upgrade { display: grid; gap: 6px; }
+.item-chip.grade-5 { border-color: #8f9aa6; }
+.item-chip.grade-6, .item-chip.grade-7 { border-color: #d4a017; font-weight: 600; }

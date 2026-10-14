@@ -60,14 +60,15 @@
     },
     "gadget": {
       "name": "Stop Time",
-      "text": "An opponent misses its next turn.",
+      "text": "An opponent misses its next turn (2 turns at Gold grade or better).",
       "charges": 2,
       "target": "opponent",
       "effects": [
         {
           "type": "skipTurn",
           "params": {
-            "turns": 1
+            "turns": 1,
+            "perGrade": 0.2
           }
         }
       ],
@@ -119,7 +120,8 @@
           "type": "grantTempCard",
           "params": {
             "specialId": "duct_tape",
-            "count": 1
+            "count": 1,
+            "perGrade": 0.2
           }
         }
       ],
@@ -171,7 +173,8 @@
         {
           "type": "raiseStakes",
           "params": {
-            "count": 1
+            "count": 1,
+            "perGrade": 0.2
           }
         }
       ],
@@ -261,7 +264,8 @@
         {
           "type": "extraDraws",
           "params": {
-            "amount": 3
+            "amount": 3,
+            "perGrade": 0.5
           }
         }
       ],
@@ -304,7 +308,10 @@
       "target": "opponent",
       "effects": [
         {
-          "type": "stealCard"
+          "type": "stealCard",
+          "params": {
+            "perGrade": 0.2
+          }
         }
       ],
       "rechargeCost": 5,
@@ -348,7 +355,8 @@
         {
           "type": "drawExtra",
           "params": {
-            "amount": 2
+            "amount": 2,
+            "perGrade": 0.25
           }
         }
       ],

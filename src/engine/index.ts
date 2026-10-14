@@ -13,3 +13,4 @@ export { buildHints, meldHints, type BuildHints, type MeldHint } from './hints';
 export { generateMap, reachableNodes, findNode } from './map';
 export { battleCardDef, currentIntent, incomingDamage } from './battle';
 export { makeEncounter, findDuelOut } from './duel';
+export { checkUpgrade, gadgetCharges, gradeOf, itemMaxCharges, materialName } from './quality';

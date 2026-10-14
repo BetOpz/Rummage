@@ -1,6 +1,114 @@
 [
-  { "id": "wood", "name": "Wood", "color": "#a0703c", "nouns": ["Peg", "Dowel", "Slat", "Batten", "Plank", "Board", "Beam", "Post", "Joist", "Timber"] },
-  { "id": "iron", "name": "Iron", "color": "#6b7280", "nouns": ["Nail", "Rivet", "Bolt", "Hinge", "Bracket", "Gear", "Axle", "Plate", "Girder", "Anvil"] },
-  { "id": "brass", "name": "Brass", "color": "#c9a227", "nouns": ["Pin", "Screw", "Washer", "Nut", "Valve", "Fitting", "Cog", "Dial", "Bell", "Cylinder"] },
-  { "id": "copper", "name": "Copper", "color": "#b8622e", "nouns": ["Wire", "Tack", "Rod", "Coil", "Tube", "Pipe", "Spring", "Sheet", "Boiler", "Kettle"] }
+  {
+    "id": "wood",
+    "name": "Wood",
+    "color": "#a0703c",
+    "nouns": [
+      "Peg",
+      "Dowel",
+      "Slat",
+      "Batten",
+      "Plank",
+      "Board",
+      "Beam",
+      "Post",
+      "Joist",
+      "Timber"
+    ],
+    "grade": 1
+  },
+  {
+    "id": "iron",
+    "name": "Iron",
+    "color": "#6b7280",
+    "nouns": [
+      "Nail",
+      "Rivet",
+      "Bolt",
+      "Hinge",
+      "Bracket",
+      "Gear",
+      "Axle",
+      "Plate",
+      "Girder",
+      "Anvil"
+    ],
+    "grade": 2
+  },
+  {
+    "id": "brass",
+    "name": "Brass",
+    "color": "#c9a227",
+    "nouns": [
+      "Pin",
+      "Screw",
+      "Washer",
+      "Nut",
+      "Valve",
+      "Fitting",
+      "Cog",
+      "Dial",
+      "Bell",
+      "Cylinder"
+    ],
+    "grade": 4
+  },
+  {
+    "id": "copper",
+    "name": "Copper",
+    "color": "#b8622e",
+    "nouns": [
+      "Wire",
+      "Tack",
+      "Rod",
+      "Coil",
+      "Tube",
+      "Pipe",
+      "Spring",
+      "Sheet",
+      "Boiler",
+      "Kettle"
+    ],
+    "grade": 3
+  },
+  {
+    "id": "silver",
+    "name": "Silver",
+    "color": "#8f9aa6",
+    "nouns": [
+      "Pin",
+      "Spring",
+      "Hinge",
+      "Clasp",
+      "Spindle",
+      "Wheel",
+      "Balance",
+      "Case",
+      "Chain",
+      "Crown"
+    ],
+    "grade": 5,
+    "rare": true,
+    "weight": 0.25
+  },
+  {
+    "id": "gold",
+    "name": "Gold",
+    "color": "#d4a017",
+    "nouns": [
+      "Pin",
+      "Screw",
+      "Wheel",
+      "Spring",
+      "Pinion",
+      "Escapement",
+      "Balance",
+      "Case",
+      "Crown",
+      "Chronometer"
+    ],
+    "grade": 6,
+    "rare": true,
+    "weight": 0.1
+  }
 ]

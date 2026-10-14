@@ -12,6 +12,7 @@
 import { perTier } from '../config';
 import { damagePlayer, drawBattleCards, livingEnemies } from './battleZones';
 import { type EffectRegistry, getHandler } from './effects';
+import { randomCategory } from './quality';
 import type { Rng } from './rng';
 import type {
   BattleCard,
@@ -213,7 +214,7 @@ export function makeReward(state: GameState, content: ContentPack, kind: BattleK
     } else {
       options.push({
         kind: 'part',
-        category: rng.pick(content.categories).id,
+        category: randomCategory(content, rng).id,
         gauge: rng.int(state.config.gaugeMin, state.config.gaugeMax),
       });
     }

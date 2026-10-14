@@ -6,6 +6,8 @@ A rummy-style building deckbuilder (working title). Rummy is the whole game:
 2. **Workshops:** turn parts into **items** by completing a blueprint (a longer rummy round). The parts are used up for good. Items give a passive bonus (like Balatro jokers) and a **gadget** you trigger in duels, such as the Pocket Watch, which makes an opponent miss a turn.
 3. **The map:** each act is a branching route of duels, elites, workshops, shops and rests to a boss.
 
+**Materials and grades.** Each part category is a material with a grade: Wood 1, Iron 2, Copper 3, Brass 4, and the rare Silver 5 and Gold 6 (rare materials only come from shops, rewards and pots). An item's grade is the average grade of the parts it's built from, plus gem bonuses (Ruby Bearing +1, Diamond Movement +2). Higher grades give gadgets more charges and stronger effects; a Gold Pocket Watch stops time for 2 turns. At shops and rest stops you can **upgrade** an item one grade with 3 parts of the next material (or one gem) plus credits.
+
 Gadget charges do not refill between fights, so every use is a choice: spend it to win a minion's pot now, or save it for the boss. Recharging costs credits (each gadget has its own price, e.g. 5 to rewind the Pocket Watch), and a rest stop recharges one for free.
 
 This repo is a **playable framework**, not a finished game: a pure, tested rules engine, data-driven content, a minimal React UI for a single-player run, and an architecture that leaves room for multiplayer.
@@ -33,6 +35,7 @@ src/
     game.ts            createEngine(): newGame, reduce, applyAction, suggestBuild
     map.ts             act map generation and reachability
     duel.ts            rummy duels: stakes, pot, minion AI, going out, showdown
+    quality.ts         materials, item grades, gadget charges, upgrades
     battle.ts          card-battle layer (alternative style, config battleStyle: 'cards')
     battleZones.ts     low-level battle helpers (draw, damage)
     hints.ts           "what does my blueprint still need" hints
@@ -122,7 +125,8 @@ All of these are JSON edits only; `npm test` runs `validateContent` to catch bro
 - **Boss modifier**: add to `bosses.json`. It is picked at random for boss rounds (respecting `minTier`). Modifiers listed in `config.challengeModifiers` apply to every round, which is the hook for future difficulty ladders.
 - **Minion**: add to `minions.json` with `kind`, a `deck` spec, `stakes`, optional `greedy` and `minAct`/`maxAct`.
 - **Duel target**: add to `duelTargets.json`.
-- **Gadget**: add a `gadget` block to an item in `items.json` (`charges`, `rechargeCost`, `rechargeName`, `target`, `effects`).
+- **Gadget**: add a `gadget` block to an item in `items.json` (`charges`, `rechargeCost`, `rechargeName`, `target`, `effects`). Effect params can include `perGrade`, which adds `floor(perGrade × (grade − 1))`.
+- **Material**: add to `categories.json` with a `grade`; mark `rare: true` (and a low `weight`) to keep it out of starting and minion decks. Gems are specials with `gradeBonus`.
 - **Enemy** (card battles): add to `enemies.json` with `kind` (`normal` / `elite` / `boss`), `hp`, optional `minAct`/`maxAct`, and an `intents` cycle.
 - **Starter battle card**: add to `starterCards.json` and list it in `config.battle.starterDeck`.
 - **Item battle card**: add a `battle` block to the item in `items.json`.

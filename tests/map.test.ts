@@ -28,7 +28,7 @@ function enterNode(type: NodeType, seed = 'map', config = {}): GameState {
 function withItem(s: GameState, itemId: string, level = 1): GameState {
   const out = structuredClone(s);
   const def = defaultContent.items.find((i) => i.id === itemId)!;
-  me(out).items.push({ uid: `test-${itemId}`, itemId, fromBlueprint: 'go_kart', builtFrom: 7, level, usesLeft: def.battle?.uses ?? null, charges: null });
+  me(out).items.push({ uid: `test-${itemId}`, itemId, fromBlueprint: 'go_kart', builtFrom: 7, level, usesLeft: def.battle?.uses ?? null, charges: null, grade: 1, material: 'Wood' });
   return out;
 }
 

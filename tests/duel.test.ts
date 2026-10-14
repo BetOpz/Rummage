@@ -45,7 +45,7 @@ function setHand(s: GameState, specs: string[], who: 'player' | number = 'player
 function withGadget(s: GameState, itemId: string): GameState {
   const out = structuredClone(s);
   const def = defaultContent.items.find((i) => i.id === itemId)!;
-  me(out).items.push({ uid: `g-${itemId}`, itemId, fromBlueprint: 'x', builtFrom: 7, level: 1, usesLeft: null, charges: def.gadget!.charges });
+  me(out).items.push({ uid: `g-${itemId}`, itemId, fromBlueprint: 'x', builtFrom: 7, level: 1, usesLeft: null, charges: def.gadget!.charges, grade: 1, material: 'Wood' });
   return out;
 }
 
@@ -83,7 +83,7 @@ describe('duel setup', () => {
 
   it('item passives apply to duels (Workbench: +1 hand)', () => {
     let s = structuredClone(engine.newGame({ seed: 'wb' }));
-    me(s).items.push({ uid: 'w', itemId: 'workbench', fromBlueprint: 'x', builtFrom: 7, level: 1, usesLeft: null, charges: null });
+    me(s).items.push({ uid: 'w', itemId: 'workbench', fromBlueprint: 'x', builtFrom: 7, level: 1, usesLeft: null, charges: null, grade: 1, material: 'Wood' });
     s.map!.rows[0][0].type = 'battle';
     s = engine.reduce(s, { type: 'CHOOSE_NODE', playerId: P, nodeId: s.map!.rows[0][0].id });
     s = engine.reduce(s, { type: 'DUEL_STAKE', playerId: P, cardId: me(s).deck[0] });
