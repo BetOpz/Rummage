@@ -23,6 +23,8 @@ export interface MeldHint {
   /** For runs: the category and the gauges still missing. */
   category?: string;
   missingGauges?: number[];
+  /** For sets: how many matching cards you hold in total (can exceed the size). */
+  have?: number;
 }
 
 export interface BuildHints {
@@ -73,12 +75,14 @@ export function meldHints(
     if (req.type === 'set') {
       let best: Natural[] = [];
       let bestGauge = lo;
+      let bestHave = 0;
       // Ties go to the higher gauge: building with it sheds more deadwood.
       for (let g = lo; g <= hi; g++) {
         const matching = naturals.filter((n) => n.gauge === g && (!req.category || n.category === req.category));
         if (matching.length >= best.length && matching.length > 0) {
           best = matching.slice(0, req.size);
           bestGauge = g;
+          bestHave = matching.length;
         }
       }
       const ids = best.map((n) => n.id);
@@ -98,7 +102,7 @@ export function meldHints(
         }
       }
       naturals = naturals.filter((n) => !ids.includes(n.id));
-      hint = { requirement: req, cardIds: ids, filled: Math.min(filled, req.size), gauge: best.length ? bestGauge : undefined };
+      hint = { requirement: req, cardIds: ids, filled: Math.min(filled, req.size), gauge: best.length ? bestGauge : undefined, have: bestHave };
     } else {
       const categories = req.category ? [req.category] : [...new Set(naturals.map((n) => n.category))];
       let best: { cards: Natural[]; category: string; start: number } | null = null;

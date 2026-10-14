@@ -49,3 +49,13 @@ describe('build hints for selected cards', () => {
     expect(partial.melds[1].filled).toBe(0);
   });
 });
+
+describe('spare cards in a set', () => {
+  it('reports how many matching cards you hold, even past the size needed', () => {
+    // Clockwork Toy: run of 4 + set of 3. Four 2s in hand.
+    const { hints } = hintsFor('clockwork_toy', ['brass:2', 'wood:2', 'iron:2', 'copper:2', 'copper:5', 'copper:7', 'copper:8']);
+    const set = hints.melds[1];
+    expect(set).toMatchObject({ gauge: 2, filled: 3, have: 4 });
+    expect(hints.melds[0]).toMatchObject({ filled: 3, missingGauges: [6] });
+  });
+});

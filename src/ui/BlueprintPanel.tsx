@@ -48,7 +48,12 @@ export function hintText(h: MeldHint, catName: (id: string) => string): string {
   const need = req.size - h.filled;
   if (req.type === 'set') {
     if (h.gauge === undefined) return 'Collect cards that share a number.';
-    if (need <= 0) return `Complete: ${req.size} × ${h.gauge}.`;
+    if (need <= 0) {
+      const spare = (h.have ?? req.size) - req.size;
+      return spare > 0
+        ? `Complete. You have ${h.have} × ${h.gauge}; only ${req.size} are needed, so ${spare === 1 ? 'one is' : `${spare} are`} spare.`
+        : `Complete: ${req.size} × ${h.gauge}.`;
+    }
     const what = req.category ? `${catName(req.category)} ${h.gauge}` : `${h.gauge} (any category)`;
     return `You have ${h.filled} × ${h.gauge}. Need ${need} more ${what}.`;
   }
