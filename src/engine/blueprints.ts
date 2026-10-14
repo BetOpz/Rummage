@@ -21,13 +21,27 @@ export function blueprintsForTier(content: ContentPack, tier: number, boss: bool
   return [];
 }
 
+/**
+ * Plain-English requirement, explicit about the shape so it can't be
+ * mistaken for the other kind of meld:
+ *   "Set of 3 (same number, any category)"
+ *   "Run of 4 (Copper, numbers in a row)"
+ */
 export function describeRequirement(req: MeldRequirement, categoryName: (id: string) => string = (id) => id): string {
-  const parts = [`${req.type === 'set' ? 'Set' : 'Run'} of ${req.size}`];
-  if (req.category) parts.push(categoryName(req.category));
-  if (req.minGauge !== undefined && req.maxGauge !== undefined) parts.push(`gauge ${req.minGauge}-${req.maxGauge}`);
-  else if (req.minGauge !== undefined) parts.push(`gauge ${req.minGauge}+`);
-  else if (req.maxGauge !== undefined) parts.push(`gauge ≤${req.maxGauge}`);
-  return parts.join(', ');
+  const gauge =
+    req.minGauge !== undefined && req.maxGauge !== undefined
+      ? `numbers ${req.minGauge}-${req.maxGauge}`
+      : req.minGauge !== undefined
+        ? `numbers ${req.minGauge}+`
+        : req.maxGauge !== undefined
+          ? `numbers ${req.maxGauge} or less`
+          : null;
+  const details =
+    req.type === 'set'
+      ? ['same number', req.category ? `all ${categoryName(req.category)}` : 'any category']
+      : [req.category ? categoryName(req.category) : 'one category', 'numbers in a row'];
+  if (gauge) details.push(gauge);
+  return `${req.type === 'set' ? 'Set' : 'Run'} of ${req.size} (${details.join(', ')})`;
 }
 
 /** Requirements as the player may see them; hidden ones become null. */

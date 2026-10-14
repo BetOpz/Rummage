@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { type CardId, type GameState, describeRequirement, itemMaxCharges, meldHints, partName } from '../engine';
+import { type CardId, type GameState, itemMaxCharges, meldHints, partName } from '../engine';
 import { hintText } from './BlueprintPanel';
 import { Charges } from './GadgetPanel';
 import { CardView } from './CardView';
 import { useGame } from './context';
+import { ReqLabel } from './ReqLabel';
 
 const KIND_TITLE = { battle: 'Duel', elite: 'Elite duel', boss: 'Boss duel' } as const;
 
@@ -33,7 +34,14 @@ function DuelHeader() {
       </div>
       <div className="duel-target">
         <span className="eyebrow">First to go out wins</span>{' '}
-        <b>{target?.name}</b>: {duel.requirements.map((r) => describeRequirement(r, catName)).join(' + ')}
+        <b>{target?.name}</b>: you need all of these
+        <ul className="reqs">
+          {duel.requirements.map((r, i) => (
+            <li key={i}>
+              <ReqLabel req={r} />
+            </li>
+          ))}
+        </ul>
       </div>
       {duel.modifiers.map((m, i) => {
         const def = engine.content.bossModifiers.find((b) => b.id === m.modifierId);
@@ -265,7 +273,7 @@ function DuelTable() {
             return (
               <div key={i} className={`meld ${sel.length === 0 ? '' : done ? 'ok' : 'bad'}`}>
                 <div className="meld-head">
-                  <b>M{i + 1}</b> {describeRequirement(req, catName)}
+                  <b>M{i + 1}</b> <ReqLabel req={req} compact />
                 </div>
                 <div className="cards small">
                   {meldCards[i].map((id) => (

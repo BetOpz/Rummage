@@ -3,6 +3,7 @@ import { type CardId, type GameState, buildHints, describeRequirement, gadgetCha
 import { BlueprintPanel, hintText } from './BlueprintPanel';
 import { CardView } from './CardView';
 import { useGame } from './context';
+import { ReqLabel } from './ReqLabel';
 
 type SortMode = 'drawn' | 'gauge' | 'category';
 
@@ -297,7 +298,7 @@ export function RoundView() {
             return (
               <div key={i} className={`meld ${sel.length === 0 ? '' : done ? 'ok' : 'bad'}`}>
                 <div className="meld-head">
-                  <b>M{i + 1}</b> {describeRequirement(req, catName)}
+                  <b>M{i + 1}</b> <ReqLabel req={req} compact />
                 </div>
                 <div className="cards small">
                   {cards.map((id) => (

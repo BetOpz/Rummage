@@ -1,10 +1,10 @@
-import { type BlueprintDef, describeRequirement, visibleRequirements } from '../engine';
+import { type BlueprintDef, visibleRequirements } from '../engine';
 import { useGame } from './context';
+import { ReqLabel } from './ReqLabel';
 
 export function BlueprintCard({ bp, revealed, children }: { bp: BlueprintDef; revealed: boolean; children?: React.ReactNode }) {
   const { engine } = useGame();
   const item = engine.content.items.find((i) => i.id === bp.itemId);
-  const catName = (id: string) => engine.content.categories.find((c) => c.id === id)?.name ?? id;
   return (
     <div className={`blueprint ${bp.boss ? 'boss' : ''}`}>
       <div className="bp-head">
@@ -13,7 +13,7 @@ export function BlueprintCard({ bp, revealed, children }: { bp: BlueprintDef; re
       </div>
       <ul className="reqs">
         {visibleRequirements(bp, revealed).map((r, i) => (
-          <li key={i}>{r ? describeRequirement(r, catName) : <span className="muted">??? (hidden)</span>}</li>
+          <li key={i}>{r ? <ReqLabel req={r} /> : <span className="muted">??? (hidden until you choose it)</span>}</li>
         ))}
       </ul>
       <div className="item-reward">
