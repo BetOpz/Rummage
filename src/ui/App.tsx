@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { type GameAction, type Session, dispatch, engine, newSession } from '../engine';
+import { AppraiserView } from './AppraiserView';
 import { BattleView } from './BattleView';
 import { BlueprintSelect } from './BlueprintSelect';
 import { DuelView } from './DuelView';
@@ -17,7 +18,7 @@ import { clearLocal, discardedOldSave, downloadSave, loadFromLocal, readSaveFile
 const PLAYER_ID = 'p1';
 
 /** Shown on screen so it's easy to tell which version is running. Bump on each release. */
-export const BUILD_LABEL = 'build 20';
+export const BUILD_LABEL = 'build 21';
 
 function randomSeed(): string {
   return Math.random().toString(36).slice(2, 8);
@@ -140,6 +141,7 @@ export function App() {
         )}
         {showBook && <ScrapbookView onClose={() => setShowBook(false)} />}
         {state.phase === 'rummage' && <RummageView />}
+        {state.phase === 'appraiser' && <AppraiserView />}
         {state.phase === 'map' && <MapView />}
         {state.phase === 'battle' && <BattleView />}
         {(state.phase === 'duelAnte' || state.phase === 'duel' || state.phase === 'duelResult') && <DuelView />}

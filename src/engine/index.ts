@@ -16,7 +16,9 @@ export { makeEncounter, findDuelOut } from './duel';
 export {
   CATALOGUE_NAMES,
   STAGES,
+  appraisalCost,
   canMeetStake,
+  lotsAhead,
   catalogueFor,
   eligibleStakeCards,
   finishedGrade,

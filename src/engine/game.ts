@@ -24,7 +24,7 @@ import {
   useGadget,
   walkAway,
 } from './duel';
-import { applyRummage } from './scrapbook';
+import { applyRummage, appraise, examineLot } from './scrapbook';
 import {
   type EffectContext,
   type EffectRegistry,
@@ -781,6 +781,9 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       case 'rest':
         state.phase = 'rest';
         break;
+      case 'appraiser':
+        state.phase = 'appraiser';
+        break;
     }
   }
 
@@ -1047,6 +1050,17 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
         break;
       case 'RUMMAGE_DONE':
         rummageDone(state, action.playerId, action.destinations);
+        break;
+      case 'APPRAISE':
+        appraise(state, content, getPlayer(state, action.playerId), action.nodeId);
+        break;
+      case 'LEAVE_APPRAISER':
+        getPlayer(state, action.playerId);
+        assertRule(state.phase === 'appraiser', 'You are not at an appraiser');
+        state.phase = 'map';
+        break;
+      case 'EXAMINE_LOT':
+        examineLot(state, content, getPlayer(state, action.playerId), action.itemUid, action.nodeId);
         break;
       case 'DUEL_DRAW':
         duelPlayer(state, action.playerId);

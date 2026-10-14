@@ -4,6 +4,7 @@ import {
   type Lot,
   type RewardOption,
   catalogueFor,
+  itemMaxCharges,
   eligibleStakeCards,
   partName,
   pieceNoun,
@@ -115,6 +116,30 @@ export function StakeLine({ encounter, isBoss }: { encounter: Encounter; isBoss:
       </b>{' '}
       or better. You have {have}.
       {!ok && (isBoss ? ' Not enough: the boss will take any parts instead.' : ' Not enough to play: you can walk past.')}
+    </div>
+  );
+}
+
+/** Gadgets that can be used on a lot ahead (e.g. the Magnifier's Spyglass), one button each. */
+export function ExamineButtons({ nodeId, lot }: { nodeId: string; lot: Lot }) {
+  const { state, me, engine, act, playerId } = useGame();
+  if (state.phase !== 'map' || catalogueFor(engine.content, me, lot) === 1) return null;
+  const tools = me.items
+    .map((it) => ({ it, g: engine.content.items.find((d) => d.id === it.itemId)?.gadget }))
+    .filter((x) => x.g?.onLot);
+  if (tools.length === 0) return null;
+  return (
+    <div className="actions examine">
+      {tools.map(({ it, g }) => (
+        <button
+          key={it.uid}
+          disabled={(it.charges ?? 0) <= 0}
+          title={g!.onLot!.text}
+          onClick={() => act({ type: 'EXAMINE_LOT', playerId, itemUid: it.uid, nodeId })}
+        >
+          Examine with {g!.name} ({it.charges ?? 0}/{itemMaxCharges(engine.content, state.config, it) ?? 0})
+        </button>
+      ))}
     </div>
   );
 }

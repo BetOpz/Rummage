@@ -4,7 +4,8 @@
  * row, so every node is reachable; some nodes also link diagonally.
  *
  *   row 0            workshops (start by building something)
- *   rows 1..n-3      random mix by config weights (no elites in row 1)
+ *   rows 1..n-3      random mix by config weights (no elites, shops, rests
+ *                    or appraisers in row 1)
  *   row n-2          rest or master workshop (big blueprint + hazard)
  *   row n-1          the boss (a single node)
  *
@@ -52,12 +53,16 @@ function nodeType(row: number, rowCount: number, col: number, cfg: MapConfig, rn
   if (row === rowCount - 1) return 'boss';
   if (row === 0) return noWorkshops ? 'battle' : 'workshop';
   if (row === rowCount - 2) return col % 2 === 0 ? 'rest' : noWorkshops ? 'elite' : 'masterWorkshop';
-  const w = { ...cfg.weights };
+  // Saves from before appraisers existed have no weight for them.
+  const w = { ...cfg.weights, appraiser: cfg.weights.appraiser ?? 0 };
   if (noWorkshops) w.workshop = 0;
+  // Appraisers value lots, which only scrapbook runs have.
+  else w.appraiser = 0;
   if (row === 1) {
     w.elite = 0;
     w.shop = 0;
     w.rest = 0;
+    w.appraiser = 0;
   }
   const types = Object.keys(w) as (keyof typeof w)[];
   return rng.weightedPick(types, (t) => w[t]);

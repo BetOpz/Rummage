@@ -226,7 +226,12 @@
         }
       ],
       "rechargeCost": 3,
-      "rechargeName": "Polish"
+      "rechargeName": "Polish",
+      "onLot": {
+        "levels": 1,
+        "perGrade": 0.34,
+        "text": "On the map: examine a lot ahead to see one catalogue level more (two at Copper or better)."
+      }
     }
   },
   {

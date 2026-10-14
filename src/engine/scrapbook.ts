@@ -10,7 +10,7 @@
  */
 
 import type { GameConfig } from '../config';
-import { gadgetCharges, materialName } from './quality';
+import { byGrade, gadgetCharges, materialName } from './quality';
 import type { Rng } from './rng';
 import type {
   CardId,
@@ -20,6 +20,7 @@ import type {
   GameState,
   Lot,
   LotDef,
+  MapNode,
   PieceDestination,
   PlayerState,
   RewardOption,
@@ -122,6 +123,62 @@ export function pieceLabel(content: ContentPack, piece: RewardOption): string {
 export function pieceNoun(content: ContentPack, piece: RewardOption): string {
   if (piece.kind === 'special') return 'something small, wrapped in newspaper';
   return partName(content, piece.category!, piece.gauge!).split(' ').slice(1).join(' ').toLowerCase();
+}
+
+// ---------------------------------------------------------------------------
+// Seeing more of a lot: the appraiser and gadgets like the Magnifier
+// ---------------------------------------------------------------------------
+
+/** Duel stops later in this act whose lot you could still fight for. */
+export function lotsAhead(state: GameState): MapNode[] {
+  const map = state.map;
+  if (!map) return [];
+  const here = map.current ? map.rows.flat().find((n) => n.id === map.current) : undefined;
+  const fromRow = here ? here.row + 1 : 0;
+  return map.rows
+    .slice(fromRow)
+    .flat()
+    .filter((n) => n.encounter?.lot && !map.visited.includes(n.id));
+}
+
+/** Credits to have a lot fully itemised (0 when you can already see everything). */
+export function appraisalCost(state: GameState, content: ContentPack, player: PlayerState, lot: Lot): number {
+  return (catalogueFor(content, player, lot) - 1) * state.config.scrapbook.appraisePerLevel;
+}
+
+function lotAhead(state: GameState, nodeId: string): Lot {
+  const node = lotsAhead(state).find((n) => n.id === nodeId);
+  assertRule(node, 'Choose a lot further along this act');
+  return node.encounter!.lot!;
+}
+
+/** Appraiser stop: pay to have a lot ahead fully itemised. */
+export function appraise(state: GameState, content: ContentPack, player: PlayerState, nodeId: string): void {
+  assertRule(state.phase === 'appraiser', 'Find an appraiser on the map first');
+  const lot = lotAhead(state, nodeId);
+  const cost = appraisalCost(state, content, player, lot);
+  assertRule(cost > 0, `The ${lot.name} is already fully itemised`);
+  assertRule(player.currency >= cost, `Appraising the ${lot.name} costs ${cost} credits`);
+  player.currency -= cost;
+  lot.catalogue = 1;
+  log(state, `The appraiser itemises the ${lot.name} for ${cost} credits.`);
+}
+
+/** Spend a gadget charge on the map to see more of a lot ahead. */
+export function examineLot(state: GameState, content: ContentPack, player: PlayerState, itemUid: string, nodeId: string): void {
+  assertRule(state.phase === 'map', 'Examine lots from the map');
+  const item = player.items.find((i) => i.uid === itemUid);
+  assertRule(item, 'You do not have that item');
+  const gadget = content.items.find((d) => d.id === item.itemId)?.gadget;
+  assertRule(gadget?.onLot, `${gadget?.name ?? 'That item'} can't be used on a lot`);
+  assertRule((item.charges ?? 0) > 0, `${gadget.name} is out of charges`);
+  const lot = lotAhead(state, nodeId);
+  const seen = catalogueFor(content, player, lot);
+  assertRule(seen > 1, `You can already see everything in the ${lot.name}`);
+  const levels = byGrade(gadget.onLot.levels, gadget.onLot.perGrade, item.grade);
+  lot.catalogue = Math.max(1, lot.catalogue - levels) as CatalogueLevel;
+  item.charges = (item.charges ?? 1) - 1;
+  log(state, `You use ${gadget.name} on the ${lot.name}: it's now ${CATALOGUE_NAMES[catalogueFor(content, player, lot)].toLowerCase()}.`);
 }
 
 // ---------------------------------------------------------------------------

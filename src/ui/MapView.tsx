@@ -1,7 +1,7 @@
 import { type MapNode, type NodeType, reachableNodes } from '../engine';
 import { useGame } from './context';
 import { GadgetPanel } from './GadgetPanel';
-import { LotCard, StakeLine } from './LotView';
+import { ExamineButtons, LotCard, StakeLine } from './LotView';
 
 export const NODE_INFO: Record<NodeType, { label: string; glyph: string; text: string }> = {
   workshop: { label: 'Workshop', glyph: 'W', text: 'Rummy round: build a blueprint into an item.' },
@@ -11,6 +11,7 @@ export const NODE_INFO: Record<NodeType, { label: string; glyph: string; text: s
   shop: { label: 'Shop', glyph: '$', text: 'Buy parts, specials and deck thinning.' },
   rest: { label: 'Rest', glyph: 'R', text: 'Heal, or repair a worn item.' },
   boss: { label: 'Boss', glyph: '!', text: 'Beat it to finish the act.' },
+  appraiser: { label: 'Appraiser', glyph: 'A', text: 'Pay credits to have the lots ahead fully itemised.' },
 };
 
 /** Duel stops read differently from card battles. */
@@ -133,6 +134,7 @@ function NextStops() {
               </span>
             </div>
             <LotCard lot={n.encounter!.lot!} />
+            <ExamineButtons nodeId={n.id} lot={n.encounter!.lot!} />
             <StakeLine encounter={n.encounter!} isBoss={n.type === 'boss'} />
             <button className="primary" onClick={() => act({ type: 'CHOOSE_NODE', playerId, nodeId: n.id })}>
               Go for the {n.encounter!.lot!.name}

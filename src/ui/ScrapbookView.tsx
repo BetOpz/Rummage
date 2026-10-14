@@ -25,7 +25,7 @@ function Page({ itemId, highlight }: { itemId: string; highlight?: number[] }) {
         {def.gadget && (
           <>
             {' '}
-            <b>{def.gadget.name}:</b> {def.gadget.text}
+            <b>{def.gadget.name}:</b> {def.gadget.text}{def.gadget.onLot && ` ${def.gadget.onLot.text}`}
           </>
         )}
       </div>

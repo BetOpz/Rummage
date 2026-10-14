@@ -23,7 +23,7 @@ export interface MapConfig {
   /** Lanes across the map. */
   width: number;
   /** Relative odds of each node type in the middle rows. */
-  weights: { battle: number; workshop: number; elite: number; shop: number; rest: number };
+  weights: { battle: number; workshop: number; elite: number; shop: number; rest: number; appraiser: number };
 }
 
 export interface BattleConfig {
@@ -81,6 +81,8 @@ export interface ScrapbookConfig {
   };
   /** Relative odds of each catalogue level (1 itemised ... 4 sealed). */
   catalogueWeights: [number, number, number, number];
+  /** Appraiser stop: credits per catalogue level to have a lot fully itemised. */
+  appraisePerLevel: number;
   /** Per catalogue level above 1: extra pieces (fractional, rounded down) and rare-odds boost. */
   sealedBonus: { pieces: number; rareMultiplier: number };
 }
@@ -178,6 +180,7 @@ export const defaultConfig: GameConfig = {
     sellSpecial: 2,
     dig: { baseFraction: 0.5, quickBonus: 2, cleanHandMax: 2, cleanBonus: 1, bigMeldBonus: 1 },
     catalogueWeights: [3, 3, 2, 2],
+    appraisePerLevel: 2,
     sealedBonus: { pieces: 0.7, rareMultiplier: 0.4 },
   },
   duel: {
@@ -196,7 +199,7 @@ export const defaultConfig: GameConfig = {
   map: {
     rows: 8,
     width: 3,
-    weights: { battle: 45, workshop: 30, elite: 8, shop: 9, rest: 8 },
+    weights: { battle: 45, workshop: 30, elite: 8, shop: 9, rest: 8, appraiser: 7 },
   },
   battle: {
     startingHp: 60,

@@ -104,6 +104,11 @@ export interface GadgetDef {
   target?: 'none' | 'opponent';
   /** Effects implementing the `onGadget` hook. */
   effects: EffectRef[];
+  /**
+   * Can also be used on the map, on a lot ahead: improves its catalogue by
+   * `levels` (plus `floor(perGrade × (grade − 1))`) for one charge.
+   */
+  onLot?: { levels: number; perGrade?: number; text: string };
 }
 
 /** An opponent in a rummy duel (minion, elite or boss). */
@@ -429,7 +434,7 @@ export interface RoundResult {
 // Map and battles (the outer layer)
 // ---------------------------------------------------------------------------
 
-export type NodeType = 'workshop' | 'masterWorkshop' | 'battle' | 'elite' | 'shop' | 'rest' | 'boss';
+export type NodeType = 'workshop' | 'masterWorkshop' | 'battle' | 'elite' | 'shop' | 'rest' | 'boss' | 'appraiser';
 
 export interface MapNode {
   id: string;
@@ -609,6 +614,7 @@ export type GamePhase =
   | 'duel'
   | 'duelResult'
   | 'rummage'
+  | 'appraiser'
   | 'blueprintSelect'
   | 'playing'
   | 'roundOver'
@@ -679,6 +685,11 @@ export type GameAction =
   | { type: 'DUEL_WALK_AWAY'; playerId: PlayerId }
   /** Send each dug-out piece to a scrapbook page, the parts deck, or sell it. */
   | { type: 'RUMMAGE_DONE'; playerId: PlayerId; destinations: PieceDestination[] }
+  /** At an appraiser stop: pay to have a lot ahead fully itemised. */
+  | { type: 'APPRAISE'; playerId: PlayerId; nodeId: string }
+  | { type: 'LEAVE_APPRAISER'; playerId: PlayerId }
+  /** On the map: spend a gadget charge (e.g. the Magnifier) to see more of a lot ahead. */
+  | { type: 'EXAMINE_LOT'; playerId: PlayerId; itemUid: string; nodeId: string }
   | { type: 'DUEL_DRAW'; playerId: PlayerId; source: 'deck' | 'discard' }
   | { type: 'DUEL_DISCARD'; playerId: PlayerId; cardId: CardId }
   | { type: 'DUEL_GO_OUT'; playerId: PlayerId; groups: CardId[][] }

@@ -8,7 +8,7 @@ import { battleCardDef, incomingDamage } from './battle';
 import { blueprintSize, getBlueprint } from './blueprints';
 import { reachableNodes } from './map';
 import { itemMaxCharges } from './quality';
-import { eligibleStakeCards, suggestDestinations } from './scrapbook';
+import { appraisalCost, eligibleStakeCards, lotsAhead, suggestDestinations } from './scrapbook';
 import type { Engine } from './game';
 import { type MeldToken, handProgress } from './melds';
 import type { CardId, GameAction, GameState, MeldRequirement, NodeType, PlayerId, PlayerState } from './types';
@@ -133,6 +133,15 @@ export function botAction(engine: Engine, state: GameState, playerId: PlayerId):
       return { type: 'DUEL_STAKE', playerId, cardIds: cheap.slice(0, rule.count) };
     }
 
+    case 'appraiser': {
+      // Itemise the best-hidden lot we can afford, keeping a few credits spare.
+      const ahead = lotsAhead(state)
+        .map((n) => ({ n, cost: appraisalCost(state, engine.content, player, n.encounter!.lot!) }))
+        .filter((x) => x.cost > 0 && x.cost <= player.currency - 3)
+        .sort((a, b) => b.cost - a.cost);
+      return ahead[0] ? { type: 'APPRAISE', playerId, nodeId: ahead[0].n.id } : { type: 'LEAVE_APPRAISER', playerId };
+    }
+
     case 'rummage':
       return { type: 'RUMMAGE_DONE', playerId, destinations: suggestDestinations(state, engine.content, player, state.rummage!.pieces) };
 
@@ -238,6 +247,8 @@ function nodeScore(player: PlayerState, type: NodeType): number {
       return hurt || player.items.length < 3 ? 0 : 3;
     case 'boss':
       return 10;
+    case 'appraiser':
+      return player.currency >= 8 ? 3 : 0;
   }
 }
 

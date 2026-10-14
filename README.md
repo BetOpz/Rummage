@@ -7,7 +7,7 @@ A rummy-style collecting deckbuilder (working title). Rummy is the whole game:
 3. **Rummaging:** win and you dig into the lot. You always get the top half; going out quickly, with a clean hand or with a bigger meld than needed digs deeper. Rare pieces sit at the bottom.
 4. **The scrapbook:** each item has a page with a stage per material, Tin to Platinum. Found parts go onto pages (or into your deck, or get sold). Fill a stage and the item comes to life at that grade, or rises to it. Items give a passive bonus (like Balatro jokers) and a **gadget** you trigger in duels, such as the Pocket Watch, which makes an opponent miss a turn.
 
-**Catalogues.** A lot is itemised (every piece shown), partly itemised (some pieces exact, the rest only their metal), contents only (what the pieces are, not their metal) or sealed (only the odds). The less you can see, the bigger the lot and the better its odds. The Magnifier item improves every catalogue by one level.
+**Catalogues.** A lot is itemised (every piece shown), partly itemised (some pieces exact, the rest only their metal), contents only (what the pieces are, not their metal) or sealed (only the odds). The less you can see, the bigger the lot and the better its odds. To see more before you commit: an **Appraiser** stop itemises any lot ahead for credits (`config.scrapbook.appraisePerLevel` per hidden level, `APPRAISE`), and the Magnifier improves every catalogue by one level as a passive, while its Spyglass gadget can be spent on the map (`EXAMINE_LOT`) to improve one lot further (two levels at Copper grade or better). Any gadget can do this by adding an `onLot` block in `items.json`.
 
 **Materials and grades.** Each part category is a material, one per grade: Tin 1, Wood 2, Iron 3, Copper 4, then the rarer Brass 5, Silver 6, Gold 7 and Platinum 8 (starting decks are Tin to Copper). An item's grade is the highest scrapbook stage you've filled. Higher grades give gadgets more charges and stronger effects; a Gold Pocket Watch stops time for 2 turns.
 
@@ -172,6 +172,6 @@ Still to do for real multiplayer: per-player shop turns, hidden-information view
 
 - Placeholder art and flavour text only; the bot is a basic heuristic.
 - Duel balance and minion AI are a first pass. The card-battle style is kept as an alternative (`battleStyle: 'cards'`).
-- Ideas not built yet: luck/event stops, an Appraiser stop that itemises lots for credits, gadgets that reveal a lot before the fight, a scrapbook that carries over between runs, item art per stage.
+- Ideas not built yet: luck/event stops, a scrapbook that carries over between runs, item art per stage.
 - Hidden requirements are revealed when chosen (or by the Magnifier item); there is no "reveal" special card yet.
 - Balance (rewards, prices, draw limits) is a first pass.
