@@ -140,5 +140,33 @@ export function meldHints(
     melds[i] = hint;
   }
 
+  // Second pass: cards left over that still fit a meld join it (a set of 3
+  // can be laid as a set of 4, and a run can be extended at either end).
+  // Done after every meld has its minimum so no meld steals from another.
+  for (const hint of melds) {
+    const req = hint.requirement;
+    if (req.type === 'set' && hint.gauge !== undefined) {
+      const extra = naturals.filter((n) => n.gauge === hint.gauge && (!req.category || n.category === req.category));
+      hint.cardIds.push(...extra.map((n) => n.id));
+      naturals = naturals.filter((n) => !extra.includes(n));
+      hint.have = hint.filled + extra.length;
+    } else if (req.type === 'run' && hint.category && hint.missingGauges && hint.missingGauges.length === 0) {
+      const inRun = new Set(
+        hint.cardIds.map((id) => tokens.find((t) => t.id === id)).filter((t): t is Natural => t?.role === 'natural').map((t) => t.gauge),
+      );
+      if (inRun.size === 0) continue;
+      let lo = Math.min(...inRun);
+      let hi = Math.max(...inRun);
+      for (;;) {
+        const next = naturals.find((n) => n.category === hint.category && (n.gauge === lo - 1 || n.gauge === hi + 1));
+        if (!next) break;
+        hint.cardIds.push(next.id);
+        naturals = naturals.filter((n) => n !== next);
+        if (next.gauge === lo - 1) lo -= 1;
+        else hi += 1;
+      }
+    }
+  }
+
   return melds;
 }

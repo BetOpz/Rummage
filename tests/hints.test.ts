@@ -50,12 +50,26 @@ describe('build hints for selected cards', () => {
   });
 });
 
-describe('spare cards in a set', () => {
-  it('reports how many matching cards you hold, even past the size needed', () => {
+describe('melds bigger than needed', () => {
+  it('a set counts every matching card (four 2s for a set of 3)', () => {
     // Clockwork Toy: run of 4 + set of 3. Four 2s in hand.
     const { hints } = hintsFor('clockwork_toy', ['brass:2', 'wood:2', 'iron:2', 'copper:2', 'copper:5', 'copper:7', 'copper:8']);
     const set = hints.melds[1];
     expect(set).toMatchObject({ gauge: 2, filled: 3, have: 4 });
+    expect(set.cardIds).toHaveLength(4);
     expect(hints.melds[0]).toMatchObject({ filled: 3, missingGauges: [6] });
+  });
+
+  it('extra cards do not steal from another meld', () => {
+    // Run of 4 needs Copper 2; the set of 3 must use the other 2s.
+    const { hints } = hintsFor('clockwork_toy', ['copper:2', 'copper:3', 'copper:4', 'copper:5', 'brass:2', 'wood:2', 'iron:2']);
+    expect(hints.ready).toBe(true);
+    expect(hints.melds[0].cardIds).toHaveLength(4);
+    expect(hints.melds[1].cardIds).toHaveLength(3);
+  });
+
+  it('a run extends at either end', () => {
+    const { hints } = hintsFor('music_box', ['brass:3', 'brass:4', 'brass:5', 'brass:6', 'iron:9']);
+    expect(hints.melds[1].cardIds).toHaveLength(4);
   });
 });

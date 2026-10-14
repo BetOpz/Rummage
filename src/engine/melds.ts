@@ -257,6 +257,8 @@ export function findBuild(
   units: MeldUnit[],
   requirements: MeldRequirement[],
   rules: MeldRules,
+  /** Also add any leftover units that still fit a meld. */
+  useAll = false,
 ): string[][] | null {
   const failed = new Set<string>();
   const solve = (reqIndex: number, available: number[]): number[][] | null => {
@@ -277,6 +279,23 @@ export function findBuild(
   const all = units.map((_, i) => i);
   const solution = solve(0, all);
   if (!solution) return null;
+  if (useAll) {
+    // Lay down extra cards too, wherever they still fit (e.g. a set of 4
+    // for a "set of 3"), so chosen cards aren't left out for no reason.
+    const used = new Set(solution.flat());
+    for (const u of all) {
+      if (used.has(u)) continue;
+      for (let r = 0; r < solution.length; r++) {
+        if (units[u].lockedType && units[u].lockedType !== requirements[r].type) continue;
+        const trial = [...solution[r], u];
+        if (validateMeld(trial.flatMap((x) => units[x].tokens), requirements[r], rules).ok) {
+          solution[r] = trial;
+          used.add(u);
+          break;
+        }
+      }
+    }
+  }
   return solution.map((unitIdxs) => unitIdxs.flatMap((u) => units[u].tokens.map((t) => t.id)));
 }
 

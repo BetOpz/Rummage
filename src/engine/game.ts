@@ -1057,7 +1057,8 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       const tokens = m.cardIds.map((id) => cardToken(state, content, effects, id)).filter((t): t is MeldToken => !!t);
       units.push({ tokens, lockedType: m.type });
     }
-    return findBuild(units, bp.requirements as MeldRequirement[], meldRules(player));
+    // With chosen cards, keep every one that fits; otherwise use as few as possible.
+    return findBuild(units, bp.requirements as MeldRequirement[], meldRules(player), cardIds !== undefined);
   }
 
   return {
@@ -1068,7 +1069,8 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     applyAction,
     suggestBuild,
     meldRules,
-    suggestDuelOut: (state, cardIds) => (state.duel ? findDuelOut(state, content, effects, cardIds ?? state.duel.hand) : null),
+    suggestDuelOut: (state, cardIds) =>
+      state.duel ? findDuelOut(state, content, effects, cardIds ?? state.duel.hand, cardIds !== undefined) : null,
     token: (state, id) => cardToken(state, content, effects, id),
   };
 }

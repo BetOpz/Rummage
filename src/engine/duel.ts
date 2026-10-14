@@ -267,6 +267,7 @@ export function findDuelOut(
   content: ContentPack,
   effects: EffectRegistry,
   cardIds: CardId[],
+  useAll = false,
 ): CardId[][] | null {
   const duel = state.duel;
   if (!duel) return null;
@@ -274,7 +275,7 @@ export function findDuelOut(
     .map((id) => cardToken(state, content, effects, id))
     .filter((t): t is MeldToken => !!t)
     .map((t) => ({ tokens: [t] }));
-  return findBuild(units, duel.requirements, meldRulesOf(duel.rules));
+  return findBuild(units, duel.requirements, meldRulesOf(duel.rules), useAll);
 }
 
 export function duelGoOut(

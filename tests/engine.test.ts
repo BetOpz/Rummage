@@ -558,3 +558,16 @@ describe('sorting chosen cards into melds', () => {
     expect(engine.suggestBuild(state, 'p1', ids.slice(0, 4))).toBeNull();
   });
 });
+
+describe('building with more cards than needed', () => {
+  it('chosen extras that fit stay in the meld (four 2s for a set of 3)', () => {
+    const { state, ids } = withHand(setTarget(startedGame('extra'), 'clockwork_toy'), [
+      'copper:5', 'copper:6', 'copper:7', 'copper:8', 'brass:2', 'wood:2', 'iron:2', 'copper:2',
+    ]);
+    const groups = engine.suggestBuild(state, 'p1', ids)!;
+    expect(groups[1]).toHaveLength(4);
+    expect(engine.reduce(state, { type: 'BUILD', playerId: 'p1', groups }).phase).toBe('roundOver');
+    // Without a selection, the minimum is used.
+    expect(engine.suggestBuild(state, 'p1')![1]).toHaveLength(3);
+  });
+});
