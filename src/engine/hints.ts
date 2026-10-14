@@ -54,119 +54,150 @@ export function meldHints(
   rules: RoundRules,
   pool: CardId[],
 ): MeldHint[] {
-  const bp = { requirements };
   const tokens = pool.map((id) => engine.token(state, id)).filter((t): t is MeldToken => !!t);
-  let naturals = tokens.filter(
-    (t): t is Natural => t.role === 'natural' && !rules.bannedCategories.includes(t.category),
-  );
+  const naturals = tokens.filter((t): t is Natural => t.role === 'natural' && !rules.bannedCategories.includes(t.category));
   const enabled = (role: MeldToken['role']) => !rules.disabledMeldRoles.includes(role);
-  let wilds = enabled('wild') ? tokens.filter((t) => t.role === 'wild') : [];
-  let bulks = enabled('bulk') ? tokens.filter((t): t is Extract<MeldToken, { role: 'bulk' }> => t.role === 'bulk') : [];
+  const wilds = enabled('wild') ? tokens.filter((t) => t.role === 'wild') : [];
+  const bulks = enabled('bulk') ? tokens.filter((t): t is Extract<MeldToken, { role: 'bulk' }> => t.role === 'bulk') : [];
 
-  // Fill the largest melds first, as they are the hardest to complete.
-  const order = bp.requirements.map((r, i) => ({ r, i })).sort((a, b) => b.r.size - a.r.size);
-  const melds: MeldHint[] = new Array(bp.requirements.length);
+  // Every way each meld could be aimed: a set at a gauge, a run at a category
+  // and starting gauge. We try all combinations (and every order of claiming
+  // cards) and keep the one that places the most cards, so one meld never
+  // greedily takes a card another meld needed more.
+  const options = requirements.map((req) => meldOptions(req, rules, naturals));
+  const orders = permutations(requirements.map((_, i) => i));
 
-  for (const { r: req, i } of order) {
-    const lo = Math.max(rules.gaugeMin, req.minGauge ?? rules.gaugeMin);
-    const hi = Math.min(rules.gaugeMax, req.maxGauge ?? rules.gaugeMax);
-    let hint: MeldHint;
+  let best: { score: number; hints: MeldHint[] } | null = null;
+  const choice: (Aim | null)[] = new Array(requirements.length).fill(null);
+  const recurse = (i: number) => {
+    if (i === requirements.length) {
+      for (const order of orders) {
+        const hints = evaluate(requirements, choice, order, naturals, wilds, bulks);
+        const score = scoreOf(hints);
+        if (!best || score > best.score) best = { score, hints };
+      }
+      return;
+    }
+    for (const opt of options[i]) {
+      choice[i] = opt;
+      recurse(i + 1);
+    }
+  };
+  recurse(0);
+  return best!.hints;
+}
 
-    if (req.type === 'set') {
-      let best: Natural[] = [];
-      let bestGauge = lo;
-      let bestHave = 0;
-      // Ties go to the higher gauge: building with it sheds more deadwood.
-      for (let g = lo; g <= hi; g++) {
-        const matching = naturals.filter((n) => n.gauge === g && (!req.category || n.category === req.category));
-        if (matching.length >= best.length && matching.length > 0) {
-          best = matching.slice(0, req.size);
-          bestGauge = g;
-          bestHave = matching.length;
+type Aim = { type: 'set'; gauge: number } | { type: 'run'; category: string; start: number };
+
+function meldOptions(req: MeldRequirement, rules: RoundRules, naturals: Natural[]): (Aim | null)[] {
+  const lo = Math.max(rules.gaugeMin, req.minGauge ?? rules.gaugeMin);
+  const hi = Math.min(rules.gaugeMax, req.maxGauge ?? rules.gaugeMax);
+  const fits = (n: Natural) => !req.category || n.category === req.category;
+  const out: (Aim | null)[] = [null];
+  if (req.type === 'set') {
+    for (let g = lo; g <= hi; g++) if (naturals.some((n) => n.gauge === g && fits(n))) out.push({ type: 'set', gauge: g });
+  } else {
+    const cats = req.category ? [req.category] : [...new Set(naturals.map((n) => n.category))];
+    for (const c of cats) {
+      for (let start = lo; start + req.size - 1 <= hi; start++) {
+        if (naturals.some((n) => n.category === c && n.gauge >= start && n.gauge < start + req.size)) {
+          out.push({ type: 'run', category: c, start });
         }
       }
-      const ids = best.map((n) => n.id);
-      let filled = best.length;
-      if (filled > 0) {
-        for (const b of [...bulks]) {
-          if (filled >= req.size) break;
-          ids.push(b.id);
-          filled += b.slots;
-          bulks = bulks.filter((x) => x !== b);
-        }
-        for (const w of [...wilds]) {
-          if (filled >= req.size) break;
-          ids.push(w.id);
-          filled += 1;
-          wilds = wilds.filter((x) => x !== w);
-        }
-      }
-      naturals = naturals.filter((n) => !ids.includes(n.id));
-      hint = { requirement: req, cardIds: ids, filled: Math.min(filled, req.size), gauge: best.length ? bestGauge : undefined, have: bestHave };
+    }
+  }
+  return out;
+}
+
+function permutations(xs: number[]): number[][] {
+  if (xs.length <= 1) return [xs];
+  return xs.flatMap((x, i) => permutations([...xs.slice(0, i), ...xs.slice(i + 1)]).map((p) => [x, ...p]));
+}
+
+/** Claim cards for each meld in the given order, then spread wilds over the gaps. */
+function evaluate(
+  requirements: MeldRequirement[],
+  choice: (Aim | null)[],
+  order: number[],
+  naturals: Natural[],
+  wilds: MeldToken[],
+  bulks: Extract<MeldToken, { role: 'bulk' }>[],
+): MeldHint[] {
+  let free = naturals;
+  const hints: MeldHint[] = requirements.map((req) => ({ requirement: req, cardIds: [], filled: 0 }));
+  const runGaps: number[][] = requirements.map(() => []);
+
+  for (const i of order) {
+    const req = requirements[i];
+    const aim = choice[i];
+    const hint = hints[i];
+    if (!aim) continue;
+    if (aim.type === 'set') {
+      const cards = free.filter((n) => n.gauge === aim.gauge && (!req.category || n.category === req.category));
+      hint.cardIds = cards.map((n) => n.id);
+      hint.filled = cards.length;
+      hint.gauge = aim.gauge;
+      hint.have = cards.length;
+      free = free.filter((n) => !cards.includes(n));
     } else {
-      const categories = req.category ? [req.category] : [...new Set(naturals.map((n) => n.category))];
-      let best: { cards: Natural[]; category: string; start: number } | null = null;
-      for (const category of categories) {
-        for (let start = lo; start + req.size - 1 <= hi; start++) {
-          const cards: Natural[] = [];
-          for (let g = start; g < start + req.size; g++) {
-            const n = naturals.find((x) => x.category === category && x.gauge === g);
-            if (n) cards.push(n);
-          }
-          if (!best || cards.length > best.cards.length) best = { cards, category, start };
-        }
+      const byGauge = new Map<number, Natural>();
+      for (const n of free) if (n.category === aim.category && !byGauge.has(n.gauge)) byGauge.set(n.gauge, n);
+      const cards: Natural[] = [];
+      const gaps: number[] = [];
+      for (let g = aim.start; g < aim.start + req.size; g++) {
+        const n = byGauge.get(g);
+        if (n) cards.push(n);
+        else gaps.push(g);
       }
-      const ids = best ? best.cards.map((n) => n.id) : [];
-      let missing: number[] = [];
-      if (best && best.cards.length > 0) {
-        for (let g = best.start; g < best.start + req.size; g++) {
-          if (!best.cards.some((n) => n.gauge === g)) missing.push(g);
-        }
-        while (missing.length > 0 && wilds.length > 0) {
-          ids.push(wilds[0].id);
-          wilds = wilds.slice(1);
-          missing = missing.slice(1);
-        }
+      // A complete run can be extended at either end.
+      if (gaps.length === 0) {
+        for (let g = aim.start - 1; byGauge.has(g); g--) cards.push(byGauge.get(g)!);
+        for (let g = aim.start + req.size; byGauge.has(g); g++) cards.push(byGauge.get(g)!);
       }
-      naturals = naturals.filter((n) => !ids.includes(n.id));
-      hint = {
-        requirement: req,
-        cardIds: ids,
-        filled: Math.min(ids.length, req.size),
-        category: best && best.cards.length > 0 ? best.category : req.category,
-        missingGauges: best && best.cards.length > 0 ? missing : undefined,
-      };
-    }
-    melds[i] = hint;
-  }
-
-  // Second pass: cards left over that still fit a meld join it (a set of 3
-  // can be laid as a set of 4, and a run can be extended at either end).
-  // Done after every meld has its minimum so no meld steals from another.
-  for (const hint of melds) {
-    const req = hint.requirement;
-    if (req.type === 'set' && hint.gauge !== undefined) {
-      const extra = naturals.filter((n) => n.gauge === hint.gauge && (!req.category || n.category === req.category));
-      hint.cardIds.push(...extra.map((n) => n.id));
-      naturals = naturals.filter((n) => !extra.includes(n));
-      hint.have = hint.filled + extra.length;
-    } else if (req.type === 'run' && hint.category && hint.missingGauges && hint.missingGauges.length === 0) {
-      const inRun = new Set(
-        hint.cardIds.map((id) => tokens.find((t) => t.id === id)).filter((t): t is Natural => t?.role === 'natural').map((t) => t.gauge),
-      );
-      if (inRun.size === 0) continue;
-      let lo = Math.min(...inRun);
-      let hi = Math.max(...inRun);
-      for (;;) {
-        const next = naturals.find((n) => n.category === hint.category && (n.gauge === lo - 1 || n.gauge === hi + 1));
-        if (!next) break;
-        hint.cardIds.push(next.id);
-        naturals = naturals.filter((n) => n !== next);
-        if (next.gauge === lo - 1) lo -= 1;
-        else hi += 1;
-      }
+      hint.cardIds = cards.map((n) => n.id);
+      hint.filled = cards.length;
+      hint.category = aim.category;
+      runGaps[i] = gaps;
+      free = free.filter((n) => !cards.includes(n));
     }
   }
 
-  return melds;
+  // Wild and bulk cards fill what is still missing.
+  let w = [...wilds];
+  let b = [...bulks];
+  for (let i = 0; i < requirements.length; i++) {
+    const req = requirements[i];
+    const hint = hints[i];
+    if (hint.filled === 0) continue;
+    if (req.type === 'set') {
+      while (hint.filled < req.size && b.length > 0) {
+        hint.cardIds.push(b[0].id);
+        hint.filled += b[0].slots;
+        b = b.slice(1);
+      }
+    }
+    while (hint.filled < req.size && w.length > 0) {
+      hint.cardIds.push(w[0].id);
+      hint.filled += 1;
+      w = w.slice(1);
+      if (req.type === 'run') runGaps[i] = runGaps[i].slice(1);
+    }
+    if (req.type === 'run') hint.missingGauges = runGaps[i];
+    if (req.type === 'set') hint.have = hint.filled;
+  }
+  for (const hint of hints) hint.filled = Math.min(hint.filled, hint.requirement.size);
+  return hints;
+}
+
+/** Most melds complete, then most required slots filled, then most cards used. */
+function scoreOf(hints: MeldHint[]): number {
+  let complete = 0;
+  let filled = 0;
+  let cards = 0;
+  for (const h of hints) {
+    if (h.filled >= h.requirement.size) complete += 1;
+    filled += h.filled;
+    cards += h.cardIds.length;
+  }
+  return complete * 1_000_000 + filled * 1_000 + cards;
 }

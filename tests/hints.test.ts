@@ -73,3 +73,25 @@ describe('melds bigger than needed', () => {
     expect(hints.melds[1].cardIds).toHaveLength(4);
   });
 });
+
+describe('hints pick the best split across melds', () => {
+  it('uses all four 2s for the set and builds the run elsewhere (screenshot hand)', () => {
+    const { hints } = hintsFor('clockwork_toy', [
+      'brass:2', 'wood:2', 'iron:2', 'copper:2', 'copper:4', 'copper:5', 'wood:6',
+      'copper:7', 'iron:7', 'copper:7', 'copper:8', 'brass:8',
+    ]);
+    const [run, set] = hints.melds;
+    expect(set).toMatchObject({ gauge: 2, have: 4, filled: 3 });
+    expect(set.cardIds).toHaveLength(4);
+    expect(run).toMatchObject({ category: 'copper', filled: 3, missingGauges: [6] });
+  });
+
+  it('first screenshot hand: four 2s and a Copper 5-7-8 run needing 6', () => {
+    const { hints } = hintsFor('clockwork_toy', [
+      'brass:2', 'wood:2', 'iron:2', 'copper:2', 'iron:3', 'wood:3', 'copper:5', 'iron:6', 'wood:6', 'copper:7', 'copper:8',
+    ]);
+    const [run, set] = hints.melds;
+    expect(set).toMatchObject({ gauge: 2, have: 4 });
+    expect(run).toMatchObject({ category: 'copper', missingGauges: [6] });
+  });
+});
