@@ -1,37 +1,24 @@
+import { useState } from 'react';
 import {
-  CATALOGUE_NAMES,
   type Encounter,
+  type GameAction,
   type Lot,
+  type Parcel,
   type RewardOption,
-  catalogueFor,
-  itemMaxCharges,
   eligibleStakeCards,
+  gadgetOptions,
+  itemMaxCharges,
   partName,
-  pieceNoun,
-  pieceVisibility,
+  sharpened,
+  viewParcel,
 } from '../engine';
 import { useGame } from './context';
 
-/** A found piece (not yet a card), shown as a small tag. `show` hides what the catalogue doesn't reveal. */
-export function PieceView({ piece, show = 'full' }: { piece: RewardOption; show?: ReturnType<typeof pieceVisibility> }) {
+/** A piece (not yet a card), shown as a small tag. */
+export function PieceView({ piece }: { piece: RewardOption }) {
   const { engine } = useGame();
-  if (show === 'hidden') {
-    return (
-      <div className="card piece hidden-piece" title="Sealed: you won't know until you open it">
-        <div className="gauge">?</div>
-      </div>
-    );
-  }
   if (piece.kind === 'special') {
     const def = engine.content.specials.find((s) => s.id === piece.specialId);
-    if (show !== 'full') {
-      return (
-        <div className="card piece hidden-piece" title="Something small, wrapped in newspaper">
-          <div className="gauge">?</div>
-          <div className="name">wrapped</div>
-        </div>
-      );
-    }
     return (
       <div className="card special piece" title={def?.text}>
         <div className="special-name">{def?.name}</div>
@@ -39,64 +26,226 @@ export function PieceView({ piece, show = 'full' }: { piece: RewardOption; show?
     );
   }
   const cat = engine.content.categories.find((c) => c.id === piece.category);
-  if (show === 'part') {
-    return (
-      <div className="card piece hidden-piece" title="Contents only: the metal isn't listed">
-        <div className="gauge">?</div>
-        <div className="name">{pieceNoun(engine.content, piece)}</div>
-      </div>
-    );
-  }
-  const metalOnly = show === 'metal';
   const noun = partName(engine.content, piece.category!, piece.gauge!).split(' ').slice(1).join(' ');
   return (
-    <div
-      className="card part piece"
-      data-cat={piece.category}
-      style={{ ['--cat' as string]: cat?.color ?? '#888' }}
-      title={metalOnly ? `A ${cat?.name} piece` : `${cat?.name} ${noun} ${piece.gauge}`}
-    >
-      <div className="gauge">{metalOnly ? '?' : piece.gauge}</div>
+    <div className="card part piece" data-cat={piece.category} style={{ ['--cat' as string]: cat?.color ?? '#888' }} title={`${cat?.name} ${noun} ${piece.gauge}`}>
+      <div className="gauge">{piece.gauge}</div>
       <div className="cat">{cat?.name}</div>
-      <div className="name">{metalOnly ? 'something' : noun}</div>
+      <div className="name">{noun}</div>
     </div>
   );
 }
 
-const pct = (x: number) => `${Math.round(x * 100)}%`;
+/** A parcel as far as you know it: wrapped, half-known (number or metal), or opened. */
+export function ParcelTile({
+  parcel,
+  index,
+  selected,
+  picked,
+  onClick,
+}: {
+  parcel: Parcel;
+  index: number;
+  selected?: boolean;
+  picked?: boolean;
+  onClick?: () => void;
+}) {
+  const { engine } = useGame();
+  const v = viewParcel(engine.content, parcel);
+  const cat = (id: string) => engine.content.categories.find((c) => c.id === id);
+  const classes = ['parcel', v.kind];
+  if (selected) classes.push('selected');
+  if (picked) classes.push('picked');
+  if (onClick) classes.push('clickable');
+  let body;
+  let title: string;
+  if (v.kind === 'known') {
+    return (
+      <button type="button" className={classes.join(' ')} onClick={onClick} disabled={!onClick} aria-pressed={picked}>
+        <PieceView piece={v.piece} />
+        {picked && <span className="parcel-badge">Taking</span>}
+      </button>
+    );
+  } else if (v.kind === 'gauge') {
+    const odds = `1 in ${v.metals.length}`;
+    title = `Definitely a ${v.gauge}: ${v.metals.map((m) => cat(m)?.name).join(', ')} (${odds} each)`;
+    body = (
+      <>
+        <span className="parcel-big">{v.gauge}</span>
+        <span className="parcel-opts">
+          {v.metals.map((m) => (
+            <span key={m} className="opt-metal" style={{ ['--cat' as string]: cat(m)?.color }}>
+              {cat(m)?.name}
+            </span>
+          ))}
+        </span>
+        <span className="parcel-odds">{odds}</span>
+      </>
+    );
+  } else if (v.kind === 'metal') {
+    const odds = `1 in ${v.gauges.length}`;
+    title = `Definitely ${cat(v.metal)?.name}: a ${v.gauges.join(', ')} (${odds} each)`;
+    body = (
+      <>
+        <span className="parcel-metal" style={{ ['--cat' as string]: cat(v.metal)?.color }}>
+          {cat(v.metal)?.name}
+        </span>
+        <span className="parcel-opts nums">{v.gauges.join(' · ')}</span>
+        <span className="parcel-odds">{odds}</span>
+      </>
+    );
+  } else {
+    title = 'Wrapped: no idea yet';
+    body = <span className="parcel-big">?</span>;
+  }
+  return (
+    <button type="button" className={classes.join(' ')} title={title} onClick={onClick} disabled={!onClick} aria-pressed={picked}>
+      <span className="parcel-no">#{index + 1}</span>
+      {body}
+      {picked && <span className="parcel-badge">Taking</span>}
+    </button>
+  );
+}
 
-/** A lot as the catalogue describes it. */
-export function LotCard({ lot }: { lot: Lot }) {
-  const { engine, me } = useGame();
+/**
+ * A lot and its parcels. Tap a parcel to choose it, then use a check on it.
+ * `mode` decides what's allowed: just looking, checking from the map,
+ * buying unwraps at the appraiser, or picking your prize after a win.
+ */
+export function LotPanel({
+  lot,
+  nodeId,
+  mode,
+  picked = [],
+  onTogglePick,
+}: {
+  lot: Lot;
+  nodeId?: string;
+  mode: 'view' | 'map' | 'appraiser' | 'pick';
+  picked?: number[];
+  onTogglePick?: (i: number) => void;
+}) {
+  const { engine } = useGame();
   const def = engine.content.lots.find((l) => l.id === lot.lotId);
-  const level = catalogueFor(engine.content, me, lot);
+  const [sel, setSel] = useState<number | null>(null);
+  const canCheck = mode !== 'view';
+  const click = (i: number) => setSel(i);
+  const selParcel = sel !== null ? lot.parcels[sel] : null;
   return (
     <div className="lot">
       <div className="lot-head">
         <b className="lot-name">{lot.name}</b>
-        <span className={`catalogue c${level}`}>{CATALOGUE_NAMES[level]}</span>
-        {level < lot.catalogue && <span className="muted small-text">(Magnifier: was {CATALOGUE_NAMES[lot.catalogue].toLowerCase()})</span>}
+        <span className="lot-count">
+          {lot.parcels.length} parcels · winner picks <b>{lot.picks}</b>
+        </span>
       </div>
       {def && <div className="muted small-text">{def.text}</div>}
-      {level === 4 ? (
-        <div className="sealed">
-          {lot.sizeRange[0]}–{lot.sizeRange[1]} pieces. Each has a <b>{pct(lot.rareChance)}</b> chance of being Brass or better
-          {lot.gemChance > 0 && (
-            <>
-              , and there's a <b>{pct(lot.gemChance)}</b> chance of a gem
-            </>
-          )}
-          .
-        </div>
-      ) : (
-        <div className="cards small lot-pieces">
-          {lot.pieces.map((p, i) => (
-            <PieceView key={i} piece={p} show={pieceVisibility(lot, i, level)} />
-          ))}
-        </div>
+      <div className="parcels">
+        {lot.parcels.map((p, i) => (
+          <ParcelTile key={i} parcel={p} index={i} selected={canCheck && sel === i} picked={picked.includes(i)} onClick={canCheck ? () => click(i) : undefined} />
+        ))}
+      </div>
+      {canCheck && selParcel && (
+        <CheckBar
+          parcel={selParcel}
+          index={sel!}
+          nodeId={nodeId}
+          appraiser={mode === 'appraiser'}
+          take={
+            mode === 'pick' && onTogglePick
+              ? { taking: picked.includes(sel!), full: picked.length >= lot.picks, toggle: () => onTogglePick(sel!) }
+              : undefined
+          }
+        />
       )}
-      <div className="muted small-text">Rare pieces sit at the bottom of the box: go out well to dig deep.</div>
+      {canCheck && !selParcel && <div className="muted small-text">Tap a parcel to check it{mode === 'pick' ? ' or take it' : ''}.</div>}
     </div>
+  );
+}
+
+/** Ways to check the chosen parcel: your tools, gadgets that work on parcels, or the appraiser. */
+function CheckBar({
+  parcel,
+  index,
+  nodeId,
+  appraiser,
+  take,
+}: {
+  parcel: Parcel;
+  index: number;
+  nodeId?: string;
+  appraiser: boolean;
+  take?: { taking: boolean; full: boolean; toggle: () => void };
+}) {
+  const { state, me, engine, act, playerId } = useGame();
+  const known = viewParcel(engine.content, parcel).kind === 'known';
+  const takeButton = take && (
+    <button className="primary" disabled={!take.taking && take.full} onClick={take.toggle}>
+      {take.taking ? `Put parcel #${index + 1} back` : take.full ? 'Put one back first' : `Take parcel #${index + 1}`}
+    </button>
+  );
+  if (known) {
+    return (
+      <div className="check-bar">
+        <span className="muted small-text">You know exactly what's in parcel #{index + 1}.</span>
+        {takeButton && <div className="actions">{takeButton}</div>}
+      </div>
+    );
+  }
+  const cost = state.config.scrapbook.appraiseCost;
+  const run = (a: GameAction) => act(a);
+  const describe = (reveals: string, options: number) =>
+    reveals === 'both' || options <= 1 ? 'exact' : reveals === 'gauge' ? `number, 1 of ${options} metals` : `metal, 1 of ${options} numbers`;
+  const held = engine.content.tools.filter((t) => (me.tools[t.id] ?? 0) > 0);
+  const gadgets = me.items
+    .map((it) => ({ it, g: engine.content.items.find((d) => d.id === it.itemId)?.gadget }))
+    .filter((x) => x.g?.onLot);
+  return (
+    <div className="check-bar">
+      <span className="eyebrow">Check parcel #{index + 1}</span>
+      <div className="actions">
+        {takeButton}
+        {appraiser && (
+          <button className="primary" disabled={me.currency < cost} onClick={() => run({ type: 'APPRAISE', playerId, nodeId: nodeId!, parcel: index })}>
+            Appraiser unwraps it ({cost} credits)
+          </button>
+        )}
+        {held.map((t) => (
+          <button key={t.id} title={t.text} onClick={() => run({ type: 'USE_TOOL', playerId, toolId: t.id, nodeId, parcel: index })}>
+            {t.name} ×{me.tools[t.id]} <span className="muted">({describe(t.reveals, sharpened(engine.content, me, t.options))})</span>
+          </button>
+        ))}
+        {gadgets.map(({ it, g }) => (
+          <button
+            key={it.uid}
+            title={g!.onLot!.text}
+            disabled={(it.charges ?? 0) <= 0}
+            onClick={() => run({ type: 'EXAMINE_LOT', playerId, itemUid: it.uid, nodeId, parcel: index })}
+          >
+            {g!.name} {it.charges ?? 0}/{itemMaxCharges(engine.content, state.config, it) ?? 0}{' '}
+            <span className="muted">({describe(g!.onLot!.reveals, gadgetOptions(engine.content, me, g!.onLot!, it.grade))})</span>
+          </button>
+        ))}
+        {!appraiser && held.length === 0 && gadgets.length === 0 && <span className="muted small-text">You have no checks left. Shops sell them.</span>}
+      </div>
+    </div>
+  );
+}
+
+/** Your check cards, as a one-line summary. */
+export function ToolsLine() {
+  const { me, engine } = useGame();
+  const held = engine.content.tools.filter((t) => (me.tools[t.id] ?? 0) > 0);
+  if (held.length === 0) return null;
+  return (
+    <span className="tools-line" title="Checks for wrapped parcels">
+      Checks:{' '}
+      {held.map((t) => (
+        <span key={t.id} className="tool-chip" title={t.text}>
+          {t.name} ×{me.tools[t.id]}
+        </span>
+      ))}
+    </span>
   );
 }
 
@@ -116,30 +265,6 @@ export function StakeLine({ encounter, isBoss }: { encounter: Encounter; isBoss:
       </b>{' '}
       or better. You have {have}.
       {!ok && (isBoss ? ' Not enough: the boss will take any parts instead.' : ' Not enough to play: you can walk past.')}
-    </div>
-  );
-}
-
-/** Gadgets that can be used on a lot ahead (e.g. the Magnifier's Spyglass), one button each. */
-export function ExamineButtons({ nodeId, lot }: { nodeId: string; lot: Lot }) {
-  const { state, me, engine, act, playerId } = useGame();
-  if (state.phase !== 'map' || catalogueFor(engine.content, me, lot) === 1) return null;
-  const tools = me.items
-    .map((it) => ({ it, g: engine.content.items.find((d) => d.id === it.itemId)?.gadget }))
-    .filter((x) => x.g?.onLot);
-  if (tools.length === 0) return null;
-  return (
-    <div className="actions examine">
-      {tools.map(({ it, g }) => (
-        <button
-          key={it.uid}
-          disabled={(it.charges ?? 0) <= 0}
-          title={g!.onLot!.text}
-          onClick={() => act({ type: 'EXAMINE_LOT', playerId, itemUid: it.uid, nodeId })}
-        >
-          Examine with {g!.name} ({it.charges ?? 0}/{itemMaxCharges(engine.content, state.config, it) ?? 0})
-        </button>
-      ))}
     </div>
   );
 }

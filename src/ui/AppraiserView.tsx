@@ -1,6 +1,6 @@
-import { appraisalCost, lotsAhead } from '../engine';
+import { lotsAhead } from '../engine';
 import { useGame } from './context';
-import { LotCard } from './LotView';
+import { LotPanel } from './LotView';
 import { NODE_INFO } from './MapView';
 
 /** Appraiser stop: pay to have any lot further along this act fully itemised. */
@@ -10,14 +10,14 @@ export function AppraiserView() {
   const here = state.map!.rows.flat().find((n) => n.id === state.map!.current);
   const near = (here?.row ?? -1) + 3;
   const ahead = lotsAhead(state).filter((n) => n.row <= near || n.type === 'boss');
-  const per = state.config.scrapbook.appraisePerLevel;
+  const cost = state.config.scrapbook.appraiseCost;
   const minionNames = (ids: string[]) => ids.map((id) => engine.content.minions.find((m) => m.id === id)?.name ?? id).join(' & ');
   return (
     <div className="panel appraiser">
       <div className="map-head">
         <h2>The Appraiser</h2>
         <span className="muted">
-          “Let me take a look.” Pay {per} credits per catalogue level to have a lot fully itemised. You have{' '}
+          “Let me take a look.” Tap a parcel in any lot ahead and pay {cost} credits to have it unwrapped. You have{' '}
           <b>{me.currency}</b> credits.
         </span>
       </div>
@@ -25,7 +25,6 @@ export function AppraiserView() {
       <div className="lot-grid">
         {ahead.map((n) => {
           const lot = n.encounter!.lot!;
-          const cost = appraisalCost(state, engine.content, me, lot);
           return (
             <div key={n.id} className="lot-stop">
               <div className="lot-stop-head">
@@ -35,14 +34,7 @@ export function AppraiserView() {
                   <span className="muted">(row {n.row + 1})</span>
                 </span>
               </div>
-              <LotCard lot={lot} />
-              <button
-                className="primary"
-                disabled={cost === 0 || cost > me.currency}
-                onClick={() => act({ type: 'APPRAISE', playerId, nodeId: n.id })}
-              >
-                {cost === 0 ? 'Fully itemised' : `Itemise it for ${cost} credits`}
-              </button>
+              <LotPanel lot={lot} nodeId={n.id} mode="appraiser" />
             </div>
           );
         })}

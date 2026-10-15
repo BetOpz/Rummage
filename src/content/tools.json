@@ -1,0 +1,9 @@
+[
+  { "id": "calipers", "name": "Calipers", "text": "Measure a parcel: you'll know its number for certain, and that it's one of 4 metals.", "reveals": "gauge", "options": 4, "price": 2, "weight": 3 },
+  { "id": "vernier", "name": "Vernier Calipers", "text": "Measure a parcel: you'll know its number for certain, and that it's one of 3 metals.", "reveals": "gauge", "options": 3, "price": 3, "weight": 2 },
+  { "id": "micrometer", "name": "Micrometer", "text": "Measure a parcel: you'll know its number for certain, and that it's one of 2 metals.", "reveals": "gauge", "options": 2, "price": 4, "weight": 1 },
+  { "id": "scratch_test", "name": "Scratch Test", "text": "Test a parcel: you'll know its metal for certain, and that it's one of 4 numbers.", "reveals": "metal", "options": 4, "price": 2, "weight": 3 },
+  { "id": "acid_test", "name": "Acid Test", "text": "Test a parcel: you'll know its metal for certain, and that it's one of 3 numbers.", "reveals": "metal", "options": 3, "price": 3, "weight": 2 },
+  { "id": "assay", "name": "Assay", "text": "Test a parcel: you'll know its metal for certain, and that it's one of 2 numbers.", "reveals": "metal", "options": 2, "price": 4, "weight": 1 },
+  { "id": "unwrap", "name": "Unwrap", "text": "Open a parcel's wrapping: you'll know exactly what's inside.", "reveals": "both", "options": 1, "price": 5, "weight": 1 }
+]

@@ -1,5 +1,6 @@
 import { useGame } from './context';
 import { ItemChip } from './ItemChip';
+import { ToolsLine } from './LotView';
 
 export function StatusBar() {
   const { state, me, engine } = useGame();
@@ -60,6 +61,7 @@ export function StatusBar() {
           {typeof boss!.params.category === 'string' ? ` (${catName(boss!.params.category)})` : ''} — {bossDef.text}
         </span>
       )}
+      <ToolsLine />
       {me.items.length > 0 && (
         <span className="items">
           Items: {me.items.map((it) => <ItemChip key={it.uid} item={it} />)}

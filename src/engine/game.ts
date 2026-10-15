@@ -24,7 +24,7 @@ import {
   useGadget,
   walkAway,
 } from './duel';
-import { applyRummage, appraise, examineLot } from './scrapbook';
+import { applyRummage, appraise, examineParcel, pickParcels, useTool } from './scrapbook';
 import {
   type EffectContext,
   type EffectRegistry,
@@ -132,6 +132,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
         exhausted: false,
         rules: baseRules(config, 0),
         scrapbook: {},
+        tools: config.itemSource === 'scrapbook' && config.runStructure === 'map' ? { ...config.scrapbook.startingTools } : {},
       })),
       activePlayer: 0,
       cards: {},
@@ -678,6 +679,13 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     for (const svc of pool.services) {
       slots.push({ kind: 'service', serviceId: svc.id, price: svc.price, sold: false });
     }
+    // Scrapbook runs: checks for parcels (Calipers, Scratch Tests, Unwrap...).
+    if (state.config.itemSource === 'scrapbook' && state.config.runStructure === 'map' && content.tools.length > 0) {
+      for (let i = 0; i < state.config.scrapbook.shopToolSlots; i++) {
+        const tool = rng.weightedPick(content.tools, (t) => t.weight);
+        slots.push({ kind: 'tool', toolId: tool.id, price: tool.price, sold: false });
+      }
+    }
     return slots;
   }
 
@@ -701,6 +709,11 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       const card = createSpecial(state, player.id, slot.specialId!);
       addToDeck(state, card);
       log(state, `${player.name} buys ${cardLabel(state, content, card.id)}.`);
+    } else if (slot.kind === 'tool') {
+      const tool = content.tools.find((t) => t.id === slot.toolId);
+      assertRule(tool, 'Unknown tool');
+      player.tools[tool.id] = (player.tools[tool.id] ?? 0) + 1;
+      log(state, `${player.name} buys ${tool.name}.`);
     } else {
       const svc = shopPool(state)?.services.find((s) => s.id === slot.serviceId);
       assertRule(svc, 'Unknown service');
@@ -925,12 +938,14 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
   function continueAfterDuel(state: GameState, player: PlayerState) {
     const duel = finishDuel(state);
     const won = duel.result?.won ?? false;
-    // A won lot: sort what you dug out before moving on.
-    if (won && duel.lot && duel.result?.dig && duel.result.dig.taken > 0) {
+    // A won lot: pick your parcels, then sort what's inside, before moving on.
+    if (won && duel.lot && duel.lot.parcels.length > 0) {
       state.rummage = {
         lotName: duel.lot.name,
-        pieces: duel.lot.pieces.slice(0, duel.result.dig.taken),
-        leftBehind: duel.lot.pieces.length - duel.result.dig.taken,
+        stage: 'pick',
+        lot: duel.lot,
+        pieces: [],
+        missed: [],
         afterBoss: duel.kind === 'boss',
       };
       state.phase = 'rummage';
@@ -1052,7 +1067,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
         rummageDone(state, action.playerId, action.destinations);
         break;
       case 'APPRAISE':
-        appraise(state, content, getPlayer(state, action.playerId), action.nodeId);
+        appraise(state, content, getPlayer(state, action.playerId), action.nodeId, action.parcel);
         break;
       case 'LEAVE_APPRAISER':
         getPlayer(state, action.playerId);
@@ -1060,7 +1075,14 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
         state.phase = 'map';
         break;
       case 'EXAMINE_LOT':
-        examineLot(state, content, getPlayer(state, action.playerId), action.itemUid, action.nodeId);
+        examineParcel(state, content, getPlayer(state, action.playerId), action.itemUid, action.nodeId, action.parcel);
+        break;
+      case 'USE_TOOL':
+        useTool(state, content, getPlayer(state, action.playerId), action.toolId, action.nodeId, action.parcel);
+        break;
+      case 'PICK_PARCELS':
+        getPlayer(state, action.playerId);
+        pickParcels(state, action.parcels);
         break;
       case 'DUEL_DRAW':
         duelPlayer(state, action.playerId);

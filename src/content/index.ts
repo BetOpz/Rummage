@@ -15,6 +15,7 @@ import enemies from './enemies.json';
 import minions from './minions.json';
 import duelTargets from './duelTargets.json';
 import lots from './lots.json';
+import tools from './tools.json';
 
 export const defaultContent: ContentPack = {
   categories,
@@ -28,4 +29,5 @@ export const defaultContent: ContentPack = {
   minions: minions as ContentPack['minions'],
   duelTargets: duelTargets as ContentPack['duelTargets'],
   lots: lots as unknown as ContentPack['lots'],
+  tools: tools as ContentPack['tools'],
 };

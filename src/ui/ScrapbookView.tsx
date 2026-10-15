@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { type PieceDestination, STAGES, finishedGrade, itemMaxCharges, materialName, pageOf, piecesNeeded, pieceLabel, stageFor, suggestDestinations } from '../engine';
 import { Charges } from './GadgetPanel';
 import { useGame } from './context';
-import { PieceView } from './LotView';
+import { LotPanel, PieceView } from './LotView';
 
 /** One scrapbook page: the item, and a stage per material from Tin to Platinum. */
 function Page({ itemId, highlight }: { itemId: string; highlight?: number[] }) {
@@ -80,8 +80,42 @@ export function ScrapbookView({ onClose }: { onClose?: () => void }) {
   );
 }
 
-/** Sorting a won lot: each piece goes onto a page, into the parts deck, or is sold. */
+/** A won lot: first pick your parcels, then sort what was inside. */
 export function RummageView() {
+  const { state } = useGame();
+  return state.rummage!.stage === 'pick' ? <PickView /> : <SortView />;
+}
+
+/** Choose which parcels to take. Checks can still be used here. */
+function PickView() {
+  const { state, act, playerId } = useGame();
+  const r = state.rummage!;
+  const [picked, setPicked] = useState<number[]>([]);
+  const toggle = (i: number) =>
+    setPicked((p) => (p.includes(i) ? p.filter((x) => x !== i) : p.length < r.lot.picks ? [...p, i] : p));
+  return (
+    <div className="rummage">
+      <div className="panel">
+        <h2>Pick from the {r.lotName}</h2>
+        <p className="muted">
+          You won the lot: take any <b>{r.lot.picks}</b> of its {r.lot.parcels.length} parcels. The rest go back to the seller. Tap a
+          parcel to check it or take it.
+        </p>
+        <LotPanel lot={r.lot} mode="pick" picked={picked} onTogglePick={toggle} />
+        <button
+          className="primary big"
+          disabled={picked.length !== r.lot.picks}
+          onClick={() => act({ type: 'PICK_PARCELS', playerId, parcels: picked })}
+        >
+          {picked.length === r.lot.picks ? 'Open my parcels' : `Choose ${r.lot.picks - picked.length} more`}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Sorting the opened pieces: each goes onto a page, into the parts deck, or is sold. */
+function SortView() {
   const { state, me, engine, act, playerId } = useGame();
   const rummage = state.rummage!;
   const [dests, setDests] = useState<PieceDestination[]>(() => suggestDestinations(state, engine.content, me, rummage.pieces));
@@ -122,7 +156,6 @@ export function RummageView() {
         <h2>Rummaging through the {rummage.lotName}</h2>
         <p className="muted">
           Choose where each piece goes: onto a scrapbook page, into your parts deck (to play with in duels), or sold for credits.
-          {rummage.leftBehind > 0 && ` ${rummage.leftBehind} piece${rummage.leftBehind === 1 ? '' : 's'} stayed at the bottom of the box.`}
         </p>
         <ul className="finds">
           {rummage.pieces.map((p, i) => (
@@ -148,6 +181,16 @@ export function RummageView() {
             </li>
           ))}
         </ul>
+        {rummage.missed.length > 0 && (
+          <div className="missed">
+            <span className="muted small-text">The parcels you left behind held:</span>
+            <div className="cards small">
+              {rummage.missed.map((p, i) => (
+                <PieceView key={i} piece={p} />
+              ))}
+            </div>
+          </div>
+        )}
         {problems.map((m) => (
           <div key={m} className="shape-warning">
             {m}

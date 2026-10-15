@@ -105,10 +105,15 @@ export interface GadgetDef {
   /** Effects implementing the `onGadget` hook. */
   effects: EffectRef[];
   /**
-   * Can also be used on the map, on a lot ahead: improves its catalogue by
-   * `levels` (plus `floor(perGrade × (grade − 1))`) for one charge.
+   * Can also check a parcel (in a lot ahead, or one you've won) for one
+   * charge, like a tool card that gets sharper with the item's grade.
    */
-  onLot?: { levels: number; perGrade?: number; text: string };
+  onLot?: {
+    reveals: 'gauge' | 'metal' | 'both';
+    /** Options it leaves, by item grade (index 0 = Tin). */
+    optionsByGrade: number[];
+    text: string;
+  };
 }
 
 /** An opponent in a rummy duel (minion, elite or boss). */
@@ -151,11 +156,29 @@ export interface LotDef {
   size: [number, number];
   /** Everyday materials and their relative odds. */
   materials: Record<string, number>;
+  /** Parcels the winner picks. */
+  picks: number;
   /** Chance each piece is a rare material instead (Brass or better, by rarity). */
   rareChance: number;
-  /** Chance the lot also holds a gem. */
+  /** Chance one parcel is a gem instead. */
   gemChance: number;
   gauges: [number, number];
+}
+
+/**
+ * A check you hold and spend on a parcel. It is certain about `reveals`
+ * and leaves `options` possibilities for the other attribute (1 = exact).
+ */
+export interface ToolDef {
+  id: string;
+  name: string;
+  text: string;
+  /** 'gauge': certain of the number; 'metal': certain of the metal; 'both': unwraps it. */
+  reveals: 'gauge' | 'metal' | 'both';
+  options: number;
+  price: number;
+  /** Relative odds in shops. */
+  weight: number;
 }
 
 /** The race target for a duel. */
@@ -259,6 +282,7 @@ export interface ContentPack {
   minions: MinionDef[];
   duelTargets: DuelTargetDef[];
   lots: LotDef[];
+  tools: ToolDef[];
 }
 
 // ---------------------------------------------------------------------------
@@ -365,6 +389,8 @@ export interface PlayerState {
   rules: RoundRules;
   /** Scrapbook: per item id, pieces placed on each stage (index 0 = Tin ... 7 = Platinum). */
   scrapbook: Record<string, number[]>;
+  /** Checks held, by tool id. */
+  tools: Record<string, number>;
 }
 
 export type PendingChoice =
@@ -404,7 +430,8 @@ export interface RoundState {
 }
 
 export interface ShopSlot {
-  kind: 'part' | 'special' | 'service';
+  kind: 'part' | 'special' | 'service' | 'tool';
+  toolId?: string;
   /** For parts: category/gauge; for specials: specialId; for services: serviceId. */
   category?: string;
   gauge?: number;
@@ -461,23 +488,28 @@ export interface Encounter {
 }
 
 /**
- * How much of a lot you can see before the fight:
- * 1 itemised (every piece), 2 partly itemised (some exact, the rest only
- * their metal), 3 contents only (what the pieces are, not their metal),
- * 4 sealed (only the odds).
+ * A parcel in a lot. Everything starts wrapped; checks narrow it down.
+ * Its look-alikes are fixed when the lot is made and checks show a prefix
+ * of them, so repeated checks never contradict each other.
  */
-export type CatalogueLevel = 1 | 2 | 3 | 4;
+export interface Parcel {
+  piece: RewardOption;
+  /** Other metals it could be taken for, in the order checks reveal them. */
+  altMetals: string[];
+  /** Other numbers it could be taken for, in the same way. */
+  altGauges: number[];
+  /** Metals still possible (0 = nothing known yet, 1 = known exactly). */
+  metalOptions: number;
+  /** Numbers still possible (0 = nothing known yet, 1 = known exactly). */
+  gaugeOptions: number;
+}
 
 export interface Lot {
   lotId: string;
   name: string;
-  catalogue: CatalogueLevel;
-  /** Top of the box first; rare pieces sit at the bottom. */
-  pieces: RewardOption[];
-  /** For sealed lots: the size range and odds shown instead of the contents. */
-  sizeRange: [number, number];
-  rareChance: number;
-  gemChance: number;
+  /** Parcels the winner picks. */
+  picks: number;
+  parcels: Parcel[];
 }
 
 /** Where a found piece goes. */
@@ -486,9 +518,13 @@ export type PieceDestination = { to: 'page'; itemId: string } | { to: 'deck' } |
 /** Sorting the pieces dug out of a won lot. */
 export interface RummageState {
   lotName: string;
+  /** 'pick': choose your parcels (checks still allowed); 'sort': send each opened piece somewhere. */
+  stage: 'pick' | 'sort';
+  lot: Lot;
+  /** The pieces you picked (filled in when you pick). */
   pieces: RewardOption[];
-  /** Pieces left in the box (you didn't dig deep enough). */
-  leftBehind: number;
+  /** The parcels you didn't pick, shown once you open yours. */
+  missed: RewardOption[];
   /** The lot was a boss prize: the act ends after sorting. */
   afterBoss: boolean;
 }
@@ -604,8 +640,8 @@ export interface DuelResult {
   /** The player's lost stake (destroyed when the result is dismissed). */
   lostStake: CardId[];
   lifeLost: boolean;
-  /** Lot won: how deep you dug, and why. */
-  dig: { taken: number; total: number; parts: { label: string; amount: number }[] } | null;
+  /** Lot won: you pick `picks` of its parcels next. */
+  lotWon: { name: string; picks: number; parcels: number } | null;
 }
 
 export type GamePhase =
@@ -683,13 +719,17 @@ export type GameAction =
   | { type: 'DUEL_STAKE'; playerId: PlayerId; cardIds: CardId[] }
   /** Leave a duel stop before staking (not the boss). */
   | { type: 'DUEL_WALK_AWAY'; playerId: PlayerId }
-  /** Send each dug-out piece to a scrapbook page, the parts deck, or sell it. */
+  /** Send each opened piece to a scrapbook page, the parts deck, or sell it. */
   | { type: 'RUMMAGE_DONE'; playerId: PlayerId; destinations: PieceDestination[] }
-  /** At an appraiser stop: pay to have a lot ahead fully itemised. */
-  | { type: 'APPRAISE'; playerId: PlayerId; nodeId: string }
+  /** At an appraiser stop: pay to have one parcel of a lot ahead unwrapped. */
+  | { type: 'APPRAISE'; playerId: PlayerId; nodeId: string; parcel: number }
   | { type: 'LEAVE_APPRAISER'; playerId: PlayerId }
-  /** On the map: spend a gadget charge (e.g. the Magnifier) to see more of a lot ahead. */
-  | { type: 'EXAMINE_LOT'; playerId: PlayerId; itemUid: string; nodeId: string }
+  /** Check a parcel with a tool you hold. No nodeId = the lot you've won. */
+  | { type: 'USE_TOOL'; playerId: PlayerId; toolId: string; nodeId?: string; parcel: number }
+  /** Check a parcel with a gadget charge (e.g. the Magnifier). No nodeId = the lot you've won. */
+  | { type: 'EXAMINE_LOT'; playerId: PlayerId; itemUid: string; nodeId?: string; parcel: number }
+  /** Choose which parcels to take from a won lot. */
+  | { type: 'PICK_PARCELS'; playerId: PlayerId; parcels: number[] }
   | { type: 'DUEL_DRAW'; playerId: PlayerId; source: 'deck' | 'discard' }
   | { type: 'DUEL_DISCARD'; playerId: PlayerId; cardId: CardId }
   | { type: 'DUEL_GO_OUT'; playerId: PlayerId; groups: CardId[][] }

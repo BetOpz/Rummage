@@ -3,7 +3,7 @@ import { type CardId, type Engine, type GameState, eligibleStakeCards, itemMaxCh
 import { hintText } from './BlueprintPanel';
 import { Charges } from './GadgetPanel';
 import { CardView } from './CardView';
-import { LotCard, PieceView } from './LotView';
+import { LotPanel } from './LotView';
 import { useGame } from './context';
 import { ReqLabel } from './ReqLabel';
 
@@ -63,7 +63,7 @@ function DuelHeader() {
           </div>
         );
       })}
-      {duel.lot && <LotCard lot={duel.lot} />}
+      {duel.lot && <LotPanel lot={duel.lot} mode="view" />}
       <div className="pot">
         <span className="muted">Stakes in the pot ({duel.pot.length}):</span>
         <div className="cards small">
@@ -383,28 +383,12 @@ function DuelResult() {
             ))}
           </div>
         )}
-        {r.dig && duel.lot && (
+        {r.lotWon && (
           <div className="dig">
             <h3>
-              You dig out {r.dig.taken} of {r.dig.total} pieces
+              You won the {r.lotWon.name}: pick {r.lotWon.picks} of its {r.lotWon.parcels} parcels
             </h3>
-            <ul className="dig-parts">
-              {r.dig.parts.map((p) => (
-                <li key={p.label}>
-                  <b>+{p.amount}</b> {p.label}
-                </li>
-              ))}
-            </ul>
-            {r.dig.taken < r.dig.total && (
-              <p className="muted">
-                {r.dig.total - r.dig.taken} piece{r.dig.total - r.dig.taken === 1 ? '' : 's'} stay at the bottom of the box.
-              </p>
-            )}
-            <div className="cards small">
-              {duel.lot.pieces.slice(0, r.dig.taken).map((p, i) => (
-                <PieceView key={i} piece={p} />
-              ))}
-            </div>
+            <p className="muted">Next you choose your parcels. You can still use your checks on them before you choose.</p>
           </div>
         )}
         {r.won ? (
@@ -435,8 +419,8 @@ function DuelResult() {
           </div>
         )}
         <button className="primary" onClick={() => act({ type: 'CONTINUE', playerId })}>
-          {r.dig && r.dig.taken > 0
-            ? 'Sort your finds'
+          {r.lotWon
+            ? `Open the ${r.lotWon.name}`
             : duel.kind === 'boss' && r.won
               ? state.tier + 1 >= state.config.tiers
                 ? 'Finish the run'

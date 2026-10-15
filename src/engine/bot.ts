@@ -8,7 +8,7 @@ import { battleCardDef, incomingDamage } from './battle';
 import { blueprintSize, getBlueprint } from './blueprints';
 import { reachableNodes } from './map';
 import { itemMaxCharges } from './quality';
-import { appraisalCost, eligibleStakeCards, lotsAhead, suggestDestinations } from './scrapbook';
+import { eligibleStakeCards, lotsAhead, suggestDestinations, viewParcel } from './scrapbook';
 import type { Engine } from './game';
 import { type MeldToken, handProgress } from './melds';
 import type { CardId, GameAction, GameState, MeldRequirement, NodeType, PlayerId, PlayerState } from './types';
@@ -134,16 +134,32 @@ export function botAction(engine: Engine, state: GameState, playerId: PlayerId):
     }
 
     case 'appraiser': {
-      // Itemise the best-hidden lot we can afford, keeping a few credits spare.
-      const ahead = lotsAhead(state)
-        .map((n) => ({ n, cost: appraisalCost(state, engine.content, player, n.encounter!.lot!) }))
-        .filter((x) => x.cost > 0 && x.cost <= player.currency - 3)
-        .sort((a, b) => b.cost - a.cost);
-      return ahead[0] ? { type: 'APPRAISE', playerId, nodeId: ahead[0].n.id } : { type: 'LEAVE_APPRAISER', playerId };
+      // Unwrap a parcel in the next lots while there are credits to spare.
+      const cost = state.config.scrapbook.appraiseCost;
+      if (player.currency < cost + 3) return { type: 'LEAVE_APPRAISER', playerId };
+      const next = new Set(reachableNodes(state.map!).map((n) => n.id));
+      for (const n of lotsAhead(state).sort((a, b) => Number(next.has(b.id)) - Number(next.has(a.id)))) {
+        const i = n.encounter!.lot!.parcels.findIndex((p) => viewParcel(engine.content, p).kind !== 'known');
+        if (i >= 0) return { type: 'APPRAISE', playerId, nodeId: n.id, parcel: i };
+      }
+      return { type: 'LEAVE_APPRAISER', playerId };
     }
 
-    case 'rummage':
-      return { type: 'RUMMAGE_DONE', playerId, destinations: suggestDestinations(state, engine.content, player, state.rummage!.pieces) };
+    case 'rummage': {
+      const r = state.rummage!;
+      if (r.stage === 'sort') {
+        return { type: 'RUMMAGE_DONE', playerId, destinations: suggestDestinations(state, engine.content, player, r.pieces) };
+      }
+      // Test wrapped parcels while we hold metal tests and there's a real choice; then take the best-looking ones.
+      if (r.lot.parcels.length > r.lot.picks) {
+        const test = engine.content.tools.find((t) => t.reveals !== 'gauge' && (player.tools[t.id] ?? 0) > 0);
+        const wrapped = r.lot.parcels.findIndex((p) => viewParcel(engine.content, p).kind === 'wrapped');
+        if (test && wrapped >= 0) return { type: 'USE_TOOL', playerId, toolId: test.id, parcel: wrapped };
+      }
+      const worth = (i: number) => parcelWorth(engine, r.lot.parcels[i]);
+      const order = r.lot.parcels.map((_, i) => i).sort((a, b) => worth(b) - worth(a));
+      return { type: 'PICK_PARCELS', playerId, parcels: order.slice(0, r.lot.picks) };
+    }
 
     case 'duel':
       return duelAction(engine, state, playerId);
@@ -281,6 +297,16 @@ function battleAction(engine: Engine, state: GameState, player: PlayerState): Ga
   const attacker = playable.find((x) => has(x, 'damage') || has(x, 'damageAll'));
   if (attacker) return play(attacker);
   return play(playable[0]);
+}
+
+/** Expected material grade of a parcel from what we know (unknown counts as middling). */
+function parcelWorth(engine: Engine, parcel: import('./types').Parcel): number {
+  const grade = (cat: string) => engine.content.categories.find((c) => c.id === cat)?.grade ?? 1;
+  const v = viewParcel(engine.content, parcel);
+  if (v.kind === 'known') return v.piece.kind === 'part' ? grade(v.piece.category!) : 6;
+  if (v.kind === 'metal') return grade(v.metal);
+  if (v.kind === 'gauge') return v.metals.reduce((n, m) => n + grade(m), 0) / v.metals.length;
+  return 2.5;
 }
 
 function gradeOfCard(engine: Engine, state: GameState, id: CardId): number {

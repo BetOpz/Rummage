@@ -30,6 +30,10 @@
   --error-bg: #f4d8cf;
   --error-ink: #6d1f10;
   --error-line: #dd9f8e;
+  /* Brown-paper parcels */
+  --kraft: #c8a26a;
+  --kraft-ink: #3b2a14;
+  --string: #f1e6cc;
   /* Scrapbook paper: the one warm, aged surface in the game */
   --paper: #e9dfc2;
   --paper-ink: #3a2f1e;
@@ -82,7 +86,13 @@
     --error-line: #7a4034;
     --bp-paper: #173b5e;
     --bp-deep: #11304d;
-    --paper: #3b3527;
+    --kraft: #6e5534;
+    --kraft-ink: #f4e7cc;
+    --string: #b9a27a;
+    --kraft: #6e5534;
+  --kraft-ink: #f4e7cc;
+  --string: #b9a27a;
+  --paper: #3b3527;
     --paper-ink: #efe6cf;
     --paper-line: #5e533b;
     --paper-muted: #bfb193;
@@ -523,15 +533,6 @@ h3 { margin: 14px 0 6px; font-size: 1rem; }
 .lot { display: grid; gap: 6px; margin-top: 8px; }
 .lot-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .lot-name { font-family: var(--font-display); font-weight: 400; font-size: 1.15rem; letter-spacing: 0.02em; }
-.catalogue {
-  font-family: var(--font-label); font-weight: 700; font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
-  padding: 1px 7px; border-radius: 2px; border: 1.5px solid currentColor;
-}
-.catalogue.c1 { color: var(--ok); }
-.catalogue.c2 { color: var(--accent); }
-.catalogue.c3 { color: var(--ochre); }
-.catalogue.c4 { color: var(--warn); border-style: dashed; }
-.sealed { padding: 8px 10px; border: 2px dashed var(--line); border-radius: 4px; background: repeating-linear-gradient(45deg, transparent 0 8px, color-mix(in srgb, var(--ink) 4%, transparent) 8px 9px); }
 .lot-pieces { margin: 2px 0; }
 .card.piece { cursor: default; }
 .card.hidden-piece {
@@ -552,7 +553,7 @@ h3 { margin: 14px 0 6px; font-size: 1rem; }
 .dig-parts b { color: var(--ochre); font-family: var(--font-display); font-weight: 400; }
 
 /* ---------- Rummage ---------- */
-.finds { list-style: none; padding: 0; margin: 10px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 10px; }
+.finds { list-style: none; padding: 0; margin: 10px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 10px; }
 .finds li { display: flex; gap: 10px; align-items: center; min-width: 0; }
 .find-dest { display: grid; gap: 4px; flex: 1; min-width: 0; }
 .find-dest select { width: 100%; font: inherit; padding: 5px 6px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); max-width: 100%; }
@@ -591,3 +592,51 @@ h3 { margin: 14px 0 6px; font-size: 1rem; }
 .stage.complete .stage-count { color: var(--ok); font-weight: 700; }
 .stage.best .stage-name { color: var(--ochre); }
 .scrapbook h2 { color: var(--ink); }
+
+/* ---------- Parcels ---------- */
+.lot-count { font-family: var(--font-label); font-size: 0.9rem; letter-spacing: 0.03em; }
+.lot-count b { color: var(--ochre); font-family: var(--font-display); font-weight: 400; font-size: 1.05rem; }
+.parcels { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0; }
+.parcel {
+  position: relative; width: 86px; min-height: 108px; padding: 18px 4px 6px; border-radius: 4px;
+  display: flex; flex-direction: column; align-items: center; gap: 3px; text-transform: none; letter-spacing: 0;
+  font-family: var(--font-body); font-weight: 400; color: var(--kraft-ink);
+  border: 1px solid color-mix(in srgb, var(--kraft) 60%, var(--kraft-ink)); border-bottom-width: 1px;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 1.5px), var(--string) calc(50% - 1.5px) calc(50% + 1.5px), transparent calc(50% + 1.5px)),
+    linear-gradient(transparent 26px, var(--string) 26px 29px, transparent 29px),
+    repeating-linear-gradient(80deg, transparent 0 7px, color-mix(in srgb, var(--kraft-ink) 5%, transparent) 7px 8px),
+    var(--kraft);
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--kraft-ink) 25%, transparent);
+}
+.parcel:disabled { opacity: 1; cursor: default; }
+.parcel.clickable { cursor: pointer; }
+.parcel.clickable:hover { transform: translateY(-2px); }
+.parcel.selected { outline: 3px solid var(--accent); outline-offset: 2px; }
+.parcel.picked { outline: 3px solid var(--ochre); outline-offset: 2px; transform: translateY(-4px); }
+.parcel.known { width: auto; min-height: 0; padding: 0; background: none; border: none; box-shadow: none; }
+.parcel-no { position: absolute; top: 4px; left: 6px; font-family: var(--font-label); font-weight: 700; font-size: 0.68rem; }
+.parcel-big { font-family: var(--font-display); font-size: 1.9rem; line-height: 1; padding: 0 6px; border-radius: 3px; background: color-mix(in srgb, var(--kraft) 85%, var(--string)); position: relative; z-index: 1; }
+.parcel.wrapped .parcel-big { margin-top: 14px; }
+.parcel-metal {
+  position: relative; z-index: 1; padding: 1px 6px; border-radius: 3px; font-family: var(--font-label); font-weight: 700; font-size: 0.8rem;
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink); border: 1.5px solid color-mix(in srgb, var(--cat) 70%, var(--ink));
+  background: color-mix(in srgb, var(--cat) 35%, var(--panel));
+}
+.parcel-opts { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; position: relative; z-index: 1; }
+.parcel-opts.nums { font-family: var(--font-display); font-size: 0.82rem; background: color-mix(in srgb, var(--kraft) 85%, var(--string)); padding: 0 4px; border-radius: 3px; }
+.opt-metal {
+  font-family: var(--font-label); font-weight: 700; font-size: 0.62rem; text-transform: uppercase; padding: 0 3px; border-radius: 2px; color: var(--ink);
+  background: color-mix(in srgb, var(--cat) 35%, var(--panel)); border: 1px solid color-mix(in srgb, var(--cat) 70%, var(--ink));
+}
+.parcel-odds { font-family: var(--font-label); font-size: 0.68rem; font-weight: 700; margin-top: auto; }
+.parcel-badge {
+  position: absolute; bottom: -9px; left: 50%; transform: translateX(-50%); z-index: 2; white-space: nowrap;
+  background: var(--ochre); color: var(--panel); font-family: var(--font-label); font-weight: 700; font-size: 0.68rem; padding: 0 6px; border-radius: 3px;
+}
+.check-bar { display: grid; gap: 4px; padding: 8px 10px; border: 1px dashed var(--accent); border-radius: 4px; }
+.check-bar .actions { margin-top: 0; }
+.check-bar button { text-transform: none; letter-spacing: 0; font-family: var(--font-body); font-weight: 600; }
+.tools-line { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.tool-chip { font-family: var(--font-label); font-weight: 700; font-size: 0.78rem; padding: 0 6px; border-radius: 3px; border: 1px solid var(--line); background: color-mix(in srgb, var(--kraft) 25%, var(--panel)); }
+.missed { margin-top: 10px; opacity: 0.7; }

@@ -18,7 +18,7 @@ import { clearLocal, discardedOldSave, downloadSave, loadFromLocal, readSaveFile
 const PLAYER_ID = 'p1';
 
 /** Shown on screen so it's easy to tell which version is running. Bump on each release. */
-export const BUILD_LABEL = 'build 21';
+export const BUILD_LABEL = 'build 22';
 
 function randomSeed(): string {
   return Math.random().toString(36).slice(2, 8);
@@ -184,9 +184,13 @@ function HowToPlay() {
       <h2>How to play</h2>
       <ul>
         <li>
-          Each act is a <b>map</b>. Every duel stop is fought over a <b>lot</b>: a shoebox, a tea chest, a loft box, or if
-          you're lucky a barn find. The catalogue tells you more or less about what's inside. Sealed lots hide everything but
-          have the best odds.
+          Each act is a <b>map</b>. Every duel stop is fought over a <b>lot</b>: a box of wrapped parcels, such as a shoebox,
+          a tea chest, or if you're lucky a barn find. The map shows how many parcels it holds and how many the winner picks.
+        </li>
+        <li>
+          You hold <b>checks</b> to find out what's in a parcel. Calipers tell you its number for certain and narrow the metal to
+          a short list; Scratch Tests tell you its metal and narrow the number. Sharper checks leave fewer options. Unwrap shows
+          everything. The real piece is always in the list.
         </li>
         <li>
           <b>Duels</b> are races of rummy. Everyone at the table stakes the same thing (for example 2 Copper parts), and you
@@ -196,8 +200,7 @@ function HowToPlay() {
           <b>Set</b>: cards with the same number, any category. <b>Run</b>: one category, numbers in a row.
         </li>
         <li>
-          Win and you <b>dig</b> into the lot: always the top half, deeper for going out quickly, with a clean hand, or with a
-          bigger meld than needed. Rare pieces sit at the bottom.
+          Win and you <b>pick</b> your parcels from the lot (you can still check them first). The rest go back to the seller.
         </li>
         <li>
           Sort what you find: onto a <b>scrapbook</b> page, into your deck, or sell it. Each page has a stage per material, Tin

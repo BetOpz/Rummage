@@ -17,7 +17,7 @@ import { perTier } from '../config';
 import { type EffectRegistry, applyRuleModifiers, cardToken, getHandler, itemEffects, runHook } from './effects';
 import { type MeldRules, type MeldToken, checkBuild, findBuild, handProgress } from './melds';
 import { commonCategories, randomCategory } from './quality';
-import { digDepth, makeLot, makeStakeRule, stakeProblem } from './scrapbook';
+import { makeLot, makeStakeRule, stakeProblem } from './scrapbook';
 import { Rng } from './rng';
 import type {
   BossState,
@@ -186,7 +186,7 @@ export function startDuel(
     pot,
     playerStake: [],
     stakeRule: encounter.stakeRule ?? null,
-    lot: encounter.lot ?? null,
+    lot: encounter.lot ? structuredClone(encounter.lot) : null,
     opponents,
     hand: [],
     drawPile: [],
@@ -454,7 +454,7 @@ function endDuel(
   duel.endReason = reason;
   duel.winningMelds = melds;
   const won = winner === 'player';
-  const result: DuelState['result'] = { won, currency: 0, wonCards: [] as CardId[], lostStake: [], lifeLost: false, dig: null };
+  const result: NonNullable<DuelState['result']> = { won, currency: 0, wonCards: [] as CardId[], lostStake: [], lifeLost: false, lotWon: null };
 
   if (won) {
     result.currency = state.config.duel.currencyReward[duel.kind] * (state.tier + 1);
@@ -469,8 +469,8 @@ function endDuel(
     }
     log(state, `You win the pot: ${result.wonCards.map((id) => cardLabel(state, content, id)).join(', ')} and ${result.currency} credits.`);
     if (duel.lot) {
-      result.dig = digDepth(state.config, duel);
-      log(state, `You dig ${result.dig.taken} of ${result.dig.total} pieces out of the ${duel.lot.name}.`);
+      result.lotWon = { name: duel.lot.name, picks: duel.lot.picks, parcels: duel.lot.parcels.length };
+      log(state, `You win the ${duel.lot.name}: pick ${duel.lot.picks} of its ${duel.lot.parcels.length} parcels.`);
     }
   } else {
     result.lostStake = [...duel.playerStake];

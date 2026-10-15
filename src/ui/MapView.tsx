@@ -1,7 +1,7 @@
 import { type MapNode, type NodeType, reachableNodes } from '../engine';
 import { useGame } from './context';
 import { GadgetPanel } from './GadgetPanel';
-import { ExamineButtons, LotCard, StakeLine } from './LotView';
+import { LotPanel, StakeLine, ToolsLine } from './LotView';
 
 export const NODE_INFO: Record<NodeType, { label: string; glyph: string; text: string }> = {
   workshop: { label: 'Workshop', glyph: 'W', text: 'Rummy round: build a blueprint into an item.' },
@@ -124,6 +124,9 @@ function NextStops() {
   return (
     <div className="next-stops">
       <h3>Up for grabs next</h3>
+      <p className="muted small-text">
+        Every parcel is wrapped. Check them with the tools you hold before choosing your route. <ToolsLine />
+      </p>
       <div className="lot-grid">
         {stops.map((n) => (
           <div key={n.id} className="lot-stop">
@@ -133,8 +136,7 @@ function NextStops() {
                 {NODE_INFO[n.type].label} vs <b>{minionNames(n.encounter!.minions)}</b>
               </span>
             </div>
-            <LotCard lot={n.encounter!.lot!} />
-            <ExamineButtons nodeId={n.id} lot={n.encounter!.lot!} />
+            <LotPanel lot={n.encounter!.lot!} nodeId={n.id} mode="map" />
             <StakeLine encounter={n.encounter!} isBoss={n.type === 'boss'} />
             <button className="primary" onClick={() => act({ type: 'CHOOSE_NODE', playerId, nodeId: n.id })}>
               Go for the {n.encounter!.lot!.name}

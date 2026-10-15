@@ -14,22 +14,21 @@ export { generateMap, reachableNodes, findNode } from './map';
 export { battleCardDef, currentIntent, incomingDamage } from './battle';
 export { makeEncounter, findDuelOut } from './duel';
 export {
-  CATALOGUE_NAMES,
   STAGES,
-  appraisalCost,
   canMeetStake,
-  lotsAhead,
-  catalogueFor,
   eligibleStakeCards,
   finishedGrade,
+  gadgetOptions,
+  isKnown,
+  lotsAhead,
   pageOf,
   pieceLabel,
-  pieceNoun,
-  pieceVisibility,
   piecesNeeded,
+  sharpened,
   stageFor,
   stakeProblem,
   suggestDestinations,
-  type PieceVisibility,
+  viewParcel,
+  type ParcelView,
 } from './scrapbook';
 export { checkUpgrade, gadgetCharges, gradeOf, itemMaxCharges, materialName } from './quality';

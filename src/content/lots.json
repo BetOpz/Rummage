@@ -3,74 +3,157 @@
     "id": "shoebox",
     "name": "Shoebox",
     "text": "Odds and ends from under a bed.",
-    "kinds": ["battle"],
+    "kinds": [
+      "battle"
+    ],
     "maxAct": 2,
     "weight": 3,
-    "size": [3, 4],
-    "materials": { "tin": 5, "wood": 4, "iron": 2 },
+    "size": [
+      3,
+      4
+    ],
+    "picks": 2,
+    "materials": {
+      "tin": 5,
+      "wood": 4,
+      "iron": 2
+    },
     "rareChance": 0.03,
     "gemChance": 0,
-    "gauges": [1, 8]
+    "gauges": [
+      1,
+      8
+    ]
   },
   {
     "id": "tea_chest",
     "name": "Tea Chest",
     "text": "A plywood chest, packed for a house move and never opened.",
-    "kinds": ["battle"],
+    "kinds": [
+      "battle"
+    ],
     "weight": 3,
-    "size": [4, 6],
-    "materials": { "tin": 3, "wood": 4, "iron": 3, "copper": 2 },
+    "size": [
+      4,
+      6
+    ],
+    "picks": 3,
+    "materials": {
+      "tin": 3,
+      "wood": 4,
+      "iron": 3,
+      "copper": 2
+    },
     "rareChance": 0.06,
     "gemChance": 0.03,
-    "gauges": [1, 10]
+    "gauges": [
+      1,
+      10
+    ]
   },
   {
     "id": "loft_box",
     "name": "Loft Box",
     "text": "Dusty boxes from a Victorian attic.",
-    "kinds": ["battle", "elite"],
+    "kinds": [
+      "battle",
+      "elite"
+    ],
     "minAct": 2,
     "weight": 2,
-    "size": [5, 7],
-    "materials": { "wood": 2, "iron": 3, "copper": 3, "tin": 1 },
+    "size": [
+      5,
+      7
+    ],
+    "picks": 3,
+    "materials": {
+      "wood": 2,
+      "iron": 3,
+      "copper": 3,
+      "tin": 1
+    },
     "rareChance": 0.12,
     "gemChance": 0.06,
-    "gauges": [1, 10]
+    "gauges": [
+      1,
+      10
+    ]
   },
   {
     "id": "workshop_clearance",
     "name": "Workshop Clearance",
     "text": "A retired clockmaker's bench, sold as one lot.",
-    "kinds": ["elite"],
+    "kinds": [
+      "elite"
+    ],
     "weight": 2,
-    "size": [5, 7],
-    "materials": { "iron": 2, "copper": 4, "tin": 1 },
+    "size": [
+      5,
+      7
+    ],
+    "picks": 4,
+    "materials": {
+      "iron": 2,
+      "copper": 4,
+      "tin": 1
+    },
     "rareChance": 0.15,
     "gemChance": 0.1,
-    "gauges": [1, 10]
+    "gauges": [
+      1,
+      10
+    ]
   },
   {
     "id": "barn_find",
     "name": "Barn Find",
     "text": "Under the tarpaulin: decades of hoarding. Anything could be in here.",
-    "kinds": ["battle", "elite"],
+    "kinds": [
+      "battle",
+      "elite"
+    ],
     "weight": 0.6,
-    "size": [7, 10],
-    "materials": { "tin": 2, "wood": 3, "iron": 3, "copper": 2 },
+    "size": [
+      7,
+      10
+    ],
+    "picks": 5,
+    "materials": {
+      "tin": 2,
+      "wood": 3,
+      "iron": 3,
+      "copper": 2
+    },
     "rareChance": 0.22,
     "gemChance": 0.15,
-    "gauges": [1, 10]
+    "gauges": [
+      1,
+      10
+    ]
   },
   {
     "id": "estate_sale",
     "name": "Estate Sale",
     "text": "A whole house of fine things. The boss wants it too.",
-    "kinds": ["boss"],
+    "kinds": [
+      "boss"
+    ],
     "weight": 1,
-    "size": [8, 10],
-    "materials": { "iron": 2, "copper": 3, "wood": 1 },
+    "size": [
+      8,
+      10
+    ],
+    "picks": 5,
+    "materials": {
+      "iron": 2,
+      "copper": 3,
+      "wood": 1
+    },
     "rareChance": 0.25,
     "gemChance": 0.25,
-    "gauges": [1, 10]
+    "gauges": [
+      1,
+      10
+    ]
   }
 ]

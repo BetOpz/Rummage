@@ -66,25 +66,12 @@ export interface ScrapbookConfig {
   sellPerGrade: number;
   /** Credits for selling a found special card. */
   sellSpecial: number;
-  /** How deep you dig into a won lot. */
-  dig: {
-    /** Pieces you always take: this fraction of the lot, rounded up. */
-    baseFraction: number;
-    /** Went out having used at most half your draws. */
-    quickBonus: number;
-    /** Went out with at most this many cards left in hand... */
-    cleanHandMax: number;
-    /** ...for this many extra pieces. */
-    cleanBonus: number;
-    /** A meld bigger than the target asked for. */
-    bigMeldBonus: number;
-  };
-  /** Relative odds of each catalogue level (1 itemised ... 4 sealed). */
-  catalogueWeights: [number, number, number, number];
-  /** Appraiser stop: credits per catalogue level to have a lot fully itemised. */
-  appraisePerLevel: number;
-  /** Per catalogue level above 1: extra pieces (fractional, rounded down) and rare-odds boost. */
-  sealedBonus: { pieces: number; rareMultiplier: number };
+  /** Appraiser stop: credits to unwrap one parcel. */
+  appraiseCost: number;
+  /** Checks you start a run holding, by tool id. */
+  startingTools: Record<string, number>;
+  /** Tool cards offered per shop visit. */
+  shopToolSlots: number;
 }
 
 export interface QualityConfig {
@@ -175,13 +162,12 @@ export const defaultConfig: GameConfig = {
   battleStyle: 'rummy',
   itemSource: 'scrapbook',
   scrapbook: {
-    piecesByGrade: [4, 5, 6, 7, 8, 10, 12, 14],
+    piecesByGrade: [3, 4, 5, 6, 7, 8, 10, 12],
     sellPerGrade: 1,
     sellSpecial: 2,
-    dig: { baseFraction: 0.5, quickBonus: 2, cleanHandMax: 2, cleanBonus: 1, bigMeldBonus: 1 },
-    catalogueWeights: [3, 3, 2, 2],
-    appraisePerLevel: 2,
-    sealedBonus: { pieces: 0.7, rareMultiplier: 0.4 },
+    appraiseCost: 3,
+    startingTools: { calipers: 2, scratch_test: 2, unwrap: 1 },
+    shopToolSlots: 2,
   },
   duel: {
     handSizeByAct: [7, 8, 9, 10],
@@ -263,12 +249,7 @@ export function makeConfig(overrides: Partial<GameConfig> = {}): GameConfig {
     deadwood: { ...defaultConfig.deadwood, ...overrides.deadwood },
     pivotCost: { ...defaultConfig.pivotCost, ...overrides.pivotCost },
     quality: { ...defaultConfig.quality, ...overrides.quality },
-    scrapbook: {
-      ...defaultConfig.scrapbook,
-      ...overrides.scrapbook,
-      dig: { ...defaultConfig.scrapbook.dig, ...overrides.scrapbook?.dig },
-      sealedBonus: { ...defaultConfig.scrapbook.sealedBonus, ...overrides.scrapbook?.sealedBonus },
-    },
+    scrapbook: { ...defaultConfig.scrapbook, ...overrides.scrapbook },
     duel: {
       ...defaultConfig.duel,
       ...overrides.duel,

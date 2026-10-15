@@ -87,9 +87,13 @@ export function stakeFor(state: GameState, playerId: PlayerId = 'p1'): CardId[] 
   return eligibleStakeCards(state, realEngine.content, player, rule).slice(0, rule.count);
 }
 
-/** Sort a won lot with the default destinations (no-op outside the rummage phase). */
+/** Pick the first parcels of a won lot and sort them with the default destinations (no-op outside the rummage phase). */
 export function sortLot(state: GameState, playerId: PlayerId = 'p1'): GameState {
   if (state.phase !== 'rummage') return state;
+  if (state.rummage!.stage === 'pick') {
+    const picks = Array.from({ length: state.rummage!.lot.picks }, (_, i) => i);
+    state = realEngine.reduce(state, { type: 'PICK_PARCELS', playerId, parcels: picks });
+  }
   const player = state.players.find((p) => p.id === playerId)!;
   const destinations = suggestDestinations(state, realEngine.content, player, state.rummage!.pieces);
   return realEngine.reduce(state, { type: 'RUMMAGE_DONE', playerId, destinations });

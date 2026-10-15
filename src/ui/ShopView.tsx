@@ -30,6 +30,14 @@ export function ShopView() {
         </>
       );
     }
+    if (slot.kind === 'tool') {
+      const tool = engine.content.tools.find((t) => t.id === slot.toolId);
+      return (
+        <>
+          <b>{tool?.name}</b> <span className="muted">{tool?.text} You hold {me.tools[slot.toolId!] ?? 0}.</span>
+        </>
+      );
+    }
     const svc = pool?.services.find((s) => s.id === slot.serviceId);
     return (
       <>

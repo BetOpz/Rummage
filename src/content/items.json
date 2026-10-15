@@ -185,7 +185,7 @@
   {
     "id": "magnifier",
     "name": "Magnifier",
-    "text": "Lots are catalogued one level better (a sealed box lists its contents). Hidden blueprint requirements are always shown.",
+    "text": "Your Calipers and tests leave one fewer possibility (never fewer than 2). Hidden blueprint requirements are always shown.",
     "effects": [
       {
         "type": "modifyRules",
@@ -228,9 +228,18 @@
       "rechargeCost": 3,
       "rechargeName": "Polish",
       "onLot": {
-        "levels": 1,
-        "perGrade": 0.34,
-        "text": "On the map: examine a lot ahead to see one catalogue level more (two at Copper or better)."
+        "reveals": "metal",
+        "optionsByGrade": [
+          4,
+          4,
+          3,
+          3,
+          2,
+          2,
+          1,
+          1
+        ],
+        "text": "Also checks a parcel's metal for certain, leaving 1 of 4 numbers (1 of 3 at Iron, 1 of 2 at Brass, exact at Gold)."
       }
     }
   },

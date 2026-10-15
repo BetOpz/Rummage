@@ -1,29 +1,34 @@
 /**
- * Scrapbook runs: duels are fought over lots (boxes of parts), and the
- * parts you dig out fill pages in your scrapbook. Each item has a page with
- * one stage per material, Tin to Platinum; finishing a stage brings that
- * item to life at that grade (or raises it, if you already have it).
+ * Scrapbook runs: duels are fought over lots (boxes of wrapped parcels),
+ * and the parts you win fill pages in your scrapbook. Each item has a page
+ * with one stage per material, Tin to Platinum; finishing a stage brings
+ * that item to life at that grade (or raises it, if you already have it).
  *
- * Lots come with a catalogue level saying how much you can see before the
- * fight. The less you can see, the bigger the lot and the better its odds.
- * How deep you dig into a won lot depends on how well you went out.
+ * A lot shows how many parcels it holds and how many the winner picks.
+ * Every parcel starts wrapped. Tools find out more before you choose:
+ * Calipers pin down the number and narrow the metal to a short list,
+ * Scratch Tests pin down the metal and narrow the number, and Unwrap shows
+ * everything. The real piece is always in the list, and each parcel's
+ * look-alikes are fixed when the lot is made, so repeated checks never
+ * contradict each other.
  */
 
 import type { GameConfig } from '../config';
-import { byGrade, gadgetCharges, materialName } from './quality';
+import { gadgetCharges, materialName } from './quality';
 import type { Rng } from './rng';
 import type {
   CardId,
-  CatalogueLevel,
   ContentPack,
   DuelState,
   GameState,
   Lot,
   LotDef,
   MapNode,
+  Parcel,
   PieceDestination,
   PlayerState,
   RewardOption,
+  ToolDef,
 } from './types';
 import { addToDeck, assertRule, createPart, createSpecial, log, partName } from './zones';
 
@@ -35,98 +40,124 @@ const actFits = (act: number, d: { minAct?: number; maxAct?: number }) =>
 const gradeOfCategory = (content: ContentPack, id: string | undefined) =>
   content.categories.find((c) => c.id === id)?.grade ?? 1;
 
+/** How many look-alikes each parcel keeps (the widest check shows 1 of this many + 1). */
+const ALTERNATIVES = 3;
+
 // ---------------------------------------------------------------------------
-// Lots
+// Lots and parcels
 // ---------------------------------------------------------------------------
 
-/** Roll a lot for a duel stop. Rare pieces and gems end up at the bottom of the box. */
+/** Roll a lot for a duel stop: its parcels, and each parcel's look-alikes. */
 export function makeLot(state: GameState, content: ContentPack, kind: DuelKind, rng: Rng): Lot {
   const act = state.tier + 1;
   let pool = content.lots.filter((l) => l.kinds.includes(kind) && actFits(act, l));
   if (pool.length === 0) pool = content.lots.filter((l) => l.kinds.includes(kind));
   assertRule(pool.length > 0, `No lots for ${kind} duels in the content`);
   const def = rng.weightedPick(pool, (l) => l.weight);
-  const cfg = state.config.scrapbook;
-  const catalogue = (rng.weightedPick([1, 2, 3, 4], (l) => cfg.catalogueWeights[l - 1]) as CatalogueLevel);
+  const count = rng.int(def.size[0], def.size[1]);
 
-  const extra = Math.floor((catalogue - 1) * cfg.sealedBonus.pieces);
-  const rareChance = Math.min(0.9, def.rareChance * (1 + (catalogue - 1) * cfg.sealedBonus.rareMultiplier));
-  const sizeRange: [number, number] = [def.size[0] + extra, def.size[1] + extra];
-  const count = rng.int(sizeRange[0], sizeRange[1]);
-
-  const common: RewardOption[] = [];
-  const rare: RewardOption[] = [];
-  for (let i = 0; i < count; i++) {
-    const piece = rollPiece(content, def, rareChance, rng);
-    (gradeOfCategory(content, piece.category) >= 5 ? rare : common).push(piece);
-  }
+  const pieces: RewardOption[] = [];
+  for (let i = 0; i < count; i++) pieces.push(rollPiece(content, def, rng));
   const gems = content.specials.filter((s) => (s.gradeBonus ?? 0) > 0);
   if (gems.length > 0 && rng.float() < def.gemChance) {
-    rare.push({ kind: 'special', specialId: rng.weightedPick(gems, (g) => g.weight).id });
+    pieces[rng.int(0, pieces.length - 1)] = { kind: 'special', specialId: rng.weightedPick(gems, (g) => g.weight).id };
   }
-  common.sort((a, b) => gradeOfCategory(content, a.category) - gradeOfCategory(content, b.category));
-  rare.sort((a, b) => (a.kind === 'special' ? 1 : 0) - (b.kind === 'special' ? 1 : 0));
-  return { lotId: def.id, name: def.name, catalogue, pieces: [...common, ...rare], sizeRange, rareChance, gemChance: def.gemChance };
+  const parcels = pieces.map((piece) => makeParcel(content, def, piece, rng));
+  return { lotId: def.id, name: def.name, picks: Math.min(def.picks, parcels.length), parcels };
 }
 
-function rollPiece(content: ContentPack, def: LotDef, rareChance: number, rng: Rng): RewardOption {
+function rollPiece(content: ContentPack, def: LotDef, rng: Rng): RewardOption {
   const gauge = rng.int(def.gauges[0], def.gauges[1]);
   const rares = content.categories.filter((c) => c.rare);
-  if (rares.length > 0 && rng.float() < rareChance) {
+  if (rares.length > 0 && rng.float() < def.rareChance) {
     return { kind: 'part', category: rng.weightedPick(rares, (c) => c.weight ?? 1).id, gauge };
   }
   const mats = Object.keys(def.materials).filter((id) => content.categories.some((c) => c.id === id));
   return { kind: 'part', category: rng.weightedPick(mats, (id) => def.materials[id]), gauge };
 }
 
-/** What the catalogue shows of a piece: everything, its metal only, what it is only, or nothing. */
-export type PieceVisibility = 'full' | 'metal' | 'part' | 'hidden';
+function makeParcel(content: ContentPack, def: LotDef, piece: RewardOption, rng: Rng): Parcel {
+  const otherMetals = content.categories.map((c) => c.id).filter((id) => id !== piece.category);
+  const gauges: number[] = [];
+  for (let g = def.gauges[0]; g <= def.gauges[1]; g++) if (g !== piece.gauge) gauges.push(g);
+  return {
+    piece,
+    altMetals: rng.shuffle(otherMetals).slice(0, ALTERNATIVES),
+    altGauges: rng.shuffle(gauges).slice(0, ALTERNATIVES),
+    metalOptions: 0,
+    gaugeOptions: 0,
+  };
+}
 
-/** The catalogue level this player sees: items like the Magnifier improve it. */
-export function catalogueFor(content: ContentPack, player: PlayerState, lot: Lot): CatalogueLevel {
+/** True once you know exactly what's in the parcel. */
+export function isKnown(parcel: Parcel): boolean {
+  return parcel.metalOptions === 1 && parcel.gaugeOptions === 1;
+}
+
+/** What you know about a parcel, for display. */
+export type ParcelView =
+  | { kind: 'wrapped' }
+  | { kind: 'known'; piece: RewardOption }
+  | { kind: 'gauge'; gauge: number; metals: string[] }
+  | { kind: 'metal'; metal: string; gauges: number[] };
+
+export function viewParcel(content: ContentPack, parcel: Parcel): ParcelView {
+  const { piece } = parcel;
+  if (isKnown(parcel)) return { kind: 'known', piece };
+  if (parcel.gaugeOptions === 1) {
+    const metals = [piece.category!, ...parcel.altMetals.slice(0, parcel.metalOptions - 1)];
+    return { kind: 'gauge', gauge: piece.gauge!, metals: metals.sort((a, b) => gradeOfCategory(content, a) - gradeOfCategory(content, b)) };
+  }
+  if (parcel.metalOptions === 1) {
+    const gauges = [piece.gauge!, ...parcel.altGauges.slice(0, parcel.gaugeOptions - 1)];
+    return { kind: 'metal', metal: piece.category!, gauges: gauges.sort((a, b) => a - b) };
+  }
+  return { kind: 'wrapped' };
+}
+
+/**
+ * Check a parcel. `reveals` is what the check is certain about; `options`
+ * is how many possibilities it leaves for the other (1 = exact). A gem has
+ * no metal or number, so any check shows it.
+ */
+export function checkParcel(parcel: Parcel, reveals: ToolDef['reveals'], options: number): void {
+  assertRule(!isKnown(parcel), 'You already know exactly what is in that parcel');
+  const narrow = (current: number) => (current === 0 ? options : Math.min(current, options));
+  if (parcel.piece.kind === 'special' || reveals === 'both') {
+    parcel.metalOptions = 1;
+    parcel.gaugeOptions = 1;
+    return;
+  }
+  const before = `${parcel.metalOptions}/${parcel.gaugeOptions}`;
+  if (reveals === 'gauge') {
+    parcel.gaugeOptions = 1;
+    parcel.metalOptions = narrow(parcel.metalOptions);
+  } else {
+    parcel.metalOptions = 1;
+    parcel.gaugeOptions = narrow(parcel.gaugeOptions);
+  }
+  assertRule(`${parcel.metalOptions}/${parcel.gaugeOptions}` !== before, "That check wouldn't tell you anything new");
+}
+
+/** Options a check leaves, after items like the Magnifier sharpen it (never below 2 unless exact). */
+export function sharpened(content: ContentPack, player: PlayerState, options: number): number {
+  if (options <= 1) return options;
   let better = 0;
   for (const item of player.items) {
     const def = content.items.find((d) => d.id === item.itemId);
     for (const ref of def?.effects ?? []) if (ref.type === 'lotInsight') better += Number(ref.params?.levels ?? 1);
   }
-  return Math.max(1, lot.catalogue - better) as CatalogueLevel;
+  return Math.max(2, options - better);
 }
 
-/** What a catalogue level shows of a piece (defaults to the lot's own level). */
-export function pieceVisibility(lot: Lot, index: number, level: CatalogueLevel = lot.catalogue): PieceVisibility {
-  switch (level) {
-    case 1:
-      return 'full';
-    case 2:
-      return index < Math.ceil(lot.pieces.length / 2) ? 'full' : 'metal';
-    case 3:
-      return 'part';
-    default:
-      return 'hidden';
-  }
-}
-
-export const CATALOGUE_NAMES: Record<CatalogueLevel, string> = {
-  1: 'Itemised',
-  2: 'Partly itemised',
-  3: 'Contents only',
-  4: 'Sealed',
-};
-
-/** A piece's name: "Copper Spring (7)", or "Brass Gear 5" style label. */
+/** A piece's name: "Copper Spring 7". */
 export function pieceLabel(content: ContentPack, piece: RewardOption): string {
   if (piece.kind === 'special') return content.specials.find((s) => s.id === piece.specialId)?.name ?? 'Special';
   return `${partName(content, piece.category!, piece.gauge!)} ${piece.gauge}`;
 }
 
-/** The noun alone, e.g. "Spring" (for "contents only" catalogues). */
-export function pieceNoun(content: ContentPack, piece: RewardOption): string {
-  if (piece.kind === 'special') return 'something small, wrapped in newspaper';
-  return partName(content, piece.category!, piece.gauge!).split(' ').slice(1).join(' ').toLowerCase();
-}
-
 // ---------------------------------------------------------------------------
-// Seeing more of a lot: the appraiser and gadgets like the Magnifier
+// Checking parcels: tools, gadgets and the appraiser
 // ---------------------------------------------------------------------------
 
 /** Duel stops later in this act whose lot you could still fight for. */
@@ -141,44 +172,77 @@ export function lotsAhead(state: GameState): MapNode[] {
     .filter((n) => n.encounter?.lot && !map.visited.includes(n.id));
 }
 
-/** Credits to have a lot fully itemised (0 when you can already see everything). */
-export function appraisalCost(state: GameState, content: ContentPack, player: PlayerState, lot: Lot): number {
-  return (catalogueFor(content, player, lot) - 1) * state.config.scrapbook.appraisePerLevel;
+/**
+ * The parcel a check is aimed at: a lot ahead on the map (by node id), or,
+ * with no node, the lot you've just won and are picking from.
+ */
+function targetParcel(state: GameState, nodeId: string | undefined, index: number): Parcel {
+  let lot: Lot | undefined;
+  if (nodeId) {
+    assertRule(state.phase === 'map' || state.phase === 'appraiser', 'Check lots ahead from the map');
+    lot = lotsAhead(state).find((n) => n.id === nodeId)?.encounter?.lot;
+    assertRule(lot, 'Choose a lot further along this act');
+  } else {
+    assertRule(state.phase === 'rummage' && state.rummage?.stage === 'pick', 'There is no lot to pick from');
+    lot = state.rummage.lot;
+  }
+  const parcel = lot.parcels[index];
+  assertRule(parcel, 'Choose a parcel');
+  return parcel;
 }
 
-function lotAhead(state: GameState, nodeId: string): Lot {
-  const node = lotsAhead(state).find((n) => n.id === nodeId);
-  assertRule(node, 'Choose a lot further along this act');
-  return node.encounter!.lot!;
+/** Use one of your tools (Calipers, Scratch Test, Unwrap...) on a parcel. */
+export function useTool(state: GameState, content: ContentPack, player: PlayerState, toolId: string, nodeId: string | undefined, index: number): void {
+  const tool = content.tools.find((t) => t.id === toolId);
+  assertRule(tool, 'Unknown tool');
+  assertRule((player.tools[toolId] ?? 0) > 0, `You have no ${tool.name} left`);
+  const parcel = targetParcel(state, nodeId, index);
+  checkParcel(parcel, tool.reveals, sharpened(content, player, tool.options));
+  player.tools[toolId] -= 1;
+  log(state, `You use ${tool.name} on a parcel.`);
 }
 
-/** Appraiser stop: pay to have a lot ahead fully itemised. */
-export function appraise(state: GameState, content: ContentPack, player: PlayerState, nodeId: string): void {
-  assertRule(state.phase === 'appraiser', 'Find an appraiser on the map first');
-  const lot = lotAhead(state, nodeId);
-  const cost = appraisalCost(state, content, player, lot);
-  assertRule(cost > 0, `The ${lot.name} is already fully itemised`);
-  assertRule(player.currency >= cost, `Appraising the ${lot.name} costs ${cost} credits`);
-  player.currency -= cost;
-  lot.catalogue = 1;
-  log(state, `The appraiser itemises the ${lot.name} for ${cost} credits.`);
-}
-
-/** Spend a gadget charge on the map to see more of a lot ahead. */
-export function examineLot(state: GameState, content: ContentPack, player: PlayerState, itemUid: string, nodeId: string): void {
-  assertRule(state.phase === 'map', 'Examine lots from the map');
+/** Use a gadget that works on parcels (the Magnifier) for one charge. */
+export function examineParcel(state: GameState, content: ContentPack, player: PlayerState, itemUid: string, nodeId: string | undefined, index: number): void {
   const item = player.items.find((i) => i.uid === itemUid);
   assertRule(item, 'You do not have that item');
   const gadget = content.items.find((d) => d.id === item.itemId)?.gadget;
-  assertRule(gadget?.onLot, `${gadget?.name ?? 'That item'} can't be used on a lot`);
+  assertRule(gadget?.onLot, `${gadget?.name ?? 'That item'} can't be used on a parcel`);
   assertRule((item.charges ?? 0) > 0, `${gadget.name} is out of charges`);
-  const lot = lotAhead(state, nodeId);
-  const seen = catalogueFor(content, player, lot);
-  assertRule(seen > 1, `You can already see everything in the ${lot.name}`);
-  const levels = byGrade(gadget.onLot.levels, gadget.onLot.perGrade, item.grade);
-  lot.catalogue = Math.max(1, lot.catalogue - levels) as CatalogueLevel;
+  const parcel = targetParcel(state, nodeId, index);
+  checkParcel(parcel, gadget.onLot.reveals, gadgetOptions(content, player, gadget.onLot, item.grade));
   item.charges = (item.charges ?? 1) - 1;
-  log(state, `You use ${gadget.name} on the ${lot.name}: it's now ${CATALOGUE_NAMES[catalogueFor(content, player, lot)].toLowerCase()}.`);
+  log(state, `You use ${gadget.name} on a parcel.`);
+}
+
+/** Options a gadget's check leaves at an item grade. */
+export function gadgetOptions(content: ContentPack, player: PlayerState, onLot: NonNullable<import('./types').GadgetDef['onLot']>, grade: number): number {
+  const list = onLot.optionsByGrade;
+  return sharpened(content, player, list[Math.min(grade, list.length) - 1]);
+}
+
+/** Appraiser stop: pay to have one parcel of a lot ahead unwrapped. */
+export function appraise(state: GameState, content: ContentPack, player: PlayerState, nodeId: string, index: number): void {
+  assertRule(state.phase === 'appraiser', 'Find an appraiser on the map first');
+  const cost = state.config.scrapbook.appraiseCost;
+  assertRule(player.currency >= cost, `The appraiser charges ${cost} credits a parcel`);
+  const parcel = targetParcel(state, nodeId, index);
+  checkParcel(parcel, 'both', 1);
+  player.currency -= cost;
+  log(state, `The appraiser unwraps a parcel for ${cost} credits: ${pieceLabel(content, parcel.piece)}.`);
+}
+
+/** Choose which parcels to take from a won lot; the rest go back to the seller. */
+export function pickParcels(state: GameState, indices: number[]): void {
+  const r = state.rummage;
+  assertRule(state.phase === 'rummage' && r && r.stage === 'pick', 'There is no lot to pick from');
+  const unique = [...new Set(indices)];
+  assertRule(unique.length === indices.length && unique.every((i) => r.lot.parcels[i]), 'Choose different parcels from the lot');
+  assertRule(unique.length === r.lot.picks, `Pick ${r.lot.picks} parcel${r.lot.picks === 1 ? '' : 's'}`);
+  r.pieces = unique.map((i) => r.lot.parcels[i].piece);
+  r.missed = r.lot.parcels.filter((_, i) => !unique.includes(i)).map((p) => p.piece);
+  r.stage = 'sort';
+  log(state, `You open your parcels from the ${r.lotName}.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -233,33 +297,6 @@ export function stakeProblem(
   const parts = cardIds.every((id) => state.cards[id]?.kind === 'part');
   if (isBoss && eligible.size < rule.count && parts) return null;
   return `Everyone stakes ${mat} or better: stake ${rule.count} ${mat} (or better) part${rule.count === 1 ? '' : 's'}`;
-}
-
-// ---------------------------------------------------------------------------
-// Digging into a won lot
-// ---------------------------------------------------------------------------
-
-/**
- * How many pieces you take from a won lot. Always the top half; more for
- * going out quickly, with a clean hand, or with a bigger meld than needed.
- * Winning on a showdown (draws ran out) only gets the top half.
- */
-export function digDepth(config: GameConfig, duel: DuelState): { taken: number; total: number; parts: { label: string; amount: number }[] } {
-  const lot = duel.lot!;
-  const total = lot.pieces.length;
-  const dig = config.scrapbook.dig;
-  const parts: { label: string; amount: number }[] = [{ label: 'You won the lot', amount: Math.ceil(total * dig.baseFraction) }];
-  if (duel.winningMelds) {
-    if (duel.drawsTaken <= duel.rules.drawLimit / 2) parts.push({ label: 'Quick: out within half your draws', amount: dig.quickBonus });
-    const used = new Set(duel.winningMelds.flat());
-    const left = duel.hand.filter((id) => !used.has(id)).length;
-    if (left <= dig.cleanHandMax) parts.push({ label: `Clean hand: ${left} card${left === 1 ? '' : 's'} left over`, amount: dig.cleanBonus });
-    if (duel.winningMelds.some((m, i) => m.length > (duel.requirements[i]?.size ?? Infinity))) {
-      parts.push({ label: 'Bigger meld than needed', amount: dig.bigMeldBonus });
-    }
-  }
-  const taken = Math.min(total, parts.reduce((n, p) => n + p.amount, 0));
-  return { taken, total, parts };
 }
 
 // ---------------------------------------------------------------------------
@@ -319,10 +356,10 @@ export function suggestDestinations(state: GameState, content: ContentPack, play
   });
 }
 
-/** Sort the dug-out pieces: onto pages, into the deck, or sold. */
+/** Sort the opened pieces: onto pages, into the deck, or sold. */
 export function applyRummage(state: GameState, content: ContentPack, player: PlayerState, destinations: PieceDestination[]): void {
   const rummage = state.rummage;
-  assertRule(state.phase === 'rummage' && rummage, 'Nothing to sort');
+  assertRule(state.phase === 'rummage' && rummage && rummage.stage === 'sort', 'Pick your parcels first');
   assertRule(destinations.length === rummage.pieces.length, `Choose where each of the ${rummage.pieces.length} pieces goes`);
   const cfg = state.config.scrapbook;
   rummage.pieces.forEach((piece, i) => {
