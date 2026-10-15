@@ -15,6 +15,8 @@ Gadget charges do not refill between fights, so every use is a choice: spend it 
 
 The older **workshop** mode (`config.itemSource: 'workshop'`) is still available: workshop stops where a longer rummy round builds a blueprint into an item, graded by the average material of its parts, with upgrades at shops and rests.
 
+New here? Start with **[docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md)**: how to run it, what's built, the direction and next steps.
+
 This repo is a **playable framework**, not a finished game: a pure, tested rules engine, data-driven content, a minimal React UI for a single-player run, and an architecture that leaves room for multiplayer.
 
 ## Quick start
