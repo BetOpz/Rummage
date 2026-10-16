@@ -237,6 +237,7 @@ Recurring principles from playtesting:
   - Item cards are the showpiece: engraved, patent-drawing-style illustrations.
   - Three drawings per item (prototype, fine, masterwork), with material tints for the stages in between.
   - Parts stay graphic so their numbers stay readable.
+  - The frame is the grade, from taped tin to gilt filigree. The full plan is in **[CARD_DESIGN.md](CARD_DESIGN.md)**.
 
 ---
 
