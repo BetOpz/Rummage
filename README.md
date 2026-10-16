@@ -42,6 +42,8 @@ src/
     game.ts            createEngine(): newGame, reduce, applyAction, suggestBuild
     map.ts             act map generation and reachability
     duel.ts            rummy duels: stakes, pot, minion AI, going out, showdown
+    scrapbook.ts       lots, parcels, checks, matched stakes, scrapbook pages
+    blueprints.ts      blueprint lookup and display helpers (workshop mode)
     quality.ts         materials, item grades, gadget charges, upgrades
     battle.ts          card-battle layer (alternative style, config battleStyle: 'cards')
     battleZones.ts     low-level battle helpers (draw, damage)
@@ -110,7 +112,7 @@ Built-in effect types: `meldRole`, `drawChoice`, `reorderTop`, `takeFromDiscard`
 - **Ante** (`DUEL_STAKE` with `cardIds`): with matched stakes (`Encounter.stakeRule`), you stake `count` parts of the stake material or better; the material climbs with the act. If you can't match it you can `DUEL_WALK_AWAY` (not from the boss, which takes any parts instead). Hands are dealt from each side's own deck; the discard pile is shared.
 - **Turns**: `DUEL_DRAW` (your deck or the discard), then `DUEL_GO_OUT` if your cards complete the target, else `DUEL_DISCARD`, after which every opponent takes a turn (seeded AI; `greedy` minions grab discards).
 - **End**: first to go out wins. If your draws (`config.duel.drawLimit`) run out, the closest hand wins and ties go to the opponents. Winning adds the stakes to your parts deck plus credits, and wins the lot.
-- **Rummage**: `PICK_PARCELS` chooses `lot.picks` parcels, then `RUMMAGE_DONE` sends each opened piece goes to a scrapbook page (`{ to: 'page', itemId }`), the deck, or is sold. A part fills the stage of its own material, or the best lower stage still open. Stage sizes are `config.scrapbook.piecesByGrade`.
+- **Rummage**: `PICK_PARCELS` chooses `lot.picks` parcels, then `RUMMAGE_DONE` sends each opened piece to a scrapbook page (`{ to: 'page', itemId }`), the deck, or is sold. A part fills the stage of its own material, or the best lower stage still open. Stage sizes are `config.scrapbook.piecesByGrade`.
 - **Items in duels**: passive `modifyRules` effects apply (e.g. Workbench gives +1 hand size); `onRoundStart` effects fire when hands are dealt, `onRoundEnd` when a duel ends, and `onBuild` when you go out. Gadgets (`ItemDef.gadget`) run `onGadget` effects: `skipTurn`, `revealHands`, `stealCard`, `raiseStakes`, `extraDraws`, `drawExtra`, `grantTempCard`. Charges live on `ItemInstance.charges`. `RECHARGE` costs `rechargeCost` on the map or in a shop; `REST` with `recharge` is free.
 - **Bosses** get `config.duel.bossTwists` random rule twists (the boss modifiers).
 - **Content**: `minions.json` (deck, stakes, greedy), `duelTargets.json` (race blueprints by kind and act), `lots.json` (size, material odds, rare and gem chances, which duel kinds and acts).
@@ -157,7 +159,7 @@ All of these are JSON edits only; `npm test` runs `validateContent` to catch bro
 | Pivot cost | `pivotCost` |
 | Theme | `content/categories.json` (names, colours, flavour nouns) |
 
-The current defaults are a first pass. On map runs the simple bot wins about 40% of runs, and in workshop-only runs about a quarter. People should do better. Use `npm run sim` to compare settings.
+The current defaults are a first pass. On map runs the simple bot wins about 42% of runs, and in workshop-only runs about a quarter. People should do better. Use `npm run sim` to compare settings.
 
 ## Multiplayer readiness
 
