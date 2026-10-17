@@ -6,15 +6,13 @@
 
 import { battleCardDef, incomingDamage } from './battle';
 import { blueprintSize, getBlueprint } from './blueprints';
+import { gadgetAction, mapStopScore, pageValue, smartChoice } from './botGadgets';
 import { gadgetAt, maxCharges, rechargeCost } from './items';
 import { reachableNodes } from './map';
-import { appraiseCost, eligibleStakeCards, lotsAhead, suggestDestinations, viewParcel } from './scrapbook';
+import { appraiseCost, eligibleStakeCards, lotsAhead, pageOf, pageRoom, suggestDestinations, viewParcel } from './scrapbook';
 import type { Engine } from './game';
 import { type MeldToken, handProgress } from './melds';
-import type { CardId, DuelChoice, GameAction, GameState, MeldRequirement, NodeType, PlayerId, PlayerState } from './types';
-
-/** Gadget effects the bot uses on its own in duels (no cards to pick, and nothing it would regret). */
-const BOT_GADGET_EFFECTS = new Set(['skipTurn', 'extraDraws', 'drawExtra', 'grantTempCard', 'blockGoOut', 'forceDiscard', 'lockDiscard', 'stealCard', 'insureStake', 'insureDuel', 'spareLife', 'doubleDraw', 'disableTwist', 'chooseOne', 'discardTrap']);
+import type { CardId, GameAction, GameState, MeldRequirement, PieceDestination, PlayerId, PlayerState } from './types';
 
 const SHOP_PREFERENCE = ['duct_tape', 'bulk_pack', 'adaptor', 'toolbox', 'parts_catalogue'];
 
@@ -90,20 +88,53 @@ export function botAction(engine: Engine, state: GameState, playerId: PlayerId):
       return { type: 'CONTINUE', playerId };
 
     case 'shop': {
-      const slots = state.shop?.slots ?? [];
+      const shop = state.shop!;
+      const slots = shop.slots;
+      const price = (i: number) => (shop.discount ? Math.max(1, slots[i].price - shop.discount.amount) : slots[i].price);
+      let want = -1;
+      // A good page with room for it, then specials, then a parts crate.
+      const page = slots.findIndex((s) => !s.sold && s.kind === 'page' && pageRoom(state, player) && pageValue(engine, player, s.itemId!) >= 2);
+      if (page >= 0 && price(page) + 4 <= player.currency) want = page;
       for (const pref of SHOP_PREFERENCE) {
+        if (want >= 0) break;
         const i = slots.findIndex((s) => !s.sold && s.kind === 'special' && s.specialId === pref);
-        if (i >= 0 && slots[i].price <= player.currency) return { type: 'SHOP_BUY', playerId, slot: i };
+        if (i >= 0 && price(i) <= player.currency) want = i;
       }
-      const crate = slots.findIndex((s) => !s.sold && s.serviceId === 'crate');
-      if (crate >= 0 && slots[crate].price <= player.currency) return { type: 'SHOP_BUY', playerId, slot: crate };
-      return { type: 'LEAVE_SHOP', playerId };
+      if (want < 0) {
+        const crate = slots.findIndex((s) => !s.sold && s.serviceId === 'crate');
+        if (crate >= 0 && price(crate) <= player.currency) want = crate;
+      }
+      if (want < 0) return { type: 'LEAVE_SHOP', playerId };
+      // Haggle first (Abacus).
+      if (!shop.discount) {
+        for (const it of player.items) {
+          if ((it.charges ?? 0) <= 0 || !engine.content.items.find((d) => d.id === it.itemId)?.gadget) continue;
+          if (!gadgetAt(engine.content, player, it).places.includes('shop')) continue;
+          const a: GameAction = { type: 'USE_GADGET', playerId, itemUid: it.uid };
+          if (engine.applyAction(state, a).ok) return a;
+        }
+      }
+      return { type: 'SHOP_BUY', playerId, slot: want };
     }
 
-    case 'pageOffer':
-      return state.pageOffer ? { type: 'PICK_PAGES', playerId, itemIds: state.pageOffer.options.slice(0, state.pageOffer.picks) } : null;
+    case 'pageOffer': {
+      const offer = state.pageOffer;
+      if (!offer) return null;
+      // Pages are picked one at a time in value order, so pages of the same collection pull together.
+      const sim = structuredClone(player);
+      sim.pages = sim.pages ?? [];
+      const picks: string[] = [];
+      while (picks.length < offer.picks) {
+        const best = offer.options.filter((id) => !picks.includes(id)).sort((a, b) => pageValue(engine, sim, b) - pageValue(engine, sim, a))[0];
+        picks.push(best);
+        sim.pages.push(best);
+      }
+      return { type: 'PICK_PAGES', playerId, itemIds: picks };
+    }
 
     case 'map': {
+      const g = gadgetAction(engine, state, player);
+      if (g) return g;
       // Pay to recharge gadgets when there is money to spare.
       for (const item of player.items) {
         const max = maxCharges(engine.content, state.config, item, player);
@@ -112,7 +143,7 @@ export function botAction(engine: Engine, state: GameState, playerId: PlayerId):
         }
       }
       const options = reachableNodes(state.map!);
-      const best = [...options].sort((a, b) => nodeScore(player, b.type) - nodeScore(player, a.type))[0];
+      const best = [...options].sort((a, b) => mapStopScore(player, b.type) - mapStopScore(player, a.type))[0];
       return best ? { type: 'CHOOSE_NODE', playerId, nodeId: best.id } : null;
     }
 
@@ -153,30 +184,32 @@ export function botAction(engine: Engine, state: GameState, playerId: PlayerId):
 
     case 'rummage': {
       const r = state.rummage!;
-      if (r.stage === 'sort') {
-        return { type: 'RUMMAGE_DONE', playerId, destinations: suggestDestinations(state, engine.content, player, r.pieces) };
-      }
+      const g = gadgetAction(engine, state, player);
+      if (g) return g;
+      if (r.stage === 'sort') return { type: 'RUMMAGE_DONE', playerId, destinations: sortPieces(engine, state, player) };
       // Test wrapped parcels while we hold metal tests and there's a real choice; then take the best-looking ones.
       if (r.lot.parcels.length > r.lot.picks) {
         const test = engine.content.tools.find((t) => t.reveals !== 'gauge' && (player.tools[t.id] ?? 0) > 0);
         const wrapped = r.lot.parcels.findIndex((p) => viewParcel(engine.content, p).kind === 'wrapped');
         if (test && wrapped >= 0) return { type: 'USE_TOOL', playerId, toolId: test.id, parcel: wrapped };
       }
-      const worth = (i: number) => parcelWorth(engine, r.lot.parcels[i]);
+      const worth = (i: number) => parcelWorth(engine, player, r.lot.parcels[i]);
       const order = r.lot.parcels.map((_, i) => i).sort((a, b) => worth(b) - worth(a));
       return { type: 'PICK_PARCELS', playerId, parcels: order.slice(0, r.lot.picks) };
     }
 
     case 'duel':
-      if (state.duel?.choice) return answerChoice(playerId, state.duel.choice);
+      if (state.duel?.choice) return smartChoice(engine, state, playerId, state.duel.choice);
       return duelAction(engine, state, playerId);
 
     case 'duelResult':
-      if (state.duel?.choice) return answerChoice(playerId, state.duel.choice);
-      return { type: 'CONTINUE', playerId };
+      if (state.duel?.choice) return smartChoice(engine, state, playerId, state.duel.choice);
+      return gadgetAction(engine, state, player) ?? { type: 'CONTINUE', playerId };
 
     case 'rest': {
       if (state.config.battleStyle === 'rummy') {
+        const g = gadgetAction(engine, state, player);
+        if (g) return g;
         const flat = player.items.find((i) => (i.charges ?? 0) < (maxCharges(engine.content, state.config, i, player) ?? 0));
         return flat ? { type: 'REST', playerId, choice: 'recharge', itemUid: flat.uid } : { type: 'REST', playerId, choice: 'leave' };
       }
@@ -250,29 +283,6 @@ export function progress(engine: Engine, state: GameState, hand: CardId[], reqs:
   return handProgress(tokens, reqs, state.config.gaugeMin, state.config.gaugeMax);
 }
 
-/** How much the bot wants to visit a map stop. */
-function nodeScore(player: PlayerState, type: NodeType): number {
-  const hurt = player.hp < player.maxHp * 0.5;
-  switch (type) {
-    case 'workshop':
-      return player.items.length < 3 ? 6 : 3;
-    case 'masterWorkshop':
-      return 5;
-    case 'rest':
-      return hurt ? 8 : 1;
-    case 'shop':
-      return player.currency >= 8 ? 4 : 1;
-    case 'battle':
-      return hurt ? 2 : 4;
-    case 'elite':
-      return hurt || player.items.length < 3 ? 0 : 3;
-    case 'boss':
-      return 10;
-    case 'appraiser':
-      return player.currency >= 8 ? 3 : 0;
-  }
-}
-
 /** Battle: block if the incoming hit would hurt, otherwise attack; end the turn when out of plays. */
 function battleAction(engine: Engine, state: GameState, player: PlayerState): GameAction {
   const battle = state.battle!;
@@ -304,17 +314,14 @@ function battleAction(engine: Engine, state: GameState, player: PlayerState): Ga
   return play(playable[0]);
 }
 
-/** Answer a duel choice simply: the first cards shown, the order shown, yes. */
-function answerChoice(playerId: PlayerId, choice: DuelChoice): GameAction {
-  if (choice.kind === 'order') return { type: 'DUEL_CHOOSE', playerId, cardIds: [...choice.cardIds] };
-  if (choice.kind === 'confirm') return { type: 'DUEL_CHOOSE', playerId, confirm: true };
-  return { type: 'DUEL_CHOOSE', playerId, cardIds: choice.cardIds.slice(0, choice.min) };
-}
-
-/** Expected material grade of a parcel from what we know (unknown counts as middling). */
-function parcelWorth(engine: Engine, parcel: import('./types').Parcel): number {
+/** Expected material grade of a parcel from what we know (unknown counts as middling); a wanted page counts high. */
+function parcelWorth(engine: Engine, player: PlayerState, parcel: import('./types').Parcel): number {
   const grade = (cat: string) => engine.content.categories.find((c) => c.id === cat)?.grade ?? 1;
   const v = viewParcel(engine.content, parcel);
+  if (v.kind === 'known' && v.piece.kind === 'page') {
+    const owned = player.pages?.includes(v.piece.itemId!) ?? true;
+    return owned ? 1 : 4 + pageValue(engine, player, v.piece.itemId!);
+  }
   if (v.kind === 'known') return v.piece.kind === 'part' ? grade(v.piece.category!) : 6;
   if (v.kind === 'metal') return grade(v.metal);
   if (v.kind === 'gauge') return v.metals.reduce((n, m) => n + grade(m), 0) / v.metals.length;
@@ -338,19 +345,8 @@ function duelAction(engine: Engine, state: GameState, playerId: PlayerId): GameA
   if (out) return { type: 'DUEL_GO_OUT', playerId, groups: out };
 
   const player = state.players.find((p) => p.id === playerId)!;
-  // Spend charges in elite and boss duels, on gadgets that need no picking.
-  if (duel.kind !== 'battle' && duel.turnPhase === 'draw' && duel.fx.drawsThisTurn === 0) {
-    for (const item of player.items) {
-      if ((item.charges ?? 0) <= 0) continue;
-      const g = gadgetAt(engine.content, player, item);
-      if (!g.places.includes('duel') || g.gadget.target === 'handCard' || g.gadget.target === 'discardCard') continue;
-      if (!g.effects.every((e) => BOT_GADGET_EFFECTS.has(e.type))) continue;
-      if (g.effects.some((e) => e.type === 'skipTurn') && duel.opponents[0].skip > 0) continue;
-      const action: GameAction = { type: 'USE_GADGET', playerId, itemUid: item.uid, target: 0, option: 0 };
-      const tried = engine.applyAction(state, action);
-      if (tried.ok) return action;
-    }
-  }
+  const gadget = gadgetAction(engine, state, player);
+  if (gadget) return gadget;
 
   const prog = (hand: CardId[]) => progress(engine, state, hand, duel.requirements);
   if (duel.turnPhase === 'draw') {
@@ -374,4 +370,25 @@ function duelAction(engine: Engine, state: GameState, playerId: PlayerId): GameA
     }
   }
   return { type: 'DUEL_DISCARD', playerId, cardId: worst };
+}
+
+/**
+ * Sort a won lot's pieces: the default destinations, except that a loose
+ * page worth more than a page with nothing on it replaces that page when
+ * the scrapbook is full.
+ */
+function sortPieces(engine: Engine, state: GameState, player: PlayerState): PieceDestination[] {
+  const dests = suggestDestinations(state, engine.content, player, state.rummage!.pieces);
+  const torn = new Set<string>();
+  state.rummage!.pieces.forEach((piece, i) => {
+    if (piece.kind !== 'page' || dests[i].to !== 'sell' || !player.pages || player.pages.includes(piece.itemId!)) return;
+    const empty = player.pages
+      .filter((id) => !torn.has(id) && !player.items.some((it) => it.itemId === id) && pageOf(player, id).every((n) => n === 0))
+      .sort((a, b) => pageValue(engine, player, a) - pageValue(engine, player, b))[0];
+    if (empty && pageValue(engine, player, piece.itemId!) > pageValue(engine, player, empty) + 0.5) {
+      dests[i] = { to: 'scrapbook', tearOut: empty };
+      torn.add(empty);
+    }
+  });
+  return dests;
 }

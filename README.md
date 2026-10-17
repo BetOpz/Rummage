@@ -29,7 +29,7 @@ npm run test:fuzz  # slow: every gadget at every tier through whole bot runs
 npm run portfolio  # check the item cards against the set rules (docs/CARD_SET.md)
 npm run typecheck
 npm run build      # typecheck + production build
-npm run sim        # bot plays 200 seeded runs and reports win rate
+npm run sim        # bot plays 200 seeded runs and reports win rate (add --items for gadget use per item)
 npm run sim -- 300 '{"lives":1,"handSizeByTier":[9,11,13]}'   # with config overrides
 ```
 
@@ -167,7 +167,7 @@ All of these are JSON edits only; `npm test` runs `validateContent` to catch bro
 | Pivot cost | `pivotCost` |
 | Theme | `content/categories.json` (names, colours, flavour nouns) |
 
-The current defaults are a first pass. On map runs the simple bot wins about 37% of runs, and in workshop-only runs about a quarter. People should do better. Use `npm run sim` to compare settings.
+The current defaults are a first pass. On map runs the bot wins about 47% of runs, and in workshop-only runs about a quarter. People should do better. Use `npm run sim` to compare settings.
 
 ## Multiplayer readiness
 

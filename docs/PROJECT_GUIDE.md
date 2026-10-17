@@ -40,7 +40,7 @@ In Cursor you can also click the branch name in the bottom-left corner and pick 
 | Command | What it does |
 |---|---|
 | `npm run dev` | Play the game in the browser; it reloads as you edit. |
-| `npm test` | Run the test suite (242 tests). |
+| `npm test` | Run the test suite (246 tests). |
 | `npm run test:fuzz` | Slow check: every gadget at every tier tried through whole bot runs. |
 | `npm run portfolio` | Check the item cards against the set rules and count what's missing. |
 | `npm run typecheck` | Check the TypeScript types. |
@@ -243,7 +243,7 @@ Roughly in priority order.
 ### 6.1 Play and tune (now)
 
 - **Playtest a few full runs** and note what feels slow, unclear or too easy.
-- **Balance numbers**, all in `config.ts` / `content/*.json`: picks per lot, scrapbook stage sizes, check-card prices and starting checks, appraiser price, stake sizes, credit rewards. The current sim gives about a 37% win rate and roughly 1.2 items finished per run (fewer than before pages were limited to a run's scrapbook).
+- **Balance numbers**, all in `config.ts` / `content/*.json`: picks per lot, scrapbook stage sizes, check-card prices and starting checks, appraiser price, stake sizes, credit rewards. The current sim gives about a 47% win rate, roughly 1.6 items finished per run and 9 gadget uses per run. `npm run sim -- 200 '{}' --items` shows how often each item is held, used and won with.
 - **Make the bot pick for its pages.** It currently picks the highest-grade parcels, which spreads pieces across many stages. A smarter bot would make the sim numbers reflect real play better.
 
 ### 6.2 Tidy up decisions already implied

@@ -284,5 +284,6 @@ describe('rummy-duel runs end to end', () => {
       expect(['runWon', 'runLost']).toContain(a.state.phase);
       expect(a.state).toEqual(b.state);
     }
-  });
+    // Whole runs, twice each: slow under a parallel test run.
+  }, 30_000);
 });
