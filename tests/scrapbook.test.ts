@@ -23,7 +23,7 @@ function enterDuel(kind: NodeType = 'battle', seed = 'lots'): GameState {
 function rummaging(pieces: RewardOption[], seed = 'sort'): GameState {
   const s = structuredClone(engine.newGame({ seed }));
   s.phase = 'rummage';
-  s.rummage = { lotName: 'Test Box', stage: 'sort', lot: { lotId: 'x', name: 'Test Box', picks: pieces.length, parcels: [] }, pieces, missed: [], afterBoss: false };
+  s.rummage = { lotName: 'Test Box', stage: 'sort', lot: { lotId: 'x', name: 'Test Box', picks: pieces.length, parcels: [] }, pieces, missed: [], afterBoss: false, bonus: [] };
   return s;
 }
 
@@ -289,11 +289,14 @@ describe('sorting pieces into the scrapbook', () => {
 describe('items work in duels', () => {
   it('the Magnifier sharpens your checks by one (never below 2)', () => {
     const s = structuredClone(engine.newGame({ seed: 'mag' }));
-    expect(sharpened(defaultContent, me(s), 4)).toBe(4);
+    expect(sharpened(defaultContent, s.config, me(s), 4)).toBe(4);
     me(s).items.push({ uid: 'm', itemId: 'magnifier', fromBlueprint: 'x', builtFrom: 1, level: 1, usesLeft: null, charges: 1, grade: 1, material: 'Tin' });
-    expect(sharpened(defaultContent, me(s), 4)).toBe(3);
-    expect(sharpened(defaultContent, me(s), 2)).toBe(2);
-    expect(sharpened(defaultContent, me(s), 1)).toBe(1);
+    expect(sharpened(defaultContent, s.config, me(s), 4)).toBe(3);
+    expect(sharpened(defaultContent, s.config, me(s), 2)).toBe(2);
+    expect(sharpened(defaultContent, s.config, me(s), 1)).toBe(1);
+    // A Masterwork Magnifier goes down to exact.
+    me(s).items[0].grade = 7;
+    expect(sharpened(defaultContent, s.config, me(s), 2)).toBe(1);
   });
 
   it('Glue Pot gives a Duct Tape in duels; Coin Press pays after a duel', () => {
@@ -302,9 +305,8 @@ describe('items work in duels', () => {
       me(s).items.push({ uid: itemId, itemId, fromBlueprint: 'x', builtFrom: 1, level: 1, usesLeft: null, charges: 1, grade: 1, material: 'Tin' });
     }
     s = engine.reduce(s, { type: 'DUEL_STAKE', playerId: P, cardIds: stakeFor(s) });
-    const tape = s.duel!.hand.filter((id) => s.cards[id].kind === 'special' && (s.cards[id] as { specialId: string }).specialId === 'duct_tape');
-    expect(tape.length).toBeGreaterThan(0);
-    expect(s.cards[tape[0]].temporary).toBe(true);
+    const tape = s.duel!.hand.filter((id) => s.cards[id].kind === 'special' && (s.cards[id] as { specialId: string }).specialId === 'duct_tape' && s.cards[id].temporary);
+    expect(tape.length).toBe(1);
     s = structuredClone(s);
     s.duel!.rules.drawLimit = 1;
     const before = me(s).currency;

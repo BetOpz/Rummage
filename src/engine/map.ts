@@ -46,7 +46,7 @@ export function generateMap(act: number, cfg: MapConfig, rng: Rng, noWorkshops =
     }
   }
 
-  return { act, rows, current: null, visited: [] };
+  return { act, rows, current: null, visited: [], reroute: 0 };
 }
 
 function nodeType(row: number, rowCount: number, col: number, cfg: MapConfig, rng: Rng, noWorkshops: boolean): NodeType {
@@ -76,10 +76,18 @@ export function findNode(map: MapState, id: string): MapNode | undefined {
   return undefined;
 }
 
-/** Nodes the player may move to next. */
+/**
+ * Nodes the player may move to next. After a reroute (Pocket Compass), any
+ * stop up to `map.reroute` rows ahead, though never into or past the
+ * boss's row: the boss is still reached from the row before it.
+ */
 export function reachableNodes(map: MapState): MapNode[] {
   if (map.current === null) return map.rows[0];
   const here = findNode(map, map.current);
   if (!here) return [];
-  return here.next.map((id) => findNode(map, id)!).filter(Boolean);
+  const linked = here.next.map((id) => findNode(map, id)!).filter(Boolean);
+  if (!map.reroute) return linked;
+  const bossRow = map.rows.length - 1;
+  const extra = map.rows.slice(here.row + 1, Math.min(here.row + 1 + map.reroute, bossRow)).flat();
+  return [...linked, ...extra.filter((n) => !linked.includes(n))];
 }

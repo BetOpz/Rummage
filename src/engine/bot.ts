@@ -6,12 +6,15 @@
 
 import { battleCardDef, incomingDamage } from './battle';
 import { blueprintSize, getBlueprint } from './blueprints';
+import { gadgetAt, maxCharges, rechargeCost } from './items';
 import { reachableNodes } from './map';
-import { itemMaxCharges } from './quality';
-import { eligibleStakeCards, lotsAhead, suggestDestinations, viewParcel } from './scrapbook';
+import { appraiseCost, eligibleStakeCards, lotsAhead, suggestDestinations, viewParcel } from './scrapbook';
 import type { Engine } from './game';
 import { type MeldToken, handProgress } from './melds';
-import type { CardId, GameAction, GameState, MeldRequirement, NodeType, PlayerId, PlayerState } from './types';
+import type { CardId, DuelChoice, GameAction, GameState, MeldRequirement, NodeType, PlayerId, PlayerState } from './types';
+
+/** Gadget effects the bot uses on its own in duels (no cards to pick, and nothing it would regret). */
+const BOT_GADGET_EFFECTS = new Set(['skipTurn', 'extraDraws', 'drawExtra', 'grantTempCard', 'blockGoOut', 'forceDiscard', 'lockDiscard', 'stealCard', 'insureStake', 'insureDuel', 'spareLife', 'doubleDraw', 'disableTwist', 'chooseOne', 'discardTrap']);
 
 const SHOP_PREFERENCE = ['duct_tape', 'bulk_pack', 'adaptor', 'toolbox', 'parts_catalogue'];
 
@@ -97,11 +100,14 @@ export function botAction(engine: Engine, state: GameState, playerId: PlayerId):
       return { type: 'LEAVE_SHOP', playerId };
     }
 
+    case 'pageOffer':
+      return state.pageOffer ? { type: 'PICK_PAGES', playerId, itemIds: state.pageOffer.options.slice(0, state.pageOffer.picks) } : null;
+
     case 'map': {
       // Pay to recharge gadgets when there is money to spare.
       for (const item of player.items) {
-        const g = engine.content.items.find((d) => d.id === item.itemId)?.gadget;
-        if (g && (item.charges ?? 0) < (itemMaxCharges(engine.content, state.config, item) ?? 0) && player.currency >= g.rechargeCost + 4) {
+        const max = maxCharges(engine.content, state.config, item, player);
+        if (max !== null && (item.charges ?? 0) < max && player.currency >= rechargeCost(engine.content, state.config, item, player) + 4) {
           return { type: 'RECHARGE', playerId, itemUid: item.uid };
         }
       }
@@ -135,7 +141,7 @@ export function botAction(engine: Engine, state: GameState, playerId: PlayerId):
 
     case 'appraiser': {
       // Unwrap a parcel in the next lots while there are credits to spare.
-      const cost = state.config.scrapbook.appraiseCost;
+      const cost = appraiseCost(state, engine.content, player);
       if (player.currency < cost + 3) return { type: 'LEAVE_APPRAISER', playerId };
       const next = new Set(reachableNodes(state.map!).map((n) => n.id));
       for (const n of lotsAhead(state).sort((a, b) => Number(next.has(b.id)) - Number(next.has(a.id)))) {
@@ -162,17 +168,16 @@ export function botAction(engine: Engine, state: GameState, playerId: PlayerId):
     }
 
     case 'duel':
+      if (state.duel?.choice) return answerChoice(playerId, state.duel.choice);
       return duelAction(engine, state, playerId);
 
     case 'duelResult':
+      if (state.duel?.choice) return answerChoice(playerId, state.duel.choice);
       return { type: 'CONTINUE', playerId };
 
     case 'rest': {
       if (state.config.battleStyle === 'rummy') {
-        const flat = player.items.find((i) => {
-          const g = engine.content.items.find((d) => d.id === i.itemId)?.gadget;
-          return g && (i.charges ?? 0) < (itemMaxCharges(engine.content, state.config, i) ?? 0);
-        });
+        const flat = player.items.find((i) => (i.charges ?? 0) < (maxCharges(engine.content, state.config, i, player) ?? 0));
         return flat ? { type: 'REST', playerId, choice: 'recharge', itemUid: flat.uid } : { type: 'REST', playerId, choice: 'leave' };
       }
       const worn = player.items
@@ -299,6 +304,13 @@ function battleAction(engine: Engine, state: GameState, player: PlayerState): Ga
   return play(playable[0]);
 }
 
+/** Answer a duel choice simply: the first cards shown, the order shown, yes. */
+function answerChoice(playerId: PlayerId, choice: DuelChoice): GameAction {
+  if (choice.kind === 'order') return { type: 'DUEL_CHOOSE', playerId, cardIds: [...choice.cardIds] };
+  if (choice.kind === 'confirm') return { type: 'DUEL_CHOOSE', playerId, confirm: true };
+  return { type: 'DUEL_CHOOSE', playerId, cardIds: choice.cardIds.slice(0, choice.min) };
+}
+
 /** Expected material grade of a parcel from what we know (unknown counts as middling). */
 function parcelWorth(engine: Engine, parcel: import('./types').Parcel): number {
   const grade = (cat: string) => engine.content.categories.find((c) => c.id === cat)?.grade ?? 1;
@@ -326,23 +338,25 @@ function duelAction(engine: Engine, state: GameState, playerId: PlayerId): GameA
   if (out) return { type: 'DUEL_GO_OUT', playerId, groups: out };
 
   const player = state.players.find((p) => p.id === playerId)!;
-  if (duel.kind !== 'battle' && duel.turnPhase === 'draw') {
+  // Spend charges in elite and boss duels, on gadgets that need no picking.
+  if (duel.kind !== 'battle' && duel.turnPhase === 'draw' && duel.fx.drawsThisTurn === 0) {
     for (const item of player.items) {
-      const g = engine.content.items.find((d) => d.id === item.itemId)?.gadget;
-      if (!g || (item.charges ?? 0) <= 0) continue;
-      if (item.itemId === 'pocket_watch' && duel.opponents[0].skip === 0) {
-        return { type: 'USE_GADGET', playerId, itemUid: item.uid, target: 0 };
-      }
-      if (item.itemId === 'glue_pot' || item.itemId === 'sorting_tray') {
-        return { type: 'USE_GADGET', playerId, itemUid: item.uid };
-      }
+      if ((item.charges ?? 0) <= 0) continue;
+      const g = gadgetAt(engine.content, player, item);
+      if (!g.places.includes('duel') || g.gadget.target === 'handCard' || g.gadget.target === 'discardCard') continue;
+      if (!g.effects.every((e) => BOT_GADGET_EFFECTS.has(e.type))) continue;
+      if (g.effects.some((e) => e.type === 'skipTurn') && duel.opponents[0].skip > 0) continue;
+      const action: GameAction = { type: 'USE_GADGET', playerId, itemUid: item.uid, target: 0, option: 0 };
+      const tried = engine.applyAction(state, action);
+      if (tried.ok) return action;
     }
   }
 
   const prog = (hand: CardId[]) => progress(engine, state, hand, duel.requirements);
   if (duel.turnPhase === 'draw') {
     const top = duel.discard.at(-1);
-    if (top && duel.rules.allowDiscardDraw) {
+    const locked = duel.fx.lockDiscard > 0 && !duel.fx.lockExceptYou;
+    if (top && duel.rules.allowDiscardDraw && !locked) {
       const withTop = bestAfterDiscard(duel.hand.concat(top), prog, top);
       if (withTop > prog(duel.hand)) return { type: 'DUEL_DRAW', playerId, source: 'discard' };
     }

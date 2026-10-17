@@ -21,9 +21,14 @@ describe('session, save and load', () => {
     const bad = dispatch(s0, { type: 'DRAW', playerId: 'p1', source: 'deck' });
     expect(bad.ok).toBe(false);
     expect(bad.session.actions).toHaveLength(0);
-    const good = dispatch(s0, { type: 'CHOOSE_NODE', playerId: 'p1', nodeId: s0.state.map!.rows[0][0].id });
+    // A run starts by choosing pages.
+    expect(s0.state.phase).toBe('pageOffer');
+    const offer = s0.state.pageOffer!;
+    const pages = dispatch(s0, { type: 'PICK_PAGES', playerId: 'p1', itemIds: offer.options.slice(0, offer.picks) });
+    expect(pages.ok).toBe(true);
+    const good = dispatch(pages.session, { type: 'CHOOSE_NODE', playerId: 'p1', nodeId: s0.state.map!.rows[0][0].id });
     expect(good.ok).toBe(true);
-    expect(good.session.actions).toHaveLength(1);
+    expect(good.session.actions).toHaveLength(2);
   });
 
   it('replaying the action log reproduces the state exactly', () => {

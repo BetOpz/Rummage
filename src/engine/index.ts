@@ -15,15 +15,20 @@ export { battleCardDef, currentIntent, incomingDamage } from './battle';
 export { makeEncounter, findDuelOut } from './duel';
 export {
   STAGES,
+  RARITIES,
+  appraiseCost,
   canMeetStake,
   eligibleStakeCards,
   finishedGrade,
-  gadgetOptions,
+  hasPage,
   isKnown,
   lotsAhead,
   pageOf,
+  pageRoom,
+  pageSellPrice,
   pieceLabel,
   piecesNeeded,
+  scrapbookPages,
   sharpened,
   stageFor,
   stakeProblem,
@@ -32,3 +37,18 @@ export {
   type ParcelView,
 } from './scrapbook';
 export { checkUpgrade, gadgetCharges, gradeOf, itemMaxCharges, materialName } from './quality';
+export {
+  TIER_NAMES,
+  activeBonuses,
+  collectionCounts,
+  gadgetAt,
+  gadgetText,
+  itemDef,
+  itemTier,
+  maxCharges,
+  passiveText,
+  rechargeCost,
+  tierOf,
+  type ActiveEffect,
+} from './items';
+export { cardsStillNeeded, placesNow } from './duel';

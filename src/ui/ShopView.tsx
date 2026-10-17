@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type ShopSlot, partName } from '../engine';
+import { type ShopSlot, pageRoom, partName } from '../engine';
 import { CardView } from './CardView';
 import { useGame } from './context';
 import { GadgetPanel } from './GadgetPanel';
@@ -38,6 +38,18 @@ export function ShopView() {
         </>
       );
     }
+    if (slot.kind === 'page') {
+      const def = engine.content.items.find((d) => d.id === slot.itemId);
+      return (
+        <>
+          <b>{def?.name} page</b> <span className={`rarity-tag rarity-${def?.rarity}`}>{def?.rarity}</span>{' '}
+          <span className="muted">
+            {def?.passive.text[0]}
+            {def?.gadget ? ` ${def.gadget.name}: ${def.gadget.text[0]}` : ''}
+          </span>
+        </>
+      );
+    }
     const svc = pool?.services.find((s) => s.id === slot.serviceId);
     return (
       <>
@@ -46,11 +58,17 @@ export function ShopView() {
     );
   };
 
+  const [tearFor, setTearFor] = useState<number | null>(null);
+  const price = (slot: ShopSlot) => (shop.discount ? Math.max(1, slot.price - shop.discount.amount) : slot.price);
   const buy = (i: number) => {
     const slot = shop.slots[i];
     const svc = slot.kind === 'service' ? pool?.services.find((s) => s.id === slot.serviceId) : null;
     if (svc?.target === 'deckCard') {
       setTargetFor(i);
+      return;
+    }
+    if (slot.kind === 'page' && !pageRoom(state, me)) {
+      setTearFor(i);
       return;
     }
     act({ type: 'SHOP_BUY', playerId, slot: i });
@@ -61,18 +79,40 @@ export function ShopView() {
       <h2>Shop</h2>
       <p className="muted">
         You have <b>{me.currency}</b> credits. Bought cards go into your deck.
+        {shop.discount && ` Haggled: ${shop.discount.amount} off ${shop.discount.wholeVisit ? 'everything this visit' : 'your next purchase'}.`}
       </p>
       <ul className="shop-slots">
         {shop.slots.map((slot, i) => (
           <li key={i} className={slot.sold ? 'sold' : ''}>
-            <span className="price">{slot.price}</span>
+            <span className="price" title={price(slot) !== slot.price ? `Haggled down from ${slot.price}` : undefined}>
+              {price(slot)}
+            </span>
+            {price(slot) !== slot.price && <span className="was-price">was {slot.price}</span>}
             <span className="slot-label">{label(slot)}</span>
-            <button disabled={slot.sold || slot.price > me.currency} onClick={() => buy(i)}>
+            <button disabled={slot.sold || price(slot) > me.currency} onClick={() => buy(i)}>
               {slot.sold ? 'Sold' : 'Buy'}
             </button>
           </li>
         ))}
       </ul>
+      {tearFor !== null && (
+        <div className="panel">
+          <b>Your scrapbook is full. Tear out a page to make room</b> <span className="muted">(its pieces are lost, and a living item from it falls apart)</span>{' '}
+          <button onClick={() => setTearFor(null)}>Cancel</button>
+          <div className="actions">
+            {(me.pages ?? []).map((id) => (
+              <button
+                key={id}
+                onClick={() => {
+                  if (act({ type: 'SHOP_BUY', playerId, slot: tearFor, tearOut: id })) setTearFor(null);
+                }}
+              >
+                Tear out {engine.content.items.find((d) => d.id === id)?.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {targetFor !== null && (
         <div className="panel">
           <b>Choose a card to remove from your deck permanently:</b> <button onClick={() => setTargetFor(null)}>Cancel</button>

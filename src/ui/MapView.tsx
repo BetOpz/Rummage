@@ -26,10 +26,16 @@ const CELL_W = 120;
 const CELL_H = 80;
 
 export function MapView() {
-  const { state, engine, act, playerId } = useGame();
+  const { state, me, engine, act, playerId } = useGame();
   const map = state.map!;
   const rummy = state.config.battleStyle === 'rummy';
   const textFor = (t: NodeType) => (rummy ? RUMMY_TEXT[t] : undefined) ?? NODE_INFO[t].text;
+  // The Oil Can shows each boss's twist from the start of the act.
+  const seesTwists = me.items.some((it) => engine.content.items.find((d) => d.id === it.itemId)?.passive.effects.some((e) => e.type === 'revealBossTwists'));
+  const twistLabel = (n: MapNode) =>
+    seesTwists && n.encounter?.twists?.length
+      ? `\nTwist: ${n.encounter.twists.map((t) => engine.content.bossModifiers.find((b) => b.id === t.modifierId)?.name ?? t.modifierId).join(', ')}`
+      : '';
   const stakeLabel = (n: MapNode) => {
     if (!n.encounter) return '';
     const who = n.encounter.minions.map((id) => engine.content.minions.find((m) => m.id === id)?.name ?? id).join(', ');
@@ -40,7 +46,7 @@ export function MapView() {
           : engine.content.specials.find((s) => s.id === o.specialId)?.name,
       )
       .join(', ');
-    return `\nOpponents: ${who}\nPot: ${pot}`;
+    return `\nOpponents: ${who}\nPot: ${pot}${twistLabel(n)}`;
   };
   const reachable = new Set(reachableNodes(map).map((n) => n.id));
   const width = Math.max(...map.rows.map((r) => r.length));
@@ -61,6 +67,9 @@ export function MapView() {
         <h2>Act {map.act + 1}</h2>
         <span className="muted">Pick your next stop. Lit stops are reachable from where you are.</span>
       </div>
+      {map.reroute > 0 && (
+        <div className="duel-effects">Rerouted: your next move can go to any stop up to {map.reroute} row{map.reroute === 1 ? '' : 's'} ahead (not the boss).</div>
+      )}
       <div className="map-scroll">
         <div className="map" style={{ width: viewW, height: viewH }}>
           <svg className="map-lines" viewBox={`0 0 ${viewW} ${viewH}`} width={viewW} height={viewH} aria-hidden="true">
@@ -95,6 +104,9 @@ export function MapView() {
                   <span className="node-pot">{n.encounter.lot.name}</span>
                 ) : (
                   n.encounter && <span className="node-pot">pot {n.encounter.stakes.length}</span>
+                )}
+                {seesTwists && n.encounter?.twists?.[0] && (
+                  <span className="node-pot">{engine.content.bossModifiers.find((b) => b.id === n.encounter!.twists![0].modifierId)?.name}</span>
                 )}
               </button>
             );

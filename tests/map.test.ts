@@ -217,7 +217,8 @@ describe('map runs end to end', () => {
       expect(['runWon', 'runLost']).toContain(a.state.phase);
       expect(a.state).toEqual(b.state);
     }
-  });
+    // Whole runs, twice each: slow under a parallel test run.
+  }, 30_000);
 
   it('rejects multiple players on a map run', () => {
     expect(() => engine.newGame({ seed: 'x', players: [{ name: 'A' }, { name: 'B' }] })).toThrow(/single-player/);

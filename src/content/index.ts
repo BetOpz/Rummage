@@ -16,11 +16,12 @@ import minions from './minions.json';
 import duelTargets from './duelTargets.json';
 import lots from './lots.json';
 import tools from './tools.json';
+import collections from './collections.json';
 
 export const defaultContent: ContentPack = {
   categories,
   specials: specials as ContentPack['specials'],
-  items: items as ContentPack['items'],
+  items: items as unknown as ContentPack['items'],
   blueprints: blueprints as ContentPack['blueprints'],
   bossModifiers,
   shopPools: shopPools as ContentPack['shopPools'],
@@ -30,4 +31,5 @@ export const defaultContent: ContentPack = {
   duelTargets: duelTargets as ContentPack['duelTargets'],
   lots: lots as unknown as ContentPack['lots'],
   tools: tools as ContentPack['tools'],
+  collections: collections as ContentPack['collections'],
 };

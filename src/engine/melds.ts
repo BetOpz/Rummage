@@ -13,15 +13,17 @@ import type { MeldRequirement, MeldRole, MeldType, RoundRules } from './types';
 
 export type MeldToken =
   | { role: 'natural'; id: string; category: string; gauge: number }
-  | { role: 'wild'; id: string }
+  /** `natural`: counts as a real part for requireNaturalInMeld (Glue Pot tapes). */
+  | { role: 'wild'; id: string; natural?: boolean }
   | { role: 'bulk'; id: string; slots: number }
   | { role: 'adaptor'; id: string };
 
-/** The subset of round rules that meld validation needs. */
+/** The subset of round rules that meld validation needs. Item rules (wrapRuns, adaptor*) are optional. */
 export type MeldRules = Pick<
   RoundRules,
   'gaugeMin' | 'gaugeMax' | 'disabledMeldRoles' | 'bannedCategories' | 'requireNaturalInMeld'
->;
+> &
+  Partial<Pick<RoundRules, 'wrapRuns' | 'adaptorBoth' | 'adaptorShift'>>;
 
 export type MeldResult =
   | {
@@ -66,19 +68,37 @@ export function validateMeld(tokens: MeldToken[], req: MeldRequirement, rules: M
   const adaptors = tokens.filter((t) => t.role === 'adaptor').length;
   const slots = tokens.reduce((sum, t) => sum + tokenSlots(t), 0);
 
-  if (rules.requireNaturalInMeld && naturals.length === 0) return fail('A meld needs at least one real part');
+  const realWild = tokens.some((t) => t.role === 'wild' && t.natural);
+  if (rules.requireNaturalInMeld && naturals.length === 0 && !realWild) return fail('A meld needs at least one real part');
   if (slots < req.size) return fail(`Needs ${req.size} cards, has ${slots}`);
 
   const lo = Math.max(rules.gaugeMin, req.minGauge ?? rules.gaugeMin);
   const hi = Math.min(rules.gaugeMax, req.maxGauge ?? rules.gaugeMax);
   if (lo > hi) return fail('No gauge satisfies the constraints');
 
+  const adapt: Adapt = { both: !!rules.adaptorBoth, shift: rules.adaptorShift ?? 1 };
+  // Runs wrap only over the whole gauge range (a blueprint's own limits stop them).
+  const wrap = !!rules.wrapRuns && lo === rules.gaugeMin && hi === rules.gaugeMax;
   return req.type === 'set'
-    ? validateSet(naturals, adaptors, slots, req, lo, hi)
-    : validateRun(tokens, naturals, adaptors, slots, req, lo, hi);
+    ? validateSet(naturals, adaptors, slots, req, lo, hi, adapt)
+    : validateRun(tokens, naturals, adaptors, slots, req, lo, hi, adapt, wrap);
 }
 
 type Natural = Extract<MeldToken, { role: 'natural' }>;
+
+/** What one adaptor can fix: the gauge by up to `shift`, or the category, or (with `both`) the two at once. */
+interface Adapt {
+  both: boolean;
+  shift: number;
+}
+
+/** Adaptors a natural needs to fit (0 or 1), or Infinity if it can't. */
+function adaptCost(gaugeDiff: number, catOk: boolean, adapt: Adapt): number {
+  if (gaugeDiff === 0 && catOk) return 0;
+  if (gaugeDiff > adapt.shift) return Infinity;
+  if (gaugeDiff > 0 && !catOk && !adapt.both) return Infinity;
+  return 1;
+}
 
 function validateSet(
   naturals: Natural[],
@@ -87,25 +107,21 @@ function validateSet(
   req: MeldRequirement,
   lo: number,
   hi: number,
+  adapt: Adapt,
 ): MeldResult {
   let best: MeldResult = fail('Cards do not share a gauge');
   for (let g = lo; g <= hi; g++) {
     let needed = 0;
     let possible = true;
     for (const n of naturals) {
-      const gaugeOk = n.gauge === g;
       const catOk = !req.category || n.category === req.category;
-      if (gaugeOk && catOk) continue;
-      // One adaptor fixes one thing: either the gauge (+/-1) or the category.
-      if (!gaugeOk && !catOk) {
+      // One adaptor fixes one thing: either the gauge (+/-1) or the category (both, with a Soldering Iron).
+      const cost = adaptCost(Math.abs(n.gauge - g), catOk, adapt);
+      if (cost === Infinity) {
         possible = false;
         break;
       }
-      if (!gaugeOk && Math.abs(n.gauge - g) !== 1) {
-        possible = false;
-        break;
-      }
-      needed++;
+      needed += cost;
     }
     if (!possible) continue;
     if (needed > adaptors) {
@@ -132,11 +148,14 @@ function validateRun(
   req: MeldRequirement,
   lo: number,
   hi: number,
+  adapt: Adapt,
+  wrap: boolean,
 ): MeldResult {
   if (tokens.some((t) => t.role === 'bulk')) return fail('Bulk cards only work in sets');
 
   const length = slots;
-  if (hi - lo + 1 < length) return fail(`A run of ${length} does not fit gauges ${lo}-${hi}`);
+  const range = hi - lo + 1;
+  if (range < length) return fail(`A run of ${length} does not fit gauges ${lo}-${hi}`);
 
   const categories = req.category
     ? [req.category]
@@ -144,10 +163,16 @@ function validateRun(
       ? [...new Set(naturals.map((n) => n.category))]
       : ['*'];
 
+  // With wrapping, a run can start anywhere and carry on from the top gauge to the bottom.
+  const lastStart = wrap && length < range ? hi : hi - length + 1;
+  const gaugeAt = (start: number, p: number) => lo + ((start - lo + p) % range);
+  const diff = (a: number, b: number) => (wrap ? Math.min(Math.abs(a - b), range - Math.abs(a - b)) : Math.abs(a - b));
+
   let best: { category: string; start: number; cost: number } | null = null;
   for (const category of categories) {
-    for (let start = lo; start + length - 1 <= hi; start++) {
-      const cost = minAssignmentCost(naturals, category, start, length, adaptors);
+    for (let start = lo; start <= lastStart; start++) {
+      const positions = Array.from({ length }, (_, p) => gaugeAt(start, p));
+      const cost = minAssignmentCost(naturals, category, positions, adaptors, adapt, diff);
       if (cost !== null && (best === null || cost < best.cost)) {
         best = { category, start, cost };
         if (cost === 0) break;
@@ -165,26 +190,21 @@ function validateRun(
 }
 
 /**
- * Assign each natural to a distinct run position [start, start+length).
+ * Assign each natural to a distinct run position (the gauges in `positions`).
  * Cost per natural: 0 exact, 1 if it needs an adaptor, impossible otherwise.
  * Returns the minimum total cost if <= budget, else null. Wilds fill the gaps.
  */
 function minAssignmentCost(
   naturals: Natural[],
   category: string,
-  start: number,
-  length: number,
+  positions: number[],
   budget: number,
+  adapt: Adapt,
+  diff: (a: number, b: number) => number,
 ): number | null {
-  const costOf = (n: Natural, pos: number): number => {
-    const catOk = category === '*' || n.category === category;
-    const diff = Math.abs(n.gauge - pos);
-    if (catOk && diff === 0) return 0;
-    if (catOk && diff === 1) return 1;
-    if (!catOk && diff === 0) return 1;
-    return Infinity;
-  };
+  const costOf = (n: Natural, pos: number): number => adaptCost(diff(n.gauge, pos), category === '*' || n.category === category, adapt);
 
+  const length = positions.length;
   let best = Infinity;
   const used = new Array<boolean>(length).fill(false);
   const search = (i: number, cost: number) => {
@@ -195,7 +215,7 @@ function minAssignmentCost(
     }
     for (let p = 0; p < length; p++) {
       if (used[p]) continue;
-      const c = costOf(naturals[i], start + p);
+      const c = costOf(naturals[i], positions[p]);
       if (c === Infinity) continue;
       used[p] = true;
       search(i + 1, cost + c);

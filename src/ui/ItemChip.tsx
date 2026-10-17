@@ -1,17 +1,23 @@
-import { type ItemInstance, itemMaxCharges } from '../engine';
+import { type ItemInstance, maxCharges, rechargeCost } from '../engine';
+import { itemText } from './Gadgets';
 import { useGame } from './context';
 
-/** Compact item label: material, name, level and charges/uses, with details on hover. */
+/** Compact item label: material, name, level and charges/uses, with the card text at its tier on hover. */
 export function ItemChip({ item }: { item: ItemInstance }) {
-  const { engine, state } = useGame();
-  const def = engine.content.items.find((d) => d.id === item.itemId);
+  const { engine, state, me } = useGame();
+  const t = itemText(engine, item);
+  const def = t.def;
   const rummy = state.config.battleStyle === 'rummy';
   const battle = def?.battle;
   const gadget = def?.gadget;
-  const max = itemMaxCharges(engine.content, state.config, item);
-  const lines = [`${item.material} ${def?.name} (grade ${item.grade}, level ${item.level})`, `Passive: ${def?.text}`];
+  const max = maxCharges(engine.content, state.config, item, me);
+  const lines = [`${item.material} ${def?.name} (${t.tierName}, grade ${item.grade}${item.level > 1 ? `, level ${item.level}` : ''})`, `Passive: ${t.passive}`];
   if (rummy) {
-    lines.push(gadget ? `Gadget: ${gadget.name} — ${gadget.text} (${item.charges ?? 0}/${max} charges; ${gadget.rechargeName} costs ${gadget.rechargeCost})` : 'No gadget');
+    lines.push(
+      gadget
+        ? `Gadget: ${gadget.name} — ${t.gadget} (${item.charges ?? 0}/${max} charges; ${gadget.rechargeName} costs ${rechargeCost(engine.content, state.config, item, me)})`
+        : 'No gadget (a fixture)',
+    );
   } else {
     lines.push(battle ? `Battle card: ${battle.name} (${battle.cost} energy) — ${battle.text}` : 'No battle card');
     lines.push(item.usesLeft !== null ? `${item.usesLeft} uses left before it breaks` : 'Never breaks');

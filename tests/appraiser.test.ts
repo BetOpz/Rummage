@@ -65,16 +65,16 @@ describe('the Magnifier on parcels', () => {
     let s = onMap(grade);
     const id = lotsAhead(s)[0].id;
     const i = lotOf(s, id).parcels.findIndex((p) => p.piece.kind === 'part');
-    s = engine.reduce(s, { type: 'EXAMINE_LOT', playerId: P, itemUid: 'mag', nodeId: id, parcel: i });
+    s = engine.reduce(s, { type: 'USE_GADGET', playerId: P, itemUid: 'mag', nodeId: id, parcels: [i] });
     expect(me(s).items[0].charges).toBe(2);
     const v = viewParcel(defaultContent, lotOf(s, id).parcels[i]);
     return v.kind === 'known' ? 1 : v.kind === 'metal' ? v.gauges.length : -1;
   }
 
-  it('checks the metal for a charge, sharper as the Magnifier is upgraded', () => {
-    // Its own passive sharpens it by one too (never below 2).
-    expect(optionsAt(1)).toBe(3);
-    expect(optionsAt(3)).toBe(2);
+  it('checks the metal for a charge, sharper at each tier', () => {
+    // Spyglass leaves 1 of 3 numbers, then 1 of 2, then unwraps; the passive sharpens it by one (never below 2 until Masterwork).
+    expect(optionsAt(1)).toBe(2);
+    expect(optionsAt(4)).toBe(2);
     expect(optionsAt(5)).toBe(2);
     expect(optionsAt(7)).toBe(1);
   });
@@ -82,10 +82,12 @@ describe('the Magnifier on parcels', () => {
   it('needs a charge and a gadget that works on parcels', () => {
     const empty = onMap(1, 0);
     const id = lotsAhead(empty)[0].id;
-    expect(engine.applyAction(empty, { type: 'EXAMINE_LOT', playerId: P, itemUid: 'mag', nodeId: id, parcel: 0 }).ok).toBe(false);
+    expect(engine.applyAction(empty, { type: 'USE_GADGET', playerId: P, itemUid: 'mag', nodeId: id, parcels: [0] }).ok).toBe(false);
     const watch = structuredClone(onMap(1));
     me(watch).items.push({ uid: 'w', itemId: 'pocket_watch', fromBlueprint: 'x', builtFrom: 4, level: 1, usesLeft: null, charges: 2, grade: 1, material: 'Tin' });
-    expect(engine.applyAction(watch, { type: 'EXAMINE_LOT', playerId: P, itemUid: 'w', nodeId: id, parcel: 0 }).ok).toBe(false);
+    const r = engine.applyAction(watch, { type: 'USE_GADGET', playerId: P, itemUid: 'w', nodeId: id, parcels: [0] });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toMatch(/used in a duel/);
   });
 
   it('tools work on lots ahead from the map too', () => {

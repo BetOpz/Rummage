@@ -7,7 +7,7 @@ A rummy-style collecting deckbuilder (working title). Rummy is the whole game:
 3. **Picking:** win and you pick your parcels from the lot; the rest go back to the seller. You choose blind unless you've checked them.
 4. **The scrapbook:** each item has a page with a stage per material, Tin to Platinum. Found parts go onto pages (or into your deck, or get sold). Fill a stage and the item comes to life at that grade, or rises to it. Items give a passive bonus (like Balatro jokers) and a **gadget** you trigger in duels, such as the Pocket Watch, which makes an opponent miss a turn.
 
-**Checks.** Every parcel starts wrapped. You hold check cards (`tools.json`, `player.tools`) and spend them on parcels in lots ahead or on the pick screen (`USE_TOOL`). Calipers, Vernier Calipers and a Micrometer are certain of the number and leave 4, 3 or 2 possible metals; a Scratch Test, Acid Test and Assay are certain of the metal and leave 4, 3 or 2 possible numbers; Unwrap shows everything. The real piece is always in the list, and each parcel's look-alikes are fixed when the lot is made (`Parcel.altMetals` / `altGauges`), so sharper checks narrow the same list and checks never contradict each other. Shops sell checks, an **Appraiser** stop unwraps parcels for credits (`APPRAISE`), and the Magnifier's passive sharpens every check by one while its Spyglass gadget is a reusable metal check (`EXAMINE_LOT`, set by `onLot` in `items.json`) that gets sharper with grade.
+**Checks.** Every parcel starts wrapped. You hold check cards (`tools.json`, `player.tools`) and spend them on parcels in lots ahead or on the pick screen (`USE_TOOL`). Calipers, Vernier Calipers and a Micrometer are certain of the number and leave 4, 3 or 2 possible metals; a Scratch Test, Acid Test and Assay are certain of the metal and leave 4, 3 or 2 possible numbers; Unwrap shows everything. The real piece is always in the list, and each parcel's look-alikes are fixed when the lot is made (`Parcel.altMetals` / `altGauges`), so sharper checks narrow the same list and checks never contradict each other. Shops sell checks, an **Appraiser** stop unwraps parcels for credits (`APPRAISE`), and the Magnifier's passive sharpens every check by one while its Spyglass gadget is a reusable metal check (`USE_GADGET` with `nodeId` and `parcels`) that gets sharper with its tier.
 
 **Materials and grades.** Each part category is a material, one per grade: Tin 1, Wood 2, Iron 3, Copper 4, then the rarer Brass 5, Silver 6, Gold 7 and Platinum 8 (starting decks are Tin to Copper). An item's grade is the highest scrapbook stage you've filled. Higher grades give gadgets more charges and stronger effects; a Gold Pocket Watch stops time for 2 turns.
 
@@ -25,6 +25,8 @@ This repo is a **playable framework**, not a finished game: a pure, tested rules
 npm install
 npm run dev        # play in the browser (http://localhost:5173)
 npm test           # unit tests (Vitest)
+npm run test:fuzz  # slow: every gadget at every tier through whole bot runs
+npm run portfolio  # check the item cards against the set rules (docs/CARD_SET.md)
 npm run typecheck
 npm run build      # typecheck + production build
 npm run sim        # bot plays 200 seeded runs and reports win rate
@@ -41,8 +43,10 @@ src/
     types.ts           state, actions and content types (all plain JSON)
     game.ts            createEngine(): newGame, reduce, applyAction, suggestBuild
     map.ts             act map generation and reachability
-    duel.ts            rummy duels: stakes, pot, minion AI, going out, showdown
-    scrapbook.ts       lots, parcels, checks, matched stakes, scrapbook pages
+    duel.ts            rummy duels: stakes, pot, minion AI, turns, choices, gadgets, showdown
+    duelZones.ts       low-level duel helpers (draw with reshuffle, extra draws)
+    items.ts           items as cards: tiers, tier params, conditions, set bonuses, charges
+    scrapbook.ts       lots, parcels, checks, matched stakes, scrapbook pages, pages in a run
     blueprints.ts      blueprint lookup and display helpers (workshop mode)
     quality.ts         materials, item grades, gadget charges, upgrades
     battle.ts          card-battle layer (alternative style, config battleStyle: 'cards')
@@ -103,8 +107,11 @@ Content references effects by name: `{ "type": "modifyRules", "params": { "handS
 | `onBuild(ctx)` | The player completed a build. |
 | `onRoundEnd(ctx)` | Round ended (before cleanup). |
 | `onPurchase(ctx)` | A shop service was bought. |
+| `onTurnStart`, `onDuelDraw`, `onOpponentTake`, `onOpponentSkipped`, `onOpponentNearOut`, `onOpponentWouldGoOut` | Duel events for item passives (`ctx.duel`, `ctx.info`). |
+| `onGadget(ctx)` | A gadget was used; `places` lists where the effect works (default duels). |
+| `onChoice(ctx, params, answer)` | The player answered a duel choice the effect opened. |
 
-Built-in effect types: `meldRole`, `drawChoice`, `reorderTop`, `takeFromDiscard`, `destroyCard`, `addRandomParts`, `modifyRules`, `banCategory`, `grantTempCard`, `gainCurrency`.
+Every effect the item cards use is in `defaultEffects`; see `docs/CARD_SET.md` section 9 for the vocabulary.
 
 ### Duels (default battle style)
 
@@ -113,7 +120,8 @@ Built-in effect types: `meldRole`, `drawChoice`, `reorderTop`, `takeFromDiscard`
 - **Turns**: `DUEL_DRAW` (your deck or the discard), then `DUEL_GO_OUT` if your cards complete the target, else `DUEL_DISCARD`, after which every opponent takes a turn (seeded AI; `greedy` minions grab discards).
 - **End**: first to go out wins. If your draws (`config.duel.drawLimit`) run out, the closest hand wins and ties go to the opponents. Winning adds the stakes to your parts deck plus credits, and wins the lot.
 - **Rummage**: `PICK_PARCELS` chooses `lot.picks` parcels, then `RUMMAGE_DONE` sends each opened piece to a scrapbook page (`{ to: 'page', itemId }`), the deck, or is sold. A part fills the stage of its own material, or the best lower stage still open. Stage sizes are `config.scrapbook.piecesByGrade`.
-- **Items in duels**: passive `modifyRules` effects apply (e.g. Workbench gives +1 hand size); `onRoundStart` effects fire when hands are dealt, `onRoundEnd` when a duel ends, and `onBuild` when you go out. Gadgets (`ItemDef.gadget`) run `onGadget` effects: `skipTurn`, `revealHands`, `stealCard`, `raiseStakes`, `extraDraws`, `drawExtra`, `grantTempCard`. Charges live on `ItemInstance.charges`. `RECHARGE` costs `rechargeCost` on the map or in a shop; `REST` with `recharge` is free.
+- **Items** are cards (`docs/CARD_SET.md`): each has a passive and usually a gadget, written at three tiers (Prototype Tin–Copper, Fine Brass–Silver, Masterwork Gold–Platinum); effect params can be tier params (a list of 3). Passives adjust the duel's rules and react to duel events; three living items of a collection give its set bonus (`collections.json`). Gadgets (`USE_GADGET` with what they're aimed at) work in duels, after a duel, on lots, on the map, in shops or in the scrapbook; some open a duel choice (`DUEL_CHOOSE`). Charges are `base + floor((grade − 1) / 2)` and live on `ItemInstance.charges`. `RECHARGE` costs credits on the map or in a shop; `REST` with `recharge` is free.
+- **Pages in a run** (`config.scrapbook.pages`): you start by choosing 3 of 5 Common pages (`PICK_PAGES`); the scrapbook holds 12. Loose pages turn up in lots and shops; a full scrapbook means tearing a page out (`tearOut`).
 - **Bosses** get `config.duel.bossTwists` random rule twists (the boss modifiers).
 - **Content**: `minions.json` (deck, stakes, greedy), `duelTargets.json` (race blueprints by kind and act), `lots.json` (size, material odds, rare and gem chances, which duel kinds and acts).
 
@@ -130,14 +138,14 @@ Built-in effect types: `meldRole`, `drawChoice`, `reorderTop`, `takeFromDiscard`
 All of these are JSON edits only; `npm test` runs `validateContent` to catch broken references.
 
 - **Blueprint**: add to `src/content/blueprints.json` with a `tier`, `requirements` (`hidden: true` hides one until chosen) and the `itemId` it builds. Set `"boss": true` for end-of-tier bosses.
-- **Item**: add to `items.json` with effects, e.g. `{ "type": "modifyRules", "params": { "drawLimit": 1 } }`.
+- **Item**: add to `items.json` following `docs/CARD_SET.md` (collection, rarity, passive and gadget text per tier, effects), then run `npm run portfolio` to check it against the set rules.
 - **Special card**: add to `specials.json`. Use `meldRole` for meld behaviour; set `playable`, `target` (`none` / `handCard` / `discardCard`) and `consumeOnPlay` for played specials. It appears in shops according to `weight` and `minTier`.
 - **Boss modifier**: add to `bosses.json`. It is picked at random for boss rounds (respecting `minTier`). Modifiers listed in `config.challengeModifiers` apply to every round, which is the hook for future difficulty ladders.
 - **Minion**: add to `minions.json` with `kind`, a `deck` spec, `stakes`, optional `greedy` and `minAct`/`maxAct`.
 - **Duel target**: add to `duelTargets.json`.
 - **Lot**: add to `lots.json` with `kinds`, `size`, `picks`, `materials` (everyday material odds), `rareChance`, `gemChance`, `gauges` and optional `minAct`/`maxAct`. Every item automatically gets a scrapbook page.
 - **Check card**: add to `tools.json` with `reveals` (`gauge`, `metal` or `both`), `options` (possibilities left for the other attribute), `price` and shop `weight`.
-- **Gadget**: add a `gadget` block to an item in `items.json` (`charges`, `rechargeCost`, `rechargeName`, `target`, `effects`). Effect params can include `perGrade`, which adds `floor(perGrade × (grade − 1))`.
+- **Gadget**: the `gadget` block of an item (`usedIn`, `target`, `charges`, `rechargeCost`, `rechargeName`, `text`, `effects`, optional `when`). Any number in its params can be a tier param.
 - **Material**: add to `categories.json` with a `grade`; mark `rare: true` (and a low `weight`) to keep it out of starting and minion decks. Gems are specials with `gradeBonus`.
 - **Enemy** (card battles): add to `enemies.json` with `kind` (`normal` / `elite` / `boss`), `hp`, optional `minAct`/`maxAct`, and an `intents` cycle.
 - **Starter battle card**: add to `starterCards.json` and list it in `config.battle.starterDeck`.
@@ -159,7 +167,7 @@ All of these are JSON edits only; `npm test` runs `validateContent` to catch bro
 | Pivot cost | `pivotCost` |
 | Theme | `content/categories.json` (names, colours, flavour nouns) |
 
-The current defaults are a first pass. On map runs the simple bot wins about 42% of runs, and in workshop-only runs about a quarter. People should do better. Use `npm run sim` to compare settings.
+The current defaults are a first pass. On map runs the simple bot wins about 37% of runs, and in workshop-only runs about a quarter. People should do better. Use `npm run sim` to compare settings.
 
 ## Multiplayer readiness
 

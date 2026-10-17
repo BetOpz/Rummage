@@ -13,18 +13,21 @@ import { type GameConfig, makeConfig, perTier } from '../config';
 import { endBattleTurn, makeReward, playBattleCard, startBattle } from './battle';
 import { blueprintsForTier, getBlueprint } from './blueprints';
 import {
+  chooseInDuel,
+  duelCycle,
   duelDiscard,
   duelDraw,
   duelGoOut,
-  findDuelOut,
   finishDuel,
+  itemRuleDefaults,
   makeEncounter,
   placeStake,
   startDuel,
+  suggestPlayerOut,
   useGadget,
   walkAway,
 } from './duel';
-import { applyRummage, appraise, examineParcel, pickParcels, useTool } from './scrapbook';
+import { addPage, applyRummage, appraise, pickParcels, rollPage, startingPageOptions, useTool } from './scrapbook';
 import {
   type EffectContext,
   type EffectRegistry,
@@ -32,11 +35,11 @@ import {
   cardToken,
   defaultEffects,
   getHandler,
-  itemEffects,
   runHook,
 } from './effects';
+import { itemDef, itemEffects, maxCharges, passiveSum, rechargeCost } from './items';
 import { findNode, generateMap, reachableNodes } from './map';
-import { checkUpgrade, commonCategories, gadgetCharges, gradeOf, materialName, randomCategory } from './quality';
+import { checkUpgrade, commonCategories, gradeOf, materialName, randomCategory } from './quality';
 import { type MeldRules, type MeldToken, type MeldUnit, checkBuild, findBuild, validateMeld } from './melds';
 import { Rng, seedToState } from './rng';
 import type {
@@ -132,7 +135,9 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
         exhausted: false,
         rules: baseRules(config, 0),
         scrapbook: {},
+        pages: pageLimited(config) ? [] : null,
         tools: config.itemSource === 'scrapbook' && config.runStructure === 'map' ? { ...config.scrapbook.startingTools } : {},
+        spareLives: { run: false, acts: [] },
       })),
       activePlayer: 0,
       cards: {},
@@ -145,6 +150,8 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       reward: null,
       duel: null,
       rummage: null,
+      pageOffer: null,
+      restRecharges: 0,
       nextUid: 1,
       messages: [],
     };
@@ -164,9 +171,31 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     }
 
     log(state, `New run (seed "${seed}").`);
-    if (config.runStructure === 'map') enterAct(state, 0);
-    else prepareRound(state, isBossRound(state));
+    if (config.runStructure === 'map') {
+      enterAct(state, 0);
+      // Page-limited runs start by choosing pages from a few Commons.
+      if (pageLimited(config)) {
+        state.pageOffer = { options: startingPageOptions(state, content, new Rng(state)), picks: config.scrapbook.pages!.start };
+        state.phase = 'pageOffer';
+      }
+    } else prepareRound(state, isBossRound(state));
     return state;
+  }
+
+  /** Map runs fought over lots fill a scrapbook of a limited number of pages. */
+  function pageLimited(config: GameConfig): boolean {
+    return config.runStructure === 'map' && config.battleStyle === 'rummy' && config.itemSource === 'scrapbook' && config.scrapbook.pages !== null;
+  }
+
+  function pickPages(state: GameState, playerId: PlayerId, itemIds: string[]) {
+    const offer = state.pageOffer;
+    assertRule(state.phase === 'pageOffer' && offer, 'No pages on offer');
+    const player = getPlayer(state, playerId);
+    assertRule(new Set(itemIds).size === itemIds.length && itemIds.every((id) => offer.options.includes(id)), 'Choose from the pages offered');
+    assertRule(itemIds.length === offer.picks, `Choose ${offer.picks} pages`);
+    for (const id of itemIds) addPage(state, content, player, id);
+    state.pageOffer = null;
+    state.phase = 'map';
   }
 
   function baseRules(config: GameConfig, tier: number): RoundRules {
@@ -180,6 +209,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       gaugeMin: config.gaugeMin,
       gaugeMax: config.gaugeMax,
       requireNaturalInMeld: config.requireNaturalInMeld,
+      ...itemRuleDefaults(),
     };
   }
 
@@ -205,7 +235,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
   function computeRules(state: GameState, player: PlayerState): RoundRules {
     const rules = baseRules(state.config, state.tier);
     for (const { refs, params } of roundModifierRefs(state)) applyRuleModifiers(effects, rules, refs, params);
-    applyRuleModifiers(effects, rules, itemEffects(content, player));
+    applyRuleModifiers(effects, rules, itemEffects(state, content, player));
     rules.handSize = Math.max(1, rules.handSize);
     rules.drawLimit = Math.max(1, rules.drawLimit);
     return rules;
@@ -286,7 +316,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     for (const p of state.players) {
       const ctx = context(state, p);
       for (const { refs, params } of roundModifierRefs(state)) runHook(effects, 'onRoundStart', refs, ctx, params);
-      runHook(effects, 'onRoundStart', itemEffects(content, p), ctx);
+      runHook(effects, 'onRoundStart', itemEffects(state, content, p), ctx);
     }
     state.activePlayer = 0;
     round.turnPhase = 'draw';
@@ -484,19 +514,21 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     const grade = gradeOf(state, content, used, state.config);
     for (const id of used) destroyCard(state, id);
     const ctx = context(state, player);
-    runHook(effects, 'onBuild', itemEffects(content, player), ctx);
-    const itemDef = content.items.find((i) => i.id === bp.itemId);
-    player.items.push({
+    runHook(effects, 'onBuild', itemEffects(state, content, player), ctx);
+    const built = content.items.find((i) => i.id === bp.itemId);
+    const newItem = {
       uid: `it${state.nextUid++}`,
       itemId: bp.itemId,
       fromBlueprint: bp.id,
       builtFrom: used.length,
       level: bp.tier + (bp.boss ? 1 : 0),
-      usesLeft: itemDef?.battle?.uses ?? null,
-      charges: itemDef?.gadget ? gadgetCharges(itemDef.gadget, grade, state.config) : null,
+      usesLeft: built?.battle?.uses ?? null,
+      charges: null as number | null,
       grade,
       material: materialName(content, state.config, grade),
-    });
+    };
+    player.items.push(newItem);
+    newItem.charges = maxCharges(content, state.config, newItem, player);
     const item = content.items.find((i) => i.id === bp.itemId);
     log(state, `${player.name} builds ${bp.name}! ${used.length} parts become a ${materialName(content, state.config, grade)} ${item?.name ?? bp.itemId}.`);
     endRound(state, player.id);
@@ -588,7 +620,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
         lifeLost,
         hpLost,
       };
-      runHook(effects, 'onRoundEnd', itemEffects(content, p), context(state, p));
+      runHook(effects, 'onRoundEnd', itemEffects(state, content, p), context(state, p));
     }
 
     // Everything not destroyed returns to its owner's deck (the master list
@@ -679,29 +711,46 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     for (const svc of pool.services) {
       slots.push({ kind: 'service', serviceId: svc.id, price: svc.price, sold: false });
     }
-    // Scrapbook runs: checks for parcels (Calipers, Scratch Tests, Unwrap...).
+    // Scrapbook runs: checks for parcels (Calipers, Scratch Tests, Unwrap...), and loose pages.
     if (state.config.itemSource === 'scrapbook' && state.config.runStructure === 'map' && content.tools.length > 0) {
-      for (let i = 0; i < state.config.scrapbook.shopToolSlots; i++) {
+      const extra = passiveSum(content, state.config, state.players[0], 'shopExtraTools');
+      for (let i = 0; i < state.config.scrapbook.shopToolSlots + extra; i++) {
         const tool = rng.weightedPick(content.tools, (t) => t.weight);
         slots.push({ kind: 'tool', toolId: tool.id, price: tool.price, sold: false });
       }
+    }
+    const pages = pageLimited(state.config) ? state.config.scrapbook.pages! : null;
+    for (let i = 0; pages && i < pages.shopSlots; i++) {
+      const itemId = rollPage(state, content, rng);
+      if (!itemId || slots.some((s) => s.itemId === itemId)) continue;
+      slots.push({ kind: 'page', itemId, price: pages.prices[itemDef(content, itemId).rarity], sold: false });
     }
     return slots;
   }
 
   function openShop(state: GameState) {
-    state.shop = { slots: generateShopSlots(state), rerolls: 0 };
+    state.shop = { slots: generateShopSlots(state), rerolls: 0, discount: null };
     state.phase = 'shop';
   }
 
-  function shopBuy(state: GameState, playerId: PlayerId, slotIndex: number, targetId?: CardId) {
+  /** What a shop slot costs you now (Haggle takes credits off, never below 1). */
+  function slotPrice(state: GameState, slotIndex: number): number {
+    const slot = state.shop!.slots[slotIndex];
+    const off = state.shop!.discount?.amount ?? 0;
+    return off > 0 ? Math.max(1, slot.price - off) : slot.price;
+  }
+
+  function shopBuy(state: GameState, playerId: PlayerId, slotIndex: number, targetId?: CardId, tearOut?: string) {
     assertRule(state.phase === 'shop' && state.shop, 'The shop is closed');
     const player = getPlayer(state, playerId);
     const slot = state.shop.slots[slotIndex];
     assertRule(slot && !slot.sold, 'Nothing to buy there');
-    assertRule(player.currency >= slot.price, 'Not enough currency');
+    const price = slotPrice(state, slotIndex);
+    assertRule(player.currency >= price, 'Not enough currency');
 
-    if (slot.kind === 'part') {
+    if (slot.kind === 'page') {
+      addPage(state, content, player, slot.itemId!, tearOut);
+    } else if (slot.kind === 'part') {
       const card = createPart(state, content, player.id, slot.category!, slot.gauge!);
       addToDeck(state, card);
       log(state, `${player.name} buys ${card.name} (${card.gauge}).`);
@@ -719,8 +768,9 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       assertRule(svc, 'Unknown service');
       runHook(effects, 'onPurchase', [svc.effect], context(state, player, { targetId }));
     }
-    player.currency -= slot.price;
+    player.currency -= price;
     slot.sold = true;
+    if (state.shop.discount && !state.shop.discount.wholeVisit) state.shop.discount = null;
   }
 
   function shopReroll(state: GameState, playerId: PlayerId) {
@@ -730,7 +780,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     assertRule(player.currency >= cost, 'Not enough currency');
     player.currency -= cost;
     const rerolls = state.shop.rerolls + 1;
-    state.shop = { slots: generateShopSlots(state), rerolls };
+    state.shop = { slots: generateShopSlots(state), rerolls, discount: state.shop.discount };
   }
 
   function leaveShop(state: GameState) {
@@ -753,7 +803,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     if (state.config.battleStyle === 'rummy') {
       for (const node of state.map.rows.flat()) {
         if (node.type === 'battle' || node.type === 'elite' || node.type === 'boss') {
-          node.encounter = makeEncounter(state, content, node.type, rng);
+          node.encounter = makeEncounter(state, content, node.type, rng, effects);
         }
       }
     }
@@ -774,6 +824,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     const node = findNode(map, nodeId)!;
     map.current = node.id;
     map.visited.push(node.id);
+    map.reroute = 0;
     state.round += 1;
     const rng = new Rng(state);
 
@@ -793,6 +844,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
         break;
       case 'rest':
         state.phase = 'rest';
+        state.restRecharges = state.config.restRecharges + passiveSum(content, state.config, player, 'restRecharges');
         break;
       case 'appraiser':
         state.phase = 'appraiser';
@@ -874,8 +926,12 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       player.hp = Math.min(player.maxHp, player.hp + amount);
       log(state, `${player.name} rests and recovers ${amount} HP.`);
     } else if (choice === 'recharge') {
-      // Resting recharges one gadget for free.
+      // Resting recharges a gadget for free (two with the Apothecary bonus); stay while there are more to do.
+      assertRule(state.restRecharges > 0, 'You have used your free recharges here');
       rechargeItem(state, player, itemUid, true);
+      state.restRecharges -= 1;
+      const more = player.items.some((i) => (i.charges ?? 0) < (maxCharges(content, state.config, i, player) ?? 0));
+      if (state.restRecharges > 0 && more) return;
     } else {
       const item = player.items.find((i) => i.uid === itemUid);
       assertRule(item, 'Choose an item to repair');
@@ -893,14 +949,15 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     assertRule(item, 'Choose a gadget to recharge');
     const gadget = content.items.find((d) => d.id === item.itemId)?.gadget;
     assertRule(gadget, 'That item has no gadget');
-    const max = gadgetCharges(gadget, item.grade, state.config);
+    const max = maxCharges(content, state.config, item, player)!;
     assertRule((item.charges ?? 0) < max, `${gadget.name} is already fully charged`);
+    const cost = rechargeCost(content, state.config, item, player);
     if (!free) {
-      assertRule(player.currency >= gadget.rechargeCost, `${gadget.rechargeName} costs ${gadget.rechargeCost} credits`);
-      player.currency -= gadget.rechargeCost;
+      assertRule(player.currency >= cost, `${gadget.rechargeName} costs ${cost} credits`);
+      player.currency -= cost;
     }
     item.charges = max;
-    log(state, `${gadget.rechargeName}: ${gadget.name} is fully charged${free ? ' (free at the rest stop)' : ` for ${gadget.rechargeCost} credits`}.`);
+    log(state, `${gadget.rechargeName}: ${gadget.name} is fully charged${free ? ' (free at the rest stop)' : ` for ${cost} credits`}.`);
   }
 
   function upgradeItem(state: GameState, playerId: PlayerId, itemUid: string, cardIds: CardId[]) {
@@ -914,11 +971,10 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     assertRule(player.currency >= check.credits, `Upgrading costs ${check.credits} credits`);
     player.currency -= check.credits;
     for (const id of cardIds) destroyCard(state, id);
-    const gadget = content.items.find((d) => d.id === item.itemId)?.gadget;
-    const oldMax = gadget ? gadgetCharges(gadget, item.grade, state.config) : 0;
+    const oldMax = maxCharges(content, state.config, item, player) ?? 0;
     item.grade = check.newGrade;
     item.material = materialName(content, state.config, item.grade);
-    if (gadget) item.charges = (item.charges ?? 0) + (gadgetCharges(gadget, item.grade, state.config) - oldMax);
+    if (item.charges !== null) item.charges += (maxCharges(content, state.config, item, player) ?? 0) - oldMax;
     const name = content.items.find((d) => d.id === item.itemId)?.name ?? item.itemId;
     log(state, `${player.name} upgrades it to a ${item.material} ${name}.`);
   }
@@ -947,6 +1003,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
         pieces: [],
         missed: [],
         afterBoss: duel.kind === 'boss',
+        bonus: duel.result?.bonus ?? [],
       };
       state.phase = 'rummage';
       return;
@@ -964,7 +1021,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       log(state, 'The run is over.');
       return;
     }
-    // Step back off the boss node so it can be tried again.
+    // Step back off the boss node so it can be tried again (a called-off boss duel too).
     const map = state.map!;
     map.visited.pop();
     map.current = map.visited.at(-1) ?? null;
@@ -1026,7 +1083,10 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
         continueAfterRound(state);
         break;
       case 'SHOP_BUY':
-        shopBuy(state, action.playerId, action.slot, action.targetId);
+        shopBuy(state, action.playerId, action.slot, action.targetId, action.tearOut);
+        break;
+      case 'PICK_PAGES':
+        pickPages(state, action.playerId, action.itemIds);
         break;
       case 'SHOP_REROLL':
         shopReroll(state, action.playerId);
@@ -1074,19 +1134,21 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
         assertRule(state.phase === 'appraiser', 'You are not at an appraiser');
         state.phase = 'map';
         break;
-      case 'EXAMINE_LOT':
-        examineParcel(state, content, getPlayer(state, action.playerId), action.itemUid, action.nodeId, action.parcel);
-        break;
       case 'USE_TOOL':
         useTool(state, content, getPlayer(state, action.playerId), action.toolId, action.nodeId, action.parcel);
         break;
       case 'PICK_PARCELS':
-        getPlayer(state, action.playerId);
-        pickParcels(state, action.parcels);
+        pickParcels(state, content, getPlayer(state, action.playerId), action.parcels);
         break;
       case 'DUEL_DRAW':
+        duelDraw(state, content, effects, duelPlayer(state, action.playerId), action.source, action.cardId, new Rng(state));
+        break;
+      case 'DUEL_CYCLE':
         duelPlayer(state, action.playerId);
-        duelDraw(state, content, action.source, new Rng(state));
+        duelCycle(state, content, action.cardId, new Rng(state));
+        break;
+      case 'DUEL_CHOOSE':
+        chooseInDuel(state, content, effects, duelPlayer(state, action.playerId), action, new Rng(state));
         break;
       case 'DUEL_DISCARD':
         duelDiscard(state, content, effects, duelPlayer(state, action.playerId), action.cardId, new Rng(state));
@@ -1094,9 +1156,11 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
       case 'DUEL_GO_OUT':
         duelGoOut(state, content, effects, duelPlayer(state, action.playerId), action.groups);
         break;
-      case 'USE_GADGET':
-        useGadget(state, content, effects, duelPlayer(state, action.playerId), action.itemUid, action.target, new Rng(state));
+      case 'USE_GADGET': {
+        const { type: _t, playerId, itemUid, ...args } = action;
+        useGadget(state, content, effects, getPlayer(state, playerId), itemUid, args, new Rng(state));
         break;
+      }
       default: {
         const never: never = action;
         throw new RuleError(`Unknown action ${(never as GameAction).type}`);
@@ -1142,8 +1206,7 @@ export function createEngine(content: ContentPack = defaultContent, effects: Eff
     applyAction,
     suggestBuild,
     meldRules,
-    suggestDuelOut: (state, cardIds) =>
-      state.duel ? findDuelOut(state, content, effects, cardIds ?? state.duel.hand, cardIds !== undefined) : null,
+    suggestDuelOut: (state, cardIds) => suggestPlayerOut(state, content, effects, cardIds),
     token: (state, id) => cardToken(state, content, effects, id),
   };
 }

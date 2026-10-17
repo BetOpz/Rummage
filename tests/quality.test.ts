@@ -67,11 +67,16 @@ describe('graded items in play', () => {
     return engine.reduce(s, { type: 'DUEL_STAKE', playerId: P, cardIds: stakeFor(s) });
   }
 
-  it('a gold pocket watch makes the opponent miss 2 turns; a wooden one, 1', () => {
-    const gold = engine.reduce(duelWithWatch(7), { type: 'USE_GADGET', playerId: P, itemUid: 'w', target: 0 });
-    expect(gold.duel!.opponents[0].skip).toBe(2);
-    const wood = engine.reduce(duelWithWatch(2), { type: 'USE_GADGET', playerId: P, itemUid: 'w', target: 0 });
-    expect(wood.duel!.opponents[0].skip).toBe(1);
+  it('Stop Time grows by tier: a draw at Brass (Fine), every opponent at Gold (Masterwork)', () => {
+    const wood = duelWithWatch(2);
+    const w = engine.reduce(wood, { type: 'USE_GADGET', playerId: P, itemUid: 'w', target: 0 });
+    expect(w.duel!.opponents.map((o) => o.skip)).toEqual(wood.duel!.opponents.map((_, i) => (i === 0 ? 1 : 0)));
+    expect(w.duel!.rules.drawLimit).toBe(wood.duel!.rules.drawLimit);
+    const brass = duelWithWatch(5);
+    const b = engine.reduce(brass, { type: 'USE_GADGET', playerId: P, itemUid: 'w', target: 0 });
+    expect(b.duel!.rules.drawLimit).toBe(brass.duel!.rules.drawLimit + 1);
+    const gold = engine.reduce(duelWithWatch(7), { type: 'USE_GADGET', playerId: P, itemUid: 'w' });
+    expect(gold.duel!.opponents.every((o) => o.skip === 1)).toBe(true);
   });
 
   it('recharging fills to the graded maximum', () => {
@@ -109,7 +114,7 @@ describe('upgrading items', () => {
     });
     me(s).currency = 50;
     s.phase = 'shop';
-    s.shop = { slots: [], rerolls: 0 };
+    s.shop = { slots: [], rerolls: 0, discount: null };
     return s;
   }
 

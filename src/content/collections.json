@@ -1,0 +1,99 @@
+[
+  {
+    "id": "clockwork",
+    "name": "Clockwork",
+    "objects": "watches, automata, music boxes",
+    "lean": "turns and timing",
+    "bonus": { "text": "+1 draw in every duel.", "effects": [{ "type": "modifyRules", "params": { "drawLimit": 1 } }] }
+  },
+  {
+    "id": "optics",
+    "name": "Optics",
+    "objects": "lenses, periscopes, cameras",
+    "lean": "information",
+    "bonus": {
+      "text": "At the start of each duel, see 1 random card in each opponent's hand.",
+      "effects": [{ "type": "peekHands", "params": { "hook": "onRoundStart", "cards": 1 } }]
+    }
+  },
+  {
+    "id": "workshop",
+    "name": "Workshop",
+    "objects": "benches, glue, solder, files",
+    "lean": "meld flexibility",
+    "bonus": {
+      "text": "Start each duel with a temporary Adaptor.",
+      "effects": [{ "type": "grantTempCard", "params": { "hook": "onRoundStart", "specialId": "adaptor", "count": 1 } }]
+    }
+  },
+  {
+    "id": "haberdashery",
+    "name": "Haberdashery",
+    "objects": "needles, thread, buttons, thimbles",
+    "lean": "the scrapbook",
+    "bonus": {
+      "text": "The first piece you put on a page after each win counts as 2.",
+      "effects": [{ "type": "doublePieces", "params": { "count": 1 } }]
+    }
+  },
+  {
+    "id": "counting_house",
+    "name": "Counting House",
+    "objects": "scales, abacus, ledgers, presses",
+    "lean": "credits and stakes",
+    "bonus": {
+      "text": "+2 credits after each duel you win.",
+      "effects": [{ "type": "gainCurrency", "params": { "hook": "onRoundEnd", "amount": 2 }, "when": { "won": true } }]
+    }
+  },
+  {
+    "id": "scrapyard",
+    "name": "Scrapyard",
+    "objects": "crowbars, magnets, claws, sieves",
+    "lean": "lots and the discard pile",
+    "bonus": {
+      "text": "Every lot you win holds 1 more parcel.",
+      "effects": [{ "type": "lotBonus", "params": { "hook": "onRoundEnd", "parcels": 1 }, "when": { "won": true } }]
+    }
+  },
+  {
+    "id": "hearth",
+    "name": "Hearth",
+    "objects": "bellows, kettles, traps, oil cans",
+    "lean": "the discard pile and hazards",
+    "bonus": {
+      "text": "You can see the top 3 cards of the discard pile.",
+      "effects": [{ "type": "modifyRules", "params": { "seeDiscard": 3 } }]
+    }
+  },
+  {
+    "id": "playroom",
+    "name": "Playroom",
+    "objects": "toys, parlour games, tricks",
+    "lean": "disruption",
+    "bonus": {
+      "text": "Opponents start each duel with 1 card fewer.",
+      "effects": [{ "type": "modifyRules", "params": { "opponentHandSize": -1 } }]
+    }
+  },
+  {
+    "id": "expedition",
+    "name": "Expedition",
+    "objects": "compasses, reels, lanterns, maps",
+    "lean": "the route",
+    "bonus": {
+      "text": "Shops stock 1 more check card, and appraisers charge 1 credit less.",
+      "effects": [{ "type": "shopExtraTools", "params": { "amount": 1 } }, { "type": "appraiseDiscount", "params": { "amount": 1 } }]
+    }
+  },
+  {
+    "id": "apothecary",
+    "name": "Apothecary",
+    "objects": "flasks, tonics, salts, bandages",
+    "lean": "bosses and recovery",
+    "bonus": {
+      "text": "Rests recharge 2 gadgets instead of 1.",
+      "effects": [{ "type": "restRecharges", "params": { "amount": 1 } }]
+    }
+  }
+]

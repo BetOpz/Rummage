@@ -28,23 +28,34 @@ export function CardView({ id, selected, dim, wanted, misfit, badge, onClick, ti
   if (onClick) classes.push('clickable');
 
   if (card.kind === 'part') {
-    const cat = engine.content.categories.find((c) => c.id === card.category);
+    // Parts a gadget changed for this duel (Gearbox, Soldering Iron) show what they count as.
+    const shifted = state.duel?.fx?.shifted[id];
+    const category = shifted?.category ?? card.category;
+    const gauge = shifted?.gauge ?? card.gauge;
+    const cat = engine.content.categories.find((c) => c.id === category);
+    if (shifted) classes.push('shifted');
     return (
-      <div className={classes.join(' ')} data-cat={card.category} style={{ ['--cat' as string]: cat?.color ?? '#888' }} onClick={onClick} title={title ?? card.name}>
-        <div className="gauge">{card.gauge}</div>
-        <div className="cat">{cat?.name ?? card.category}</div>
+      <div
+        className={classes.join(' ')}
+        data-cat={category}
+        style={{ ['--cat' as string]: cat?.color ?? '#888' }}
+        onClick={onClick}
+        title={title ?? (shifted ? `${card.name} ${card.gauge}, counting as ${cat?.name} ${gauge} this duel` : card.name)}
+      >
+        <div className="gauge">{gauge}</div>
+        <div className="cat">{cat?.name ?? category}</div>
         <div className="name">{card.name.split(' ').slice(1).join(' ')}</div>
-        {badge && <div className="badge">{badge}</div>}
+        {(badge || shifted) && <div className="badge">{badge ?? 'changed'}</div>}
       </div>
     );
   }
 
   const def = engine.content.specials.find((s) => s.id === card.specialId);
   return (
-    <div className={classes.join(' ')} onClick={onClick} title={title ?? def?.text}>
+    <div className={classes.join(' ')} onClick={onClick} title={title ?? `${def?.text ?? ''}${card.natural ? ' Counts as a real part.' : ''}`}>
       <div className="special-name">{def?.name ?? card.specialId}</div>
       <div className="special-text">{def?.text}</div>
-      {card.temporary && <div className="badge">temp</div>}
+      {card.temporary && <div className="badge">{card.natural ? 'temp · real' : 'temp'}</div>}
       {badge && <div className="badge">{badge}</div>}
     </div>
   );

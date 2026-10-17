@@ -1,20 +1,19 @@
 # Rummage: the item card set
 
-The rules for building the set of about 200 item cards. Every item is one scrapbook page and one card. The cards themselves live in **`design/card-portfolio.json`**, and `npm run portfolio` checks them against these rules and shows what's still missing. How the cards will look is in [CARD_DESIGN.md](CARD_DESIGN.md).
+The rules for building the set of about 200 item cards. Every item is one scrapbook page and one card. The cards are the game's item content, **`src/content/items.json`**, and `npm run portfolio` checks them against these rules and shows what's still missing. How the cards will look is in [CARD_DESIGN.md](CARD_DESIGN.md).
 
-Some rules here change the live game (marked **Changes the game**). They're proposals until they're built.
+**Built.** Everything in this document is in the game: tiers and tier params, the charge curve, conditions, set bonuses, gadgets in all six places, duel choices, pages in a run, and every effect the 60 cards use (`src/engine/items.ts`, `effects.ts`, `duel.ts`, `scrapbook.ts`).
 
-**Everything here is provisional.** None of it has been played yet: the numbers, rarities, charge curve, set bonuses and pages-per-run rules are first guesses, and they'll change once the cards are in the real game and we see how they play.
+**Everything here is provisional.** The numbers, rarities, charge curve, set bonuses and pages-per-run rules are first guesses. Cards are adjusted case by case now that they can be played.
 
 ---
 
 ## 1. Plan
 
-1. **Framework** (this document): structure, rarities, scaling, wording and the engine vocabulary.
-2. **Batch 1** (26 cards, done in draft): the 8 live items reworked to these rules, plus 18 new ones spread across every collection and rarity to test the template.
-3. **Batch 2** (34 cards, done in draft): completes Clockwork and Hearth, so two collections can be judged whole.
-4. **Batches 3–8** (about 25 each): fill one or two collections per batch until each has its 20.
-5. **Engine work** runs alongside, in the order `npm run portfolio` shows: the needs most cards are waiting on come first.
+1. **Framework** (this document): structure, rarities, scaling, wording and the engine vocabulary. Built.
+2. **Batch 1** (26 cards): the 8 original items reworked to these rules, plus 18 new ones spread across every collection and rarity. In the game.
+3. **Batch 2** (34 cards): completes Clockwork and Hearth, so two collections can be judged whole. In the game.
+4. **Batches 3–8** (about 25 each): fill one or two collections per batch until each has its 20. A card that needs a new kind of effect gets its handler with it.
 
 ## 2. Shape of the set
 
@@ -61,7 +60,7 @@ A collection is a family of objects with a theme and a mechanical lean. About ha
 
 ## 4. Pages in a run
 
-With 200 items, a run can't offer every page. **Working assumption** (batch 2 is written against it; still open to change, and if it changes, card strength is adjusted rather than the designs):
+With 200 items, a run can't offer every page. **Built as below** (`config.scrapbook.pages`; still open to change, and if it changes, card strength is adjusted rather than the designs):
 
 - **The scrapbook holds up to 12 pages in a run.** You start with 3, chosen from 5 Common pages offered at the start.
 - **Loose pages** are a new kind of parcel in lots: a page instead of a part. Lots have a page chance (shoebox 5%, up to estate sale 40%, where the boss lot always holds one Rare or Heirloom page).
@@ -79,24 +78,23 @@ With 200 items, a run can't offer every page. **Working assumption** (batch 2 is
 
 ## 5. Anatomy of an item
 
-Every card in `design/card-portfolio.json` has these fields. Every text and art field has 3 entries: **Prototype** (Tin–Copper), **Fine** (Brass, Silver) and **Masterwork** (Gold, Platinum).
+Every card in `src/content/items.json` has these fields. Every text and art field has 3 entries: **Prototype** (Tin–Copper), **Fine** (Brass, Silver) and **Masterwork** (Gold, Platinum).
 
 | Field | What it holds |
 |---|---|
 | `id`, `name` | snake_case id; the card name. Both unique. |
-| `status` | `live` (in `src/content/items.json`), `draft` or `cut`. |
 | `batch` | Which batch it was designed in. |
 | `collection`, `rarity`, `role` | From sections 2 and 3. |
 | `object` | What the object is, in one line. Feeds the art. |
 | `passive` | `text` per tier, and `effects`. Always on once the item is alive. |
 | `gadget` | `name`, `usedIn` (places, section 7), `target`, base `charges`, `rechargeName`, `rechargeCost`, `text` per tier, `effects`. Optional `when` (conditions, section 9) and `usedInByTier` (when a later tier can use it somewhere new). `null` for a fixture. |
-| `engine` | `build`: `json` (works with what exists), `small` (an existing effect needs extending) or `new`. `needs`: the named engine pieces from section 9. |
 | `rules` | Edge cases and rulings, one per line. |
 | `art` | One line per drawing tier, from scrappy to masterwork. |
+| `battle` | The 8 original items only: their card for the older card-battle style. |
 
 ## 6. Growth: how items get better
 
-**Changes the game.** Today, gadget numbers grow by grade in fractional steps (`perGrade`), which made the Pocket Watch's Stop Time reach 2 turns at Silver while its text said Gold. Passives don't grow at all. The new rule ties growth to things players can see:
+Growth is tied to things players can see (this replaced fractional `perGrade` steps, which made Stop Time reach 2 turns at Silver while its text said Gold):
 
 - **Charges grow every two grades:** `base + floor((grade − 1) / 2)`.
 
@@ -120,7 +118,7 @@ Every card in `design/card-portfolio.json` has these fields. Every text and art 
 
 ## 7. Where gadgets are used
 
-**Changes the game.** Gadgets work only in duels today (`USE_GADGET` checks for an active duel). The set uses six places:
+Gadgets work in six places. `USE_GADGET` takes what the gadget is aimed at (an opponent, cards, an option, parcels, pages and a stage), and the engine works out the place from where you are:
 
 | Place | When | Example |
 |---|---|---|
@@ -131,7 +129,7 @@ Every card in `design/card-portfolio.json` has these fields. Every text and art 
 | `shop` | During a shop visit | Haggle |
 | `scrapbook` | When the scrapbook is open outside a duel, including while sorting pieces | Stitch, Darn |
 
-Engine need `gadgetAnywhere`: `USE_GADGET` gains a place and the right target (an opponent, a card, a parcel, a page or a map stop), and each place checks it's allowed there.
+Each effect handler lists the places it works in (`places`, default duels); a gadget used somewhere runs only the effects that work there, so the Magnifier's Spyglass reveals hands in a duel and checks a parcel on a lot.
 
 ## 8. Wording
 
@@ -149,42 +147,23 @@ Cards say exactly what happens, in the game's own words, and nothing else.
 
 ## 9. Engine vocabulary
 
-Effects the cards can use. **Exists** means it's in `src/engine/effects.ts` today. Everything else is a named need that cards list in `engine.needs`, so the work can be planned by how many cards each one unlocks.
+Every effect the cards use has a handler in `src/engine/effects.ts` (`defaultEffects`, grouped by what it touches). Handlers only see plain values: `src/engine/items.ts` resolves tier params, counts (`{ "perOwned": "clockwork" }`) and conditions first.
 
-**Existing effects**
+**Hooks** (when passives fire), named by the effect's `hook` param where a handler has more than one: `onRoundStart` (hands dealt), `onTurnStart` (your turn begins; `duel.turn` is its number), `onDuelDraw` (you drew from your pile), `onOpponentTake` (an opponent took from the discard pile), `onOpponentSkipped`, `onOpponentNearOut` (first time each opponent is 1 card away), `onOpponentWouldGoOut` (return true to stop it), `onBuild` (you went out; runs before the payout), `onRoundEnd` (the duel ended). Some passives are static bonuses read where they apply (`appraiseDiscount`, `shopExtraTools`, `sellBonus`, `chargeBonus`, `rechargeDiscount`, `restRecharges`, `doublePieces`, `twistResist`, `spareLife`, `keepStake`, `lotInsight`, `revealBossTwists`).
 
-| Effect | Use | Notes |
-|---|---|---|
-| `modifyRules` | passive | `handSize`, `drawLimit`, `allowDiscardDraw`, `disableMeldRoles`, `bannedCategories`, `gaugeMin`, `gaugeMax`, `requireNaturalInMeld` |
-| `grantTempCard` | passive (`onRoundStart`) or gadget | gives a temporary special card |
-| `gainCurrency` | passive (`onRoundEnd`, `onBuild`) | credits |
-| `lotInsight` | passive | sharpens checks (the Magnifier) |
-| `skipTurn`, `revealHands`, `extraDraws`, `drawExtra`, `stealCard`, `raiseStakes` | gadget | duel gadgets |
-| `drawChoice`, `reorderTop`, `takeFromDiscard` | special cards | exist for workshop specials; need a gadget version (`.gadget`) |
+**Conditions** (`when`), on any effect or gadget, each a tier param if needed (`null` = no condition): `kind` (battle, elite, boss), `greedyOpponent`, `minOpponents`, `act`, `won`. A called-off duel is neither won nor lost.
 
-**Hooks** (when passives fire). Existing: `onRoundStart` (hands dealt), `onBuild` (you go out), `onRoundEnd` (duel ends). Needed: `hook.onTurnStart` (your turn begins), `hook.onOpponentSkipped` (an opponent misses a turn), `hook.onOpponentNearOut` (an opponent is 1 card from going out), `hook.onDuelDraw`, `hook.onDiscard`, `hook.onOpponentTake` (an opponent takes from the discard pile), `hook.onOpponentWouldGoOut`, `hook.onStake`, `hook.onPick`, `hook.onPlacePiece`, `hook.onStageComplete`, `hook.onEnterStop`, `hook.onShopEnter`.
+**Duel choices.** A gadget or passive that shows you cards first opens `duel.choice` (`pick`, `order` or `confirm`); nothing else happens until `DUEL_CHOOSE` answers it, and the effect's `onChoice` carries on. A choice can give the charge back (Swap Boards, put back).
 
-**Conditions** (`when`), on any effect or gadget: `kind` (battle, elite, boss), `greedyOpponent`, `minOpponents`, `act`, `won`. Engine need `when`.
+**Round rules** items add (`RoundRules`): `wrapRuns`, `adaptorBoth`, `adaptorShift`, `seeOwnTop`, `seeDiscard`, `protectDiscardTurns`, `stakeGrace`, `seeOpponentProgress`, `freeDiscardDraws`, `takeAnyDiscard`, `extraDiscards`, `opponentDiscardDraw`, `opponentHandSize`. Duel-long state from gadgets (locks, traps, insurance, set-aside cards, changed parts) is in `duel.fx`.
 
-**Shared needs**
-
-| Need | What it is |
-|---|---|
-| `tierParams` | Resolve 3-item params by the item's drawing tier. Every card needs it. |
-| `gadgetAnywhere` | Gadgets outside duels (section 7). |
-| `duelChoice` | A choice inside a duel (pick a card, reorder, look and decide). Duels have no pending choice today. |
-| `gadgetTargetCard` | A gadget that targets a card in your hand or the discard pile. |
-| `perOwned` | A number that counts items you own in a collection. |
-| `collectionBonus` | Set bonuses (section 3). |
-| `rule.*` | New round rules: `seeOwnTop`, `seeDiscard`, `protectDiscardTurns`, `stakeGrace`, `wrapRuns`, `seeOpponentProgress`, `freeDiscardDraws`, `takeAnyDiscard`, `extraDiscards`, `opponentDiscardDraw`. |
-
-New single-card effects are named after what they do (`discardTrap`, `swapHands`, `movePieces` and so on). The current list, with which cards need each, is printed by `npm run portfolio`.
+New single-card effects are named after what they do (`discardTrap`, `swapHands`, `movePieces` and so on).
 
 ## 10. Adding a card
 
-1. Add it to `design/card-portfolio.json`, following section 5. Reuse an existing effect where one fits; otherwise name a new need.
-2. Run `npm run portfolio`. It fails on broken rules (missing tiers, wrong charge or recharge range, duplicate names, too many cards of a rarity in a collection, a live item missing) and shows the gaps.
-3. When its engine needs exist, copy it into `src/content/items.json` and mark it `live`.
+1. Add it to `src/content/items.json`, following section 5. Reuse an existing effect where one fits; otherwise add a handler to `effects.ts` (with `places` if its gadget works outside duels).
+2. Run `npm run portfolio`. It fails on broken rules (missing tiers, wrong charge or recharge range, duplicate names, too many cards of a rarity in a collection, an effect with no handler or one that works in none of the gadget's places) and shows the gaps.
+3. Add a test to `tests/cards.test.ts`, and run `npm run test:fuzz`, which tries every gadget at every tier with generic picks through whole runs.
 
 ## 11. Batch 1
 
@@ -221,11 +200,17 @@ New single-card effects are named after what they do (`discardTrap`, `swapHands`
 | Clockwork | Egg Timer, Metronome (fixture), Wind-Up Key, Cuckoo Clock, Alarm Clock, Mainspring, Gearbox, Pendulum | Carriage Clock, Chronometer, Water Clock, Escapement, Perpetual Calendar | Grandfather Clock, Tourbillon, Stopped Clock | Astronomical Clock |
 | Hearth | Kettle (fixture), Coal Scuttle, Fire Poker, Fireguard, Toasting Fork, Tinderbox, Dustpan and Brush | Warming Pan, Fire Bucket, Stockpot, Chimney Pot | Kitchen Range, Fire Blanket, Pot-Bellied Stove, Firedogs | Brass Fender, Smoke Jack |
 
-Batch 1 cards in these collections are unchanged. Rulings marked "to confirm" in the data (gadgets under the Locked Skip twist; smothering a boss duel) need a decision before those cards are built.
+Batch 1 cards in these collections are unchanged. The two rulings marked "to confirm" were built as the cards suggested: under the Locked Skip twist, the Fire Poker still reaches into the pile but the Horseshoe Magnet's Pull doesn't; and a smothered boss duel is called off, you step back and try the boss again, with no life lost.
 
 ## 13. Open questions
 
-- **Pages in a run** (section 4): the working assumption above. Confirm or change it; batch 3 onwards are written against whatever stands.
+- **Cards to look at first,** found while building them:
+  - **Warming Pan:** hand size only matters when hands are dealt, so "+1 hand size for the rest of the duel" does nothing beyond the cards it draws.
+  - **Smoke Jack:** its extra pieces are now pieces of the stake material added to what you open from the lot (the text was changed to say so).
+  - **Stockpot:** now says "minions", like the Music Box rule it shares.
+  - **Perpetual Calendar:** moves pieces from one page to one other (the same as Stitch), and like Stitch only off an unfinished stage, so no item loses a grade. Its ruling said otherwise.
+  - **Crowbar (Fine):** shows every parcel's metal when you use it, on the pick screen, rather than after opening your picks.
+- **Pages in a run** (section 4): built as above. Confirm or change it; batch 3 onwards are written against whatever stands.
 - **Set bonuses:** 3 and 5 items are guesses. With 12 pages they're reachable but take commitment.
 - **Fixtures:** are 2 per collection (20 in all) the right number?
 - **Balance:** the bot doesn't use gadgets well, so the sim will undervalue gadget-heavy items. A better bot is needed before tuning.

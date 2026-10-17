@@ -29,7 +29,7 @@ export function BlueprintPanel({ drawsLeft, hints }: { drawsLeft: number; hints:
         </span>
       </div>
       <div className="muted small-text">
-        Builds <b>{item?.name}</b>: {item?.text} You need <b>every</b> meld below, each in its own shape.
+        Builds <b>{item?.name}</b>: {item?.passive.text[0]} You need <b>every</b> meld below, each in its own shape.
       </div>
       {hazards.map((h) => (
         <div key={h.name} className="hazard-line">

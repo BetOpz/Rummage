@@ -1,4 +1,4 @@
-import { getBlueprint } from '../engine';
+import { getBlueprint, itemTier } from '../engine';
 import { useGame } from './context';
 
 export function RoundOver() {
@@ -15,11 +15,11 @@ export function RoundOver() {
           New item: <b>
             {me.items.at(-1)?.material} {item?.name}
           </b>{' '}
-          — {item?.text}
+          — {item?.passive.text[itemTier(me.items.at(-1)!)]}
           {item?.gadget && state.config.battleStyle === 'rummy' && (
             <>
               <br />
-              Gadget: <b>{item.gadget.name}</b> — {item.gadget.text} ({me.items.at(-1)?.charges} charges)
+              Gadget: <b>{item.gadget.name}</b> — {item.gadget.text[itemTier(me.items.at(-1)!)]} ({me.items.at(-1)?.charges} charges)
             </>
           )}
           {item?.battle && state.config.battleStyle === 'cards' && (

@@ -640,3 +640,56 @@ h3 { margin: 14px 0 6px; font-size: 1rem; }
 .tools-line { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .tool-chip { font-family: var(--font-label); font-weight: 700; font-size: 0.78rem; padding: 0 6px; border-radius: 3px; border: 1px solid var(--line); background: color-mix(in srgb, var(--kraft) 25%, var(--panel)); }
 .missed { margin-top: 10px; opacity: 0.7; }
+
+/* ---------- The card set: tiers, rarities, choices, aiming gadgets ---------- */
+:root {
+  --r-common: #6d756a;
+  --r-uncommon: #2f6f8f;
+  --r-rare: #a85f17;
+  --r-heirloom: #8a3d6b;
+}
+.rarity-tag { font-family: var(--font-label); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 0 6px; border: 1px solid currentColor; border-radius: 3px; }
+.rarity-common { --rarity: var(--r-common); }
+.rarity-uncommon { --rarity: var(--r-uncommon); }
+.rarity-rare { --rarity: var(--r-rare); }
+.rarity-heirloom { --rarity: var(--r-heirloom); }
+.rarity-tag { color: var(--rarity); }
+.page { border-top: 3px solid var(--rarity, transparent); }
+.page-meta { font-family: var(--font-label); text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.7rem; color: var(--rarity, var(--paper-muted)); }
+.page-pick { all: unset; cursor: pointer; display: block; border-radius: 4px; outline-offset: 4px; }
+.page-pick.selected { outline: 3px solid var(--accent); }
+.page-pick:focus-visible { outline: 3px dashed var(--accent); }
+.card.page-piece { background: var(--paper); color: var(--paper-ink); border: 2px solid var(--rarity, var(--paper-line)); }
+
+.set-bonuses { list-style: none; padding: 0; margin: 6px 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.set-bonuses li { font-size: 0.82rem; padding: 2px 8px; border: 1px dashed var(--line); border-radius: 999px; color: var(--muted); }
+.set-bonuses li.on { border-style: solid; border-color: var(--accent); color: var(--accent); }
+
+.gadgets.compact { padding: 8px 10px; }
+.gadget { padding: 0; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
+.gadget-use { all: unset; cursor: pointer; display: grid; gap: 2px; padding: 8px 10px; text-align: left; }
+.gadget-use:disabled { cursor: not-allowed; opacity: 0.5; }
+.gadget-use:focus-visible { outline: 2px dashed var(--accent); }
+.aim { display: grid; gap: 6px; padding: 8px 10px; border-top: 1px dashed var(--line); max-width: 520px; }
+.aim-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.aim-row.column { flex-direction: column; align-items: flex-start; }
+.aim button.active, .aim-row button.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.gadgets .gadget-list { align-items: flex-start; }
+.gadgets .gadget { max-width: 320px; }
+
+.choice { border: 2px solid var(--ochre); display: grid; gap: 8px; }
+.order-list { display: flex; gap: 10px; flex-wrap: wrap; }
+.order-item { display: grid; gap: 4px; justify-items: center; }
+.order-item.bottom, .order-item.discard { opacity: 0.6; }
+.actions.small button { padding: 2px 8px; }
+
+.discard-fan { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
+.peek { margin-top: 6px; }
+.aside { margin-top: 6px; padding: 6px 8px; border: 1px dashed var(--ochre); border-radius: 4px; }
+.duel-effects { margin-top: 4px; color: var(--accent); font-weight: 600; }
+.block-badge.warn { border-color: var(--warn); color: var(--warn); }
+.card.shifted { outline: 2px dashed var(--ochre); outline-offset: -3px; }
+.find-dest-wrap { display: grid; gap: 4px; min-width: 0; flex: 1 1 220px; }
+.find-page { grid-column: 1 / -1; }
+.find-page .page-text { color: var(--muted); margin: 0; }
+.was-price { font-size: 0.75rem; color: var(--muted); text-decoration: line-through; margin-left: -4px; }

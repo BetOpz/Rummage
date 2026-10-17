@@ -1,3 +1,4 @@
+import { defaultConfig } from '../src/config';
 import { createEngine, type Engine } from '../src/engine/game';
 import type { Card, CardId, GameState, PlayerId } from '../src/engine/types';
 import { eligibleStakeCards, suggestDestinations } from '../src/engine/scrapbook';
@@ -6,15 +7,32 @@ import { createPart, createSpecial } from '../src/engine/zones';
 const realEngine: Engine = createEngine();
 
 /**
+ * Every page in the scrapbook from the start, unless a test turns page
+ * limits on (`scrapbook: { pages: defaultConfig.scrapbook.pages }`), so
+ * tests can use any item's page without picking it first.
+ */
+const allPages = (config: Parameters<Engine['newGame']>[0]['config'] = {}) => ({
+  ...config,
+  scrapbook: {
+    ...defaultConfig.scrapbook,
+    ...config.scrapbook,
+    pages: config.scrapbook && 'pages' in config.scrapbook ? config.scrapbook.pages : null,
+  },
+});
+
+/**
  * Most tests exercise the workshop (rummy) layer on its own, so the test
  * engine defaults to the linear 'workshopOnly' run structure. Pass
  * `runStructure: 'map'` to test the map and battles.
  */
 export const engine: Engine = {
   ...realEngine,
-  newGame: (opts) => realEngine.newGame({ ...opts, config: { runStructure: 'workshopOnly', ...opts.config } }),
+  newGame: (opts) => realEngine.newGame({ ...opts, config: allPages({ runStructure: 'workshopOnly', ...opts.config }) }),
 };
-export const mapEngine = realEngine;
+export const mapEngine: Engine = {
+  ...realEngine,
+  newGame: (opts) => realEngine.newGame({ ...opts, config: allPages(opts.config) }),
+};
 
 /** Start a game and pick the first offered blueprint (or a given one). */
 export function startedGame(

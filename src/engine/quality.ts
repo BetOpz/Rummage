@@ -4,12 +4,13 @@
  * Silver 6, Gold 7, Platinum 8. An item's grade is the average grade of the
  * parts it was built from, plus any gem bonuses (Ruby Bearing, Diamond
  * Movement), up to the top material. Higher grades give gadgets more
- * charges and stronger effects.
+ * charges, and Brass and Gold reach the next drawing tier (see items.ts).
  */
 
 import type { GameConfig } from '../config';
+import { maxCharges } from './items';
 import type { Rng } from './rng';
-import type { CardId, CategoryDef, ContentPack, GadgetDef, GameState, ItemInstance } from './types';
+import type { CardId, CategoryDef, ContentPack, GameState, ItemInstance, PlayerState } from './types';
 
 /** Categories used for starting decks and minion decks (no rare materials). */
 export function commonCategories(content: ContentPack): CategoryDef[] {
@@ -57,19 +58,11 @@ export function materialName(content: ContentPack, config: GameConfig, grade: nu
   return `Grade ${grade}`;
 }
 
-/** Full charges for a gadget at a grade. */
-export function gadgetCharges(gadget: GadgetDef, grade: number, config: GameConfig): number {
-  return gadget.charges + Math.floor((grade - 1) * config.quality.chargesPerGrade);
-}
+export { gadgetCharges } from './items';
 
-export function itemMaxCharges(content: ContentPack, config: GameConfig, item: ItemInstance): number | null {
-  const gadget = content.items.find((d) => d.id === item.itemId)?.gadget;
-  return gadget ? gadgetCharges(gadget, item.grade, config) : null;
-}
-
-/** `base + floor(perGrade * (grade - 1))`: how gadget effects get stronger with grade. */
-export function byGrade(base: number, perGrade: unknown, grade: number): number {
-  return base + Math.floor((typeof perGrade === 'number' ? perGrade : 0) * (grade - 1));
+/** Full charges for an item's gadget; with the player, including collection and item bonuses. */
+export function itemMaxCharges(content: ContentPack, config: GameConfig, item: ItemInstance, player?: PlayerState): number | null {
+  return maxCharges(content, config, item, player);
 }
 
 export interface UpgradeCheck {

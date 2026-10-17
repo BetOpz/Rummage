@@ -19,7 +19,34 @@ export interface EffectRef {
   /** Key into the effect registry, e.g. "drawChoice", "modifyRules". */
   type: string;
   params?: Record<string, unknown>;
+  /** Only active when the situation matches (item effects). */
+  when?: Condition;
 }
+
+/**
+ * When an item effect or gadget applies. Every key given must match. Any
+ * value can be a tier param (a list of 3, one per tier); null = no condition.
+ */
+export interface Condition {
+  /** Duel kinds it works in. */
+  kind?: DuelKind[] | null;
+  /** At least one opponent is greedy (takes from the discard pile whenever it can). */
+  greedyOpponent?: boolean | null;
+  minOpponents?: number | null;
+  /** The duel just ended in a win (true) or a loss (false). */
+  won?: boolean | null;
+  /** 1-based acts it works in. */
+  act?: number[] | null;
+}
+
+export type DuelKind = 'battle' | 'elite' | 'boss';
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'heirloom';
+/** Where a gadget can be used (docs/CARD_SET.md section 7). */
+export type Place = 'duel' | 'duelResult' | 'lot' | 'map' | 'shop' | 'scrapbook';
+/** Drawing tier: 0 Prototype (Tin-Copper), 1 Fine (Brass, Silver), 2 Masterwork (Gold, Platinum). */
+export type Tier = 0 | 1 | 2;
+/** Three texts, one per tier. */
+export type TierText = [string, string, string];
 
 export interface CategoryDef {
   id: string;
@@ -77,43 +104,70 @@ export interface StarterCardDef extends BattleCardDef {
   id: string;
 }
 
+/**
+ * An item: one scrapbook page and one card (docs/CARD_SET.md). Numbers in
+ * effect params can be tier params: a list of 3, one per drawing tier.
+ */
 export interface ItemDef {
   id: string;
   name: string;
-  text: string;
-  /** Passive effects (workshop rules, currency, ...). */
-  effects: EffectRef[];
+  /** Design batch it was made in. */
+  batch?: number;
+  collection: string;
+  rarity: Rarity;
+  /** The job it does (tempo, discard, stakes, ...). */
+  role: string;
+  /** What the object is, in one line. */
+  object?: string;
+  /** Always on once the item is alive. */
+  passive: { text: TierText; effects: EffectRef[] };
+  /**
+   * An effect you trigger for a charge. Charges do NOT refill between
+   * fights (recharging costs credits; rest stops do one for free). Null for
+   * a fixture.
+   */
+  gadget: GadgetDef | null;
+  /** Rulings and edge cases. */
+  rules?: string[];
+  /** Drawing brief per tier. */
+  art?: string[];
   /** The item's battle card, if it has one (card-battle style). */
   battle?: BattleCardDef;
-  /**
-   * Gadget used during rummy duels: an effect you trigger, with charges
-   * that do NOT refill between fights (rest stops recharge them).
-   */
-  gadget?: GadgetDef;
 }
+
+/** What a gadget is aimed at, chosen by the player when it is used. */
+export type GadgetTarget = 'none' | 'opponent' | 'handCard' | 'discardCard';
 
 export interface GadgetDef {
   name: string;
-  text: string;
+  /** Places it can be used. */
+  usedIn: Place[];
+  /** Places by tier, when a later tier can be used somewhere new. */
+  usedInByTier?: Place[][];
+  target: GadgetTarget;
+  /** Base charges (charges grow every two grades). */
   charges: number;
-  /** Credits to refill all charges between fights. */
-  rechargeCost: number;
   /** What refilling is called, e.g. "Rewind". */
   rechargeName: string;
-  /** Which opponent it needs, if any. */
-  target?: 'none' | 'opponent';
+  /** Credits to refill all charges between fights. */
+  rechargeCost: number;
+  text: TierText;
   /** Effects implementing the `onGadget` hook. */
   effects: EffectRef[];
-  /**
-   * Can also check a parcel (in a lot ahead, or one you've won) for one
-   * charge, like a tool card that gets sharper with the item's grade.
-   */
-  onLot?: {
-    reveals: 'gauge' | 'metal' | 'both';
-    /** Options it leaves, by item grade (index 0 = Tin). */
-    optionsByGrade: number[];
-    text: string;
-  };
+  /** Only usable when this matches. */
+  when?: Condition;
+}
+
+/** A collection of items with a set bonus (src/content/collections.json). */
+export interface CollectionDef {
+  id: string;
+  name: string;
+  /** Objects it's made of, for display. */
+  objects: string;
+  /** Its mechanical lean, for display. */
+  lean: string;
+  /** Set bonus for owning `config.collections.bonusAt` living items from it. */
+  bonus: { text: string; effects: EffectRef[] };
 }
 
 /** An opponent in a rummy duel (minion, elite or boss). */
@@ -162,6 +216,10 @@ export interface LotDef {
   rareChance: number;
   /** Chance one parcel is a gem instead. */
   gemChance: number;
+  /** Chance one parcel is a loose scrapbook page instead. */
+  pageChance?: number;
+  /** One parcel is always a page of at least this rarity (the boss lot). */
+  pageAtLeast?: Rarity;
   gauges: [number, number];
 }
 
@@ -283,6 +341,7 @@ export interface ContentPack {
   duelTargets: DuelTargetDef[];
   lots: LotDef[];
   tools: ToolDef[];
+  collections: CollectionDef[];
 }
 
 // ---------------------------------------------------------------------------
@@ -306,6 +365,8 @@ export interface SpecialCard {
   owner: PlayerId;
   specialId: string;
   temporary?: boolean;
+  /** A wild that counts as a real part for "every meld needs a real part" (Glue Pot). */
+  natural?: boolean;
 }
 
 export type Card = PartCard | SpecialCard;
@@ -330,6 +391,32 @@ export interface RoundRules {
   gaugeMax: number;
   /** Every meld must contain at least one natural part. */
   requireNaturalInMeld: boolean;
+  /** Runs can wrap from the top gauge back to the bottom (Gearbox). */
+  wrapRuns: boolean;
+  /** An adaptor can change a part's gauge and category at once (Soldering Iron). */
+  adaptorBoth: boolean;
+  /** How far an adaptor can move a gauge. */
+  adaptorShift: number;
+  /** Cards of your draw pile you can see from the top. */
+  seeOwnTop: number;
+  /** Cards of the discard pile you can see from the top. */
+  seeDiscard: number;
+  /** Minions can't take your discards on your first this-many turns. */
+  protectDiscardTurns: number;
+  /** You can match a stake with parts this many materials below what's asked. */
+  stakeGrace: number;
+  /** You can see how many cards each opponent still needs. */
+  seeOpponentProgress: boolean;
+  /** Draws from the discard pile that don't use a draw, per duel. */
+  freeDiscardDraws: number;
+  /** Times per duel you can take any card from the discard pile, not just the top. */
+  takeAnyDiscard: number;
+  /** Times per duel you can discard an extra card and draw a replacement. */
+  extraDiscards: number;
+  /** Opponents can take from the discard pile. */
+  opponentDiscardDraw: boolean;
+  /** Added to each opponent's starting hand. */
+  opponentHandSize: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -389,8 +476,12 @@ export interface PlayerState {
   rules: RoundRules;
   /** Scrapbook: per item id, pieces placed on each stage (index 0 = Tin ... 7 = Platinum). */
   scrapbook: Record<string, number[]>;
+  /** Pages in your scrapbook this run, by item id. Null: every page (no page limit). */
+  pages: string[] | null;
   /** Checks held, by tool id. */
   tools: Record<string, number>;
+  /** Spare lives used (Fire Blanket): once per run, and the acts it was used in. */
+  spareLives: { run: boolean; acts: number[] };
 }
 
 export type PendingChoice =
@@ -430,8 +521,10 @@ export interface RoundState {
 }
 
 export interface ShopSlot {
-  kind: 'part' | 'special' | 'service' | 'tool';
+  kind: 'part' | 'special' | 'service' | 'tool' | 'page';
   toolId?: string;
+  /** For pages: the item. */
+  itemId?: string;
   /** For parts: category/gauge; for specials: specialId; for services: serviceId. */
   category?: string;
   gauge?: number;
@@ -444,6 +537,8 @@ export interface ShopSlot {
 export interface ShopState {
   slots: ShopSlot[];
   rerolls: number;
+  /** Haggle (Abacus): credits off purchases, for the next one or the whole visit. */
+  discount: { amount: number; wholeVisit: boolean } | null;
 }
 
 export interface RoundResult {
@@ -485,6 +580,8 @@ export interface Encounter {
   stakeRule?: { category: string; count: number };
   /** The lot fought over (scrapbook item source). */
   lot?: Lot;
+  /** Boss twists, rolled with the map so items can reveal them (Oil Can). */
+  twists?: BossState[];
 }
 
 /**
@@ -512,8 +609,15 @@ export interface Lot {
   parcels: Parcel[];
 }
 
-/** Where a found piece goes. */
-export type PieceDestination = { to: 'page'; itemId: string } | { to: 'deck' } | { to: 'sell' };
+/**
+ * Where a found piece goes. A loose page goes into the scrapbook (tearing
+ * one out first if it's full) or is sold.
+ */
+export type PieceDestination =
+  | { to: 'page'; itemId: string }
+  | { to: 'deck' }
+  | { to: 'sell' }
+  | { to: 'scrapbook'; tearOut?: string };
 
 /** Sorting the pieces dug out of a won lot. */
 export interface RummageState {
@@ -527,6 +631,8 @@ export interface RummageState {
   missed: RewardOption[];
   /** The lot was a boss prize: the act ends after sorting. */
   afterBoss: boolean;
+  /** Extra pieces won with the lot (Smoke Jack), added when you open your picks. */
+  bonus: RewardOption[];
 }
 
 export interface MapState {
@@ -536,6 +642,8 @@ export interface MapState {
   /** Node the player is on; null before the first choice. */
   current: string | null;
   visited: string[];
+  /** Reroute (Pocket Compass): the next move can go to any stop up to this many rows ahead (0 = off). */
+  reroute: number;
 }
 
 export interface BattleCard {
@@ -571,10 +679,12 @@ export interface BattleState {
 }
 
 export interface RewardOption {
-  kind: 'part' | 'special';
+  kind: 'part' | 'special' | 'page';
   category?: string;
   gauge?: number;
   specialId?: string;
+  /** For a loose page: the item whose page it is. */
+  itemId?: string;
 }
 
 export interface BattleReward {
@@ -594,13 +704,84 @@ export interface DuelOpponent {
   drawPile: CardId[];
   /** Turns to skip (Pocket Watch). */
   skip: number;
+  /** Its turns left in which it can't go out (Alarm Clock). */
+  noOut: number;
+  /** Its turns left in which it can't take from the discard pile (Fireguard). */
+  discardLock: number;
   /** Player can see this hand. */
   revealed: boolean;
+  /** Cards in its hand the player has seen (Clockwork Mouse). */
+  peeked: CardId[];
   lastAction: string;
 }
 
+/**
+ * A choice inside a duel, opened by a gadget or passive that shows you
+ * cards first. Answered with DUEL_CHOOSE; nothing else happens until then.
+ */
+export interface DuelChoice {
+  /** 'pick': choose min..max of `cardIds`. 'order': put them back in an order (some to the bottom or the discard pile, if allowed). 'confirm': yes or no. */
+  kind: 'pick' | 'order' | 'confirm';
+  prompt: string;
+  cardIds: CardId[];
+  min: number;
+  max: number;
+  allowBottom?: boolean;
+  allowDiscard?: boolean;
+  /** The effect that resumes with the answer. */
+  resume: { effect: string; params: Record<string, unknown>; itemUid?: string; data?: Record<string, unknown> };
+}
+
+/** Duel-long state that items change (reset when a duel starts). */
+export interface DuelFx {
+  /** Your turns left in which the discard pile is locked (Escapement). */
+  lockDiscard: number;
+  /** The lock doesn't apply to you. */
+  lockExceptYou: boolean;
+  /** A set trap (Mousetrap). */
+  trap: { catches: number; victimDraws: boolean } | null;
+  /** Your turns left drawing 2 and discarding 2 (Tourbillon). */
+  doubleDraw: number;
+  /** Your next turns in which you don't draw (Mainspring). */
+  skipOwnDraw: number;
+  /** Draws due this turn (2 on a Tourbillon turn). */
+  drawsDue: number;
+  /** Discards still due this turn. */
+  discardsDue: number;
+  /** Draws taken this turn. */
+  drawsThisTurn: number;
+  /** Your last discard, if minions can't take it (Music Box). */
+  protectedCard: CardId | null;
+  /** Cards set aside: out of your hand, still used when you go out (Firedogs). */
+  setAside: CardId[];
+  freeDiscardUsed: number;
+  takeAnyUsed: number;
+  extraDiscardsUsed: number;
+  /** Draws from your own pile this duel (Kaleidoscope). */
+  deckDraws: number;
+  /** Losing this duel costs no stake / no life; winning pays extra (Twice a Day, Weigh In, Dutch Courage). */
+  insured: { stake: boolean; life: boolean; winCredits: number };
+  /** Gadget uses that don't spend a charge (Brass Fender). */
+  freeUses: { count: number; collection: string; sourceUid: string } | null;
+  /** Gadgets used this duel, by collection. */
+  gadgetUses: Record<string, number>;
+  /** Cards you took from the discard pile this duel (Smoke Jack). */
+  fromDiscard: CardId[];
+  /** Cards you discarded this duel (Mousetrap). */
+  yourDiscards: CardId[];
+  /** Times capped or once-per-duel effects have fired, by key. */
+  fired: Record<string, number>;
+  /** Parts changed for this duel only (Gearbox, Soldering Iron). */
+  shifted: Record<CardId, { category?: string; gauge?: number }>;
+  /** This duel has been replayed once (Grandfather Clock). */
+  replayed: boolean;
+  /** Draws and hand size added during the duel, kept when its rules are worked out again. */
+  bonusDraws: number;
+  bonusHandSize: number;
+}
+
 export interface DuelState {
-  kind: 'battle' | 'elite' | 'boss';
+  kind: DuelKind;
   nodeId: string;
   targetId: string;
   requirements: MeldRequirement[];
@@ -622,8 +803,13 @@ export interface DuelState {
   discard: CardId[];
   turnPhase: 'draw' | 'main';
   drawsTaken: number;
-  /** Ended: who won (null = still playing). 'player' or opponent index. */
-  winner: 'player' | number | null;
+  /** Your turns started so far (1 on your first turn). */
+  turn: number;
+  /** A choice to answer before anything else happens. */
+  choice: DuelChoice | null;
+  fx: DuelFx;
+  /** Ended: who won (null = still playing). 'player', an opponent index, or 'none' (called off). */
+  winner: 'player' | number | 'none' | null;
   /** How it ended. */
   endReason: string | null;
   /** Winning melds, for display. */
@@ -634,6 +820,10 @@ export interface DuelState {
 
 export interface DuelResult {
   won: boolean;
+  /** Called off: nobody won and every stake went back (Fire Blanket). */
+  drawn: boolean;
+  /** Your draws left when it ended. */
+  unusedDraws: number;
   currency: number;
   /** Pot cards that joined the player's parts deck. */
   wonCards: CardId[];
@@ -642,6 +832,8 @@ export interface DuelResult {
   lifeLost: boolean;
   /** Lot won: you pick `picks` of its parcels next. */
   lotWon: { name: string; picks: number; parcels: number } | null;
+  /** Extra pieces won with the lot (Smoke Jack). */
+  bonus: RewardOption[];
 }
 
 export type GamePhase =
@@ -651,6 +843,7 @@ export type GamePhase =
   | 'duelResult'
   | 'rummage'
   | 'appraiser'
+  | 'pageOffer'
   | 'blueprintSelect'
   | 'playing'
   | 'roundOver'
@@ -688,6 +881,10 @@ export interface GameState {
   duel: DuelState | null;
   /** Sorting a won lot's pieces (scrapbook item source). */
   rummage: RummageState | null;
+  /** Pages offered to choose from (the start of a run). */
+  pageOffer: { options: string[]; picks: number } | null;
+  /** Gadgets a rest stop still recharges for free. */
+  restRecharges: number;
   /** Counter for ItemInstance / battle card uids. */
   nextUid: number;
   /** Human-readable event log (capped), for UI feedback. */
@@ -708,7 +905,8 @@ export type GameAction =
   | { type: 'BUILD'; playerId: PlayerId; groups: CardId[][] }
   | { type: 'DISCARD'; playerId: PlayerId; cardId: CardId }
   | { type: 'CONTINUE'; playerId: PlayerId }
-  | { type: 'SHOP_BUY'; playerId: PlayerId; slot: number; targetId?: CardId }
+  /** `tearOut`: the page to tear out to make room for a bought page. */
+  | { type: 'SHOP_BUY'; playerId: PlayerId; slot: number; targetId?: CardId; tearOut?: string }
   | { type: 'SHOP_REROLL'; playerId: PlayerId }
   | { type: 'LEAVE_SHOP'; playerId: PlayerId }
   | { type: 'CHOOSE_NODE'; playerId: PlayerId; nodeId: string }
@@ -726,16 +924,43 @@ export type GameAction =
   | { type: 'LEAVE_APPRAISER'; playerId: PlayerId }
   /** Check a parcel with a tool you hold. No nodeId = the lot you've won. */
   | { type: 'USE_TOOL'; playerId: PlayerId; toolId: string; nodeId?: string; parcel: number }
-  /** Check a parcel with a gadget charge (e.g. the Magnifier). No nodeId = the lot you've won. */
-  | { type: 'EXAMINE_LOT'; playerId: PlayerId; itemUid: string; nodeId?: string; parcel: number }
+  /** Choose your starting pages. */
+  | { type: 'PICK_PAGES'; playerId: PlayerId; itemIds: string[] }
   /** Choose which parcels to take from a won lot. */
   | { type: 'PICK_PARCELS'; playerId: PlayerId; parcels: number[] }
-  | { type: 'DUEL_DRAW'; playerId: PlayerId; source: 'deck' | 'discard' }
+  /** `cardId`: take that card from the discard pile instead of the top one (Kitchen Range). */
+  | { type: 'DUEL_DRAW'; playerId: PlayerId; source: 'deck' | 'discard'; cardId?: CardId }
+  /** Discard an extra card and draw a replacement (Firedogs). */
+  | { type: 'DUEL_CYCLE'; playerId: PlayerId; cardId: CardId }
+  /** Answer the duel's pending choice. */
+  | { type: 'DUEL_CHOOSE'; playerId: PlayerId; cardIds?: CardId[]; bottom?: CardId[]; discard?: CardId[]; confirm?: boolean }
   | { type: 'DUEL_DISCARD'; playerId: PlayerId; cardId: CardId }
   | { type: 'DUEL_GO_OUT'; playerId: PlayerId; groups: CardId[][] }
-  | { type: 'USE_GADGET'; playerId: PlayerId; itemUid: string; target?: number }
+  | ({ type: 'USE_GADGET'; playerId: PlayerId; itemUid: string } & GadgetArgs)
   | { type: 'RECHARGE'; playerId: PlayerId; itemUid: string }
   /** Spend better-material parts (or a gem) and credits to raise an item one grade. */
   | { type: 'UPGRADE_ITEM'; playerId: PlayerId; itemUid: string; cardIds: CardId[] };
 
 export type ActionType = GameAction['type'];
+
+/** What a gadget is aimed at, and the player's picks for it. */
+export interface GadgetArgs {
+  /** Opponent index. */
+  target?: number;
+  /** Cards: in your hand, the discard pile or your deck. */
+  cards?: CardId[];
+  /** An option index (Set the Time, Free It Up). */
+  option?: number;
+  /** Per-card values, e.g. gauge shifts (Shift Gear, Solder). */
+  values?: number[];
+  /** Per-card materials (Solder). */
+  materials?: string[];
+  /** A lot ahead on the map (no node = the lot you've won). */
+  nodeId?: string;
+  /** Parcel indexes. */
+  parcels?: number[];
+  /** Pages, e.g. [from, to] for moving pieces. */
+  pages?: string[];
+  /** A page stage (1 = Tin ... 8 = Platinum). */
+  stage?: number;
+}

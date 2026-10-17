@@ -40,7 +40,9 @@ In Cursor you can also click the branch name in the bottom-left corner and pick 
 | Command | What it does |
 |---|---|
 | `npm run dev` | Play the game in the browser; it reloads as you edit. |
-| `npm test` | Run the test suite (188 tests). |
+| `npm test` | Run the test suite (242 tests). |
+| `npm run test:fuzz` | Slow check: every gadget at every tier tried through whole bot runs. |
+| `npm run portfolio` | Check the item cards against the set rules and count what's missing. |
 | `npm run typecheck` | Check the TypeScript types. |
 | `npm run sim` | The bot plays 200 seeded runs and reports the win rate and items finished. Use it after changing numbers. `npm run sim -- 100 '{"lives":3}'` runs 100 with a config override. |
 | `npm run build` | Production build into `dist/`. |
@@ -164,18 +166,11 @@ One material per grade, from scrap to treasure:
 
 ### 3.8 Items and gadgets
 
-Items give a passive bonus (like Balatro jokers) and a gadget you trigger in duels. **Gadget charges don't refill between fights.** Recharging costs credits on the map or in a shop; a rest stop recharges one for free. Higher grades give more charges and stronger effects.
+Items give a passive bonus (like Balatro jokers) and usually a gadget you trigger. **Gadget charges don't refill between fights.** Recharging costs credits on the map or in a shop; a rest stop recharges one for free. Charges grow every two grades, and each item gets better at Brass (Fine) and Gold (Masterwork).
 
-| Item | Passive | Gadget |
-|---|---|---|
-| Workbench | +1 hand size | none |
-| Pocket Watch | +2 draws | **Stop Time:** an opponent misses a turn (2 at Gold+) |
-| Glue Pot | Free temporary Duct Tape each duel | **Quick Patch:** add a temporary Duct Tape |
-| Coin Press | +2 credits after each duel | **Raise the Stakes:** every opponent adds another card to the pot |
-| Magnifier | Checks leave one fewer option | **Spyglass:** see opponents' hands, or check a parcel's metal |
-| Sorting Tray | +1 hand size, +1 draw | **Rummage:** +3 draws this fight |
-| Salvage Rig | +1 credit when you go out | **Snatch:** take a random card from an opponent |
-| Spare Reel | Free temporary Adaptor each duel | **Cast Line:** draw 2 extra cards |
+There are **60 items** so far, in 10 collections (Clockwork and Hearth are complete at 20 each), with rarities and set bonuses. Gadgets work in duels, after a duel, on lots, on the map, in shops or in the scrapbook. The full set rules are in **[CARD_SET.md](CARD_SET.md)**; the cards themselves are `src/content/items.json`.
+
+A run's scrapbook starts with 3 pages you choose (from 5 Commons) and holds 12; more pages turn up in lots and shops.
 
 ### 3.9 Look and feel
 
@@ -248,7 +243,7 @@ Roughly in priority order.
 ### 6.1 Play and tune (now)
 
 - **Playtest a few full runs** and note what feels slow, unclear or too easy.
-- **Balance numbers**, all in `config.ts` / `content/*.json`: picks per lot, scrapbook stage sizes, check-card prices and starting checks, appraiser price, stake sizes, credit rewards. The current sim gives about a 42% win rate and roughly 1.5 items finished per run.
+- **Balance numbers**, all in `config.ts` / `content/*.json`: picks per lot, scrapbook stage sizes, check-card prices and starting checks, appraiser price, stake sizes, credit rewards. The current sim gives about a 37% win rate and roughly 1.2 items finished per run (fewer than before pages were limited to a run's scrapbook).
 - **Make the bot pick for its pages.** It currently picks the highest-grade parcels, which spreads pieces across many stages. A smarter bot would make the sim numbers reflect real play better.
 
 ### 6.2 Tidy up decisions already implied

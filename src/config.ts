@@ -72,11 +72,38 @@ export interface ScrapbookConfig {
   startingTools: Record<string, number>;
   /** Tool cards offered per shop visit. */
   shopToolSlots: number;
+  /**
+   * Pages in a run (docs/CARD_SET.md section 4). Null: every item's page is
+   * in the scrapbook from the start, with no limit.
+   */
+  pages: PagesConfig | null;
+}
+
+export interface PagesConfig {
+  /** Most pages the scrapbook holds. */
+  max: number;
+  /** Pages chosen at the start of a run... */
+  start: number;
+  /** ...from this many Common pages offered. */
+  offered: number;
+  /** Rarity odds for loose pages and shop pages, by act: [common, uncommon, rare, heirloom]. */
+  rarityByAct: number[][];
+  /** Shop page slots per visit. */
+  shopSlots: number;
+  /** Shop price of a page, by rarity. */
+  prices: { common: number; uncommon: number; rare: number; heirloom: number };
+}
+
+export interface CollectionsConfig {
+  /** Living items from one collection for its set bonus. */
+  bonusAt: number;
+  /** Living items from one collection for +1 charge on its gadgets. */
+  chargeAt: number;
 }
 
 export interface QualityConfig {
-  /** Extra gadget charges per grade above 1 (rounded down). */
-  chargesPerGrade: number;
+  /** A gadget gains 1 charge every this many grades: base + floor((grade - 1) / chargeEvery). */
+  chargeEvery: number;
   /** Names for grades above the best material (reached with gems). Empty: Platinum is the top. */
   extraGradeNames: string[];
   /** Parts of the next grade (or better) needed to upgrade an item one grade. */
@@ -108,6 +135,9 @@ export interface GameConfig {
    */
   itemSource: 'scrapbook' | 'workshop';
   scrapbook: ScrapbookConfig;
+  collections: CollectionsConfig;
+  /** Gadgets a rest stop recharges for free. */
+  restRecharges: number;
   duel: DuelConfig;
   quality: QualityConfig;
   map: MapConfig;
@@ -168,7 +198,21 @@ export const defaultConfig: GameConfig = {
     appraiseCost: 3,
     startingTools: { calipers: 2, scratch_test: 2, unwrap: 1 },
     shopToolSlots: 2,
+    pages: {
+      max: 12,
+      start: 3,
+      offered: 5,
+      rarityByAct: [
+        [70, 25, 5, 0],
+        [50, 32, 15, 3],
+        [35, 35, 22, 8],
+      ],
+      shopSlots: 1,
+      prices: { common: 4, uncommon: 6, rare: 9, heirloom: 12 },
+    },
   },
+  collections: { bonusAt: 3, chargeAt: 5 },
+  restRecharges: 1,
   duel: {
     handSizeByAct: [7, 8, 9, 10],
     drawLimit: 12,
@@ -177,7 +221,7 @@ export const defaultConfig: GameConfig = {
     bossTwists: 1,
   },
   quality: {
-    chargesPerGrade: 0.34,
+    chargeEvery: 2,
     extraGradeNames: [],
     upgradeParts: 3,
     upgradeCreditsPerGrade: 1,
@@ -250,6 +294,7 @@ export function makeConfig(overrides: Partial<GameConfig> = {}): GameConfig {
     pivotCost: { ...defaultConfig.pivotCost, ...overrides.pivotCost },
     quality: { ...defaultConfig.quality, ...overrides.quality },
     scrapbook: { ...defaultConfig.scrapbook, ...overrides.scrapbook },
+    collections: { ...defaultConfig.collections, ...overrides.collections },
     duel: {
       ...defaultConfig.duel,
       ...overrides.duel,

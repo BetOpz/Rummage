@@ -10,7 +10,7 @@ import { RestView } from './RestView';
 import { RewardView } from './RewardView';
 import { RoundOver, RunOver } from './RoundOver';
 import { RoundView } from './RoundView';
-import { RummageView, ScrapbookView } from './ScrapbookView';
+import { PageOfferView, RummageView, ScrapbookView } from './ScrapbookView';
 import { ShopView } from './ShopView';
 import { StatusBar } from './StatusBar';
 import { clearLocal, discardedOldSave, downloadSave, loadFromLocal, readSaveFile, saveToLocal } from './storage';
@@ -18,7 +18,7 @@ import { clearLocal, discardedOldSave, downloadSave, loadFromLocal, readSaveFile
 const PLAYER_ID = 'p1';
 
 /** Shown on screen so it's easy to tell which version is running. Bump on each release. */
-export const BUILD_LABEL = 'build 22';
+export const BUILD_LABEL = 'build 23';
 
 function randomSeed(): string {
   return Math.random().toString(36).slice(2, 8);
@@ -140,6 +140,7 @@ export function App() {
           </div>
         )}
         {showBook && <ScrapbookView onClose={() => setShowBook(false)} />}
+        {state.phase === 'pageOffer' && <PageOfferView />}
         {state.phase === 'rummage' && <RummageView />}
         {state.phase === 'appraiser' && <AppraiserView />}
         {state.phase === 'map' && <MapView />}
@@ -206,6 +207,11 @@ function HowToPlay() {
           Sort what you find: onto a <b>scrapbook</b> page, into your deck, or sell it. Each page has a stage per material, Tin
           to Platinum. Fill a stage and that item comes to life at that grade, with a <b>gadget</b> like the Pocket Watch that
           makes an opponent miss a turn.
+        </li>
+        <li>
+          Your scrapbook starts with <b>3 pages</b> you choose and holds up to 12. Loose pages turn up in lots and shops; a full
+          scrapbook means tearing a page out. Items get better at Brass (Fine) and Gold (Masterwork), and three living items from
+          one collection give a <b>set bonus</b>.
         </li>
         <li>
           Gadget charges don't refill after a fight. Recharging costs credits (a rest stop does one for free). Lose a boss duel

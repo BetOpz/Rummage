@@ -5,18 +5,27 @@ import {
   type Lot,
   type Parcel,
   type RewardOption,
+  appraiseCost,
   eligibleStakeCards,
-  gadgetOptions,
-  itemMaxCharges,
   partName,
   sharpened,
   viewParcel,
 } from '../engine';
+import { GadgetList } from './Gadgets';
 import { useGame } from './context';
 
 /** A piece (not yet a card), shown as a small tag. */
 export function PieceView({ piece }: { piece: RewardOption }) {
   const { engine } = useGame();
+  if (piece.kind === 'page') {
+    const def = engine.content.items.find((d) => d.id === piece.itemId);
+    return (
+      <div className={`card page-piece rarity-${def?.rarity}`} title={def ? `${def.name} page (${def.rarity}): ${def.passive.text[0]}` : 'A loose page'}>
+        <div className="special-name">{def?.name} page</div>
+        <div className="special-text">{def?.rarity}</div>
+      </div>
+    );
+  }
   if (piece.kind === 'special') {
     const def = engine.content.specials.find((s) => s.id === piece.specialId);
     return (
@@ -192,14 +201,12 @@ function CheckBar({
       </div>
     );
   }
-  const cost = state.config.scrapbook.appraiseCost;
+  const cost = appraiseCost(state, engine.content, me);
   const run = (a: GameAction) => act(a);
   const describe = (reveals: string, options: number) =>
     reveals === 'both' || options <= 1 ? 'exact' : reveals === 'gauge' ? `number, 1 of ${options} metals` : `metal, 1 of ${options} numbers`;
   const held = engine.content.tools.filter((t) => (me.tools[t.id] ?? 0) > 0);
-  const gadgets = me.items
-    .map((it) => ({ it, g: engine.content.items.find((d) => d.id === it.itemId)?.gadget }))
-    .filter((x) => x.g?.onLot);
+  const checks = me.items.filter((it) => engine.content.items.find((d) => d.id === it.itemId)?.gadget?.effects.some((e) => e.type === 'checkParcel'));
   return (
     <div className="check-bar">
       <span className="eyebrow">Check parcel #{index + 1}</span>
@@ -212,22 +219,12 @@ function CheckBar({
         )}
         {held.map((t) => (
           <button key={t.id} title={t.text} onClick={() => run({ type: 'USE_TOOL', playerId, toolId: t.id, nodeId, parcel: index })}>
-            {t.name} ×{me.tools[t.id]} <span className="muted">({describe(t.reveals, sharpened(engine.content, me, t.options))})</span>
+            {t.name} ×{me.tools[t.id]} <span className="muted">({describe(t.reveals, sharpened(engine.content, state.config, me, t.options))})</span>
           </button>
         ))}
-        {gadgets.map(({ it, g }) => (
-          <button
-            key={it.uid}
-            title={g!.onLot!.text}
-            disabled={(it.charges ?? 0) <= 0}
-            onClick={() => run({ type: 'EXAMINE_LOT', playerId, itemUid: it.uid, nodeId, parcel: index })}
-          >
-            {g!.name} {it.charges ?? 0}/{itemMaxCharges(engine.content, state.config, it) ?? 0}{' '}
-            <span className="muted">({describe(g!.onLot!.reveals, gadgetOptions(engine.content, me, g!.onLot!, it.grade))})</span>
-          </button>
-        ))}
-        {!appraiser && held.length === 0 && gadgets.length === 0 && <span className="muted small-text">You have no checks left. Shops sell them.</span>}
+        {!appraiser && held.length === 0 && checks.length === 0 && <span className="muted small-text">You have no checks left. Shops sell them.</span>}
       </div>
+      <GadgetList title="Check with a gadget" parcel={index} nodeId={nodeId} compact only={(it) => checks.includes(it)} />
     </div>
   );
 }

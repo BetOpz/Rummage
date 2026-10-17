@@ -1,6 +1,6 @@
 # Rummage: item card design
 
-How item cards will be designed. This is a plan, not a spec: the next step is to build a portfolio of cards (items, passives and gadgets) and design them once that set exists. The set rules are in [CARD_SET.md](CARD_SET.md), and the cards themselves in `design/card-portfolio.json`.
+How item cards will be designed. This is a plan, not a spec: the next step is to build a portfolio of cards (items, passives and gadgets) and design them once that set exists. The set rules are in [CARD_SET.md](CARD_SET.md), and the cards themselves are the game content, `src/content/items.json`.
 
 ---
 
@@ -65,4 +65,4 @@ An illustrated prototype ("The Chronos-Fragment", a pocket watch) set the bar fo
 
 - Readability at phone width and at compact size: how much rules text fits.
 - Whether gems (Ruby Bearing, Diamond Movement) show on the frame once set into an item.
-- The Pocket Watch gadget text says Stop Time lasts 2 turns "at Gold grade or better", but the engine (`1 + floor(0.2 × (grade − 1))`) gives 2 turns from Silver. Fix the text or the `perGrade` value before cards show the numbers.
+- ~~The Pocket Watch Stop Time text/grade mismatch.~~ Fixed: numbers now change only at the drawing tiers (see CARD_SET.md section 6).

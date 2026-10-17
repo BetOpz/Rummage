@@ -167,7 +167,8 @@ describe('gadgets', () => {
     let s = withGadget(playing('battle', 'watch'), 'pocket_watch');
     s = engine.reduce(s, { type: 'USE_GADGET', playerId: P, itemUid: 'g-pocket_watch', target: 0 });
     expect(s.duel!.opponents[0].skip).toBe(1);
-    expect(me(s).items[0].charges).toBe(1);
+    // A Tin Pocket Watch has 1 charge (base 1, +1 every two grades).
+    expect(me(s).items[0].charges).toBe(0);
     const handBefore = [...s.duel!.opponents[0].hand];
     s = engine.reduce(s, { type: 'DUEL_DRAW', playerId: P, source: 'deck' });
     s = engine.reduce(s, { type: 'DUEL_DISCARD', playerId: P, cardId: s.duel!.hand[0] });
@@ -192,14 +193,14 @@ describe('gadgets', () => {
     const ids = setHand(s, ['iron:5', 'wood:5', 'brass:5', 'copper:1', 'copper:2', 'copper:3', 'iron:9']);
     s = engine.reduce(s, { type: 'DUEL_GO_OUT', playerId: P, groups: [ids.slice(0, 3), ids.slice(3, 6)] });
     s = sortLot(engine.reduce(s, { type: 'CONTINUE', playerId: P }));
-    expect(me(s).items[0].charges).toBe(1);
+    expect(me(s).items[0].charges).toBe(0);
 
     s = structuredClone(s);
     me(s).currency = 4;
     expect(engine.applyAction(s, { type: 'RECHARGE', playerId: P, itemUid: 'g-pocket_watch' }).ok).toBe(false);
     me(s).currency = 10;
     s = engine.reduce(s, { type: 'RECHARGE', playerId: P, itemUid: 'g-pocket_watch' });
-    expect(me(s).items[0].charges).toBe(2);
+    expect(me(s).items[0].charges).toBe(1);
     expect(me(s).currency).toBe(10 - 5);
   });
 
@@ -210,7 +211,7 @@ describe('gadgets', () => {
     s = engine.reduce(s, { type: 'CHOOSE_NODE', playerId: P, nodeId: s.map!.rows[0][0].id });
     const currency = me(s).currency;
     s = engine.reduce(s, { type: 'REST', playerId: P, choice: 'recharge', itemUid: 'g-pocket_watch' });
-    expect(me(s).items[0].charges).toBe(2);
+    expect(me(s).items[0].charges).toBe(1);
     expect(me(s).currency).toBe(currency);
     expect(s.phase).toBe('map');
   });
@@ -238,7 +239,7 @@ describe('gadgets', () => {
       return card.id;
     });
     s = engine.reduce(s, { type: 'BUILD', playerId: P, groups: [ids.slice(0, 4), ids.slice(4)] });
-    expect(me(s).items.at(-1)).toMatchObject({ itemId: 'pocket_watch', grade: 4, charges: 3 });
+    expect(me(s).items.at(-1)).toMatchObject({ itemId: 'pocket_watch', grade: 4, charges: 2 });
   });
 });
 

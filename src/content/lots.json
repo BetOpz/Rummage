@@ -23,7 +23,8 @@
     "gauges": [
       1,
       8
-    ]
+    ],
+    "pageChance": 0.05
   },
   {
     "id": "tea_chest",
@@ -49,7 +50,8 @@
     "gauges": [
       1,
       10
-    ]
+    ],
+    "pageChance": 0.1
   },
   {
     "id": "loft_box",
@@ -77,7 +79,8 @@
     "gauges": [
       1,
       10
-    ]
+    ],
+    "pageChance": 0.15
   },
   {
     "id": "workshop_clearance",
@@ -102,7 +105,8 @@
     "gauges": [
       1,
       10
-    ]
+    ],
+    "pageChance": 0.2
   },
   {
     "id": "barn_find",
@@ -129,7 +133,8 @@
     "gauges": [
       1,
       10
-    ]
+    ],
+    "pageChance": 0.25
   },
   {
     "id": "estate_sale",
@@ -154,6 +159,8 @@
     "gauges": [
       1,
       10
-    ]
+    ],
+    "pageChance": 0.4,
+    "pageAtLeast": "rare"
   }
 ]

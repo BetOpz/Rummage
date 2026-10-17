@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "sim": "tsx scripts/simulate.ts",
-    "portfolio": "tsx scripts/portfolio.ts"
+    "portfolio": "tsx scripts/portfolio.ts",
+    "test:fuzz": "vitest run"
   },
   "dependencies": {
     "react": "^19.3.0",

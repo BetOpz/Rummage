@@ -17,7 +17,7 @@ export function BlueprintCard({ bp, revealed, children }: { bp: BlueprintDef; re
         ))}
       </ul>
       <div className="item-reward">
-        Builds <b>{item?.name}</b>: <span className="muted">{item?.text}</span>
+        Builds <b>{item?.name}</b>: <span className="muted">{item?.passive.text[0]}</span>
       </div>
       {children}
     </div>

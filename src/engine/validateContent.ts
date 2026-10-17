@@ -35,7 +35,7 @@ export function validateContent(content: ContentPack, effects: EffectRegistry, c
   };
 
   for (const s of content.specials) checkEffects(`special ${s.id}`, s.effects);
-  for (const i of content.items) checkEffects(`item ${i.id}`, i.effects);
+  for (const i of content.items) checkEffects(`item ${i.id}`, i.passive.effects);
   for (const b of content.bossModifiers) checkEffects(`boss modifier ${b.id}`, b.effects);
   for (const i of content.items) if (i.battle) checkEffects(`item ${i.id} battle card`, i.battle.effects);
   for (const c of content.starterCards) checkEffects(`starter card ${c.id}`, c.effects);

@@ -68,9 +68,9 @@ export function deserializeSession(
   if (data.format !== 'rummage-save') throw new Error('Not a Rummage save file');
   if (data.schemaVersion !== 1) throw new Error(`Unsupported save version ${data.schemaVersion}`);
   if (!data.initial || !data.actions || !data.state) throw new Error('Save file is incomplete');
-  // Saves from before rummy duels and item grades can't be continued.
+  // Saves from before rummy duels, item grades and the card set (tiers, pages in a run) can't be continued.
   const cfg = data.state.config as Partial<typeof data.state.config> | undefined;
-  if (!cfg?.runStructure || !cfg.battleStyle || !cfg.quality || !cfg.duel || !cfg.itemSource || !cfg.scrapbook?.startingTools) {
+  if (!cfg?.runStructure || !cfg.battleStyle || !cfg.quality?.chargeEvery || !cfg.duel || !cfg.itemSource || !cfg.scrapbook?.startingTools || !cfg.collections) {
     throw new Error('This save is from an older version of the game');
   }
   if (verify) {
