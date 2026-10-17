@@ -1,6 +1,6 @@
 # Rummage: item card design
 
-How item cards will be designed. This is a plan, not a spec: the next step is to build a portfolio of cards (items, passives and gadgets) and design them once that set exists.
+How item cards will be designed. This is a plan, not a spec: the next step is to build a portfolio of cards (items, passives and gadgets) and design them once that set exists. The set rules are in [CARD_SET.md](CARD_SET.md), and the cards themselves in `design/card-portfolio.json`.
 
 ---
 

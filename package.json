@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit -p .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "sim": "tsx scripts/simulate.ts"
+    "sim": "tsx scripts/simulate.ts",
+    "portfolio": "tsx scripts/portfolio.ts"
   },
   "dependencies": {
     "react": "^19.3.0",
