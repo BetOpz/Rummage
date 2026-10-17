@@ -1091,6 +1091,1562 @@
         "A pewter flask in a leather wrap.",
         "A silver flask with a bayonet cap, an engraved crest and a gilt cup."
       ]
+    },
+    {
+      "id": "egg_timer",
+      "name": "Egg Timer",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "common",
+      "role": "tempo",
+      "object": "A sand timer for boiling eggs.",
+      "passive": {
+        "text": ["+1 draw.", "+1 draw.", "+2 draws."],
+        "effects": [{ "type": "modifyRules", "params": { "drawLimit": [1, 1, 2] } }]
+      },
+      "gadget": {
+        "name": "Flip the Glass",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Refill",
+        "rechargeCost": 2,
+        "text": ["+2 draws this duel.", "+3 draws this duel.", "+3 draws this duel, and draw 1 card now."],
+        "effects": [
+          { "type": "extraDraws", "params": { "amount": [2, 3, 3] } },
+          { "type": "drawExtra", "params": { "amount": [0, 0, 1] } }
+        ]
+      },
+      "engine": { "build": "small", "needs": ["tierParams"] },
+      "rules": [
+        "A draw is a turn: the duel ends in a showdown when your draws run out, so +2 draws is 2 more turns to go out.",
+        "The plainest Clockwork card, and the yardstick for the others."
+      ],
+      "art": [
+        "A jam jar with sand and a pinched paper funnel.",
+        "A beech-framed egg timer with a glass bulb.",
+        "A brass-and-glass hourglass on a turned stand with a dial for counting flips."
+      ]
+    },
+    {
+      "id": "metronome",
+      "name": "Metronome",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "common",
+      "role": "tempo",
+      "object": "A wind-up pyramid metronome.",
+      "passive": {
+        "text": [
+          "On every 4th turn of a duel, draw 1 extra card.",
+          "On every 3rd turn of a duel, draw 1 extra card.",
+          "On every 3rd turn of a duel, draw 1 extra card. +1 draw."
+        ],
+        "effects": [
+          { "type": "drawExtra", "params": { "hook": "onTurnStart", "everyTurns": [4, 3, 3], "amount": 1 } },
+          { "type": "modifyRules", "params": { "drawLimit": [0, 0, 1] } }
+        ]
+      },
+      "gadget": null,
+      "engine": { "build": "new", "needs": ["tierParams", "hook.onTurnStart"] },
+      "rules": [
+        "A fixture: no gadget, so its passive is stronger than a Common's usually is.",
+        "Counts your turns only. Turns you take while opponents are skipped still count.",
+        "The extra card arrives after your normal draw and doesn't use a draw."
+      ],
+      "art": [
+        "A bent spoon on a nail, swinging over a tin can.",
+        "A walnut pyramid metronome with a sliding weight.",
+        "A mahogany metronome with a brass pendulum, a bell and an inlaid tempo scale."
+      ]
+    },
+    {
+      "id": "wind_up_key",
+      "name": "Wind-Up Key",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "common",
+      "role": "lots",
+      "object": "A butterfly key for winding toys and clocks.",
+      "passive": {
+        "text": [
+          "When you win a duel in 8 turns or fewer, its lot holds 1 more parcel.",
+          "When you win a duel in 8 turns or fewer, its lot holds 1 more parcel.",
+          "When you win a duel in 10 turns or fewer, its lot holds 1 more parcel."
+        ],
+        "effects": [
+          {
+            "type": "lotBonus",
+            "params": { "hook": "onRoundEnd", "maxTurns": [8, 8, 10], "parcels": 1 },
+            "when": { "won": true }
+          }
+        ]
+      },
+      "gadget": {
+        "name": "Wind Up",
+        "usedIn": ["lot"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Oil",
+        "rechargeCost": 3,
+        "text": [
+          "On a lot's pick screen: unwrap 1 parcel before you pick.",
+          "On a lot's pick screen: unwrap 2 parcels before you pick.",
+          "On a lot's pick screen: unwrap 2 parcels before you pick, and pick 1 more."
+        ],
+        "effects": [
+          { "type": "unwrapParcels", "params": { "count": [1, 2, 2] } },
+          { "type": "extraPick", "params": { "amount": [0, 0, 1] } }
+        ]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "when", "gadgetAnywhere", "lotBonus", "unwrapParcels", "extraPick"] },
+      "rules": [
+        "Unwrapping shows the parcel's contents exactly, like the Unwrap check.",
+        "The extra parcel is drawn from the lot's own table, so it matches the lot.",
+        "A duel with no lot (a workshop round) gets nothing from the passive."
+      ],
+      "art": [
+        "A bent bicycle spoke with a bottle cap for a wing.",
+        "A steel butterfly key on a string.",
+        "A gilt key with pierced wings and a ruby set in the bow."
+      ]
+    },
+    {
+      "id": "cuckoo_clock",
+      "name": "Cuckoo Clock",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "common",
+      "role": "disruption",
+      "object": "A carved cuckoo clock with a pine-cone weight.",
+      "passive": {
+        "text": [
+          "+1 draw in duels with 2 or more opponents.",
+          "+1 draw in duels with 2 or more opponents.",
+          "+2 draws in duels with 2 or more opponents."
+        ],
+        "effects": [{ "type": "modifyRules", "params": { "drawLimit": [1, 1, 2] }, "when": { "minOpponents": 2 } }]
+      },
+      "gadget": {
+        "name": "Cuckoo",
+        "usedIn": ["duel"],
+        "target": "opponent",
+        "charges": 1,
+        "rechargeName": "Wind the weights",
+        "rechargeCost": 3,
+        "text": [
+          "A random opponent discards a random card from its hand.",
+          "An opponent discards a random card from its hand.",
+          "Every opponent discards a random card from its hand."
+        ],
+        "effects": [{ "type": "forceDiscard", "params": { "count": 1, "target": ["random", "chosen", "all"] } }]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "when", "forceDiscard"] },
+      "rules": [
+        "The card goes on top of the discard pile, so you can take it on your next draw.",
+        "An opponent with an empty hand is skipped.",
+        "Prototype needs no target; Fine needs one; Masterwork needs none."
+      ],
+      "art": [
+        "A shoebox clock with a paper bird on a spring.",
+        "A Black Forest cuckoo clock with carved leaves.",
+        "A chalet cuckoo clock with dancers, a waterwheel and gilt hands."
+      ]
+    },
+    {
+      "id": "alarm_clock",
+      "name": "Alarm Clock",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "common",
+      "role": "disruption",
+      "object": "A twin-bell alarm clock.",
+      "passive": {
+        "text": ["+1 draw.", "+1 draw.", "+2 draws."],
+        "effects": [{ "type": "modifyRules", "params": { "drawLimit": [1, 1, 2] } }]
+      },
+      "gadget": {
+        "name": "Ring",
+        "usedIn": ["duel"],
+        "target": "opponent",
+        "charges": 1,
+        "rechargeName": "Reset the hand",
+        "rechargeCost": 3,
+        "text": [
+          "An opponent can't go out on its next turn.",
+          "An opponent can't go out on its next 2 turns.",
+          "Every opponent can't go out on its next 2 turns."
+        ],
+        "effects": [{ "type": "blockGoOut", "params": { "turns": [1, 2, 2], "all": [false, false, true] } }]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "blockGoOut"] },
+      "rules": [
+        "A blocked opponent still draws and discards; it just can't lay its melds down.",
+        "Use it when an opponent is close: you can't see how close without an information item (see the Chronometer).",
+        "Blocks stack by adding turns."
+      ],
+      "art": [
+        "A tin can with a bicycle bell bolted on top.",
+        "A nickel twin-bell alarm clock.",
+        "A silver travelling alarm with engraved bells and a luminous dial."
+      ]
+    },
+    {
+      "id": "mainspring",
+      "name": "Mainspring",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "common",
+      "role": "tempo",
+      "object": "A coiled clock mainspring in its barrel.",
+      "passive": {
+        "text": [
+          "+1 hand size in boss duels.",
+          "+1 hand size in elite and boss duels.",
+          "+1 hand size and +1 draw in elite and boss duels."
+        ],
+        "effects": [
+          {
+            "type": "modifyRules",
+            "params": { "handSize": 1, "drawLimit": [0, 0, 1] },
+            "when": { "kind": [["boss"], ["elite", "boss"], ["elite", "boss"]] }
+          }
+        ]
+      },
+      "gadget": {
+        "name": "Let Go",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Coil",
+        "rechargeCost": 3,
+        "text": ["Draw 2 cards now. On your next turn, you don't draw.", "Draw 2 cards now.", "Draw 3 cards now."],
+        "effects": [
+          { "type": "drawExtra", "params": { "amount": [2, 2, 3] } },
+          { "type": "skipOwnDraw", "params": { "turns": [1, 0, 0] } }
+        ]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "when", "skipOwnDraw"] },
+      "rules": [
+        "Prototype: on the turn you don't draw, you still discard, and it still uses a draw.",
+        "The `when.kind` here is a tier param: a list of 3 lists."
+      ],
+      "art": [
+        "A coil of steel strapping in a paint tin.",
+        "A blued mainspring in a brass barrel.",
+        "A polished barrel with a jewelled arbor and engraved cover."
+      ]
+    },
+    {
+      "id": "gearbox",
+      "name": "Gearbox",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "common",
+      "role": "flexibility",
+      "object": "A small open gear train.",
+      "passive": {
+        "text": [
+          "Runs can wrap from 10 back to 1.",
+          "Runs can wrap from 10 back to 1. +1 draw.",
+          "Runs can wrap from 10 back to 1. +1 draw."
+        ],
+        "effects": [{ "type": "modifyRules", "params": { "wrapRuns": true, "drawLimit": [0, 1, 1] } }]
+      },
+      "gadget": {
+        "name": "Shift Gear",
+        "usedIn": ["duel"],
+        "target": "handCard",
+        "charges": 1,
+        "rechargeName": "Grease",
+        "rechargeCost": 3,
+        "text": [
+          "A part in your hand counts as 1 gauge higher or lower for the rest of the duel.",
+          "A part in your hand counts as up to 2 gauges higher or lower for the rest of the duel.",
+          "Up to 2 parts in your hand each count as up to 2 gauges higher or lower for the rest of the duel."
+        ],
+        "effects": [{ "type": "shiftGauge", "params": { "parts": [1, 1, 2], "maxShift": [1, 2, 2] } }]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "rule.wrapRuns", "gadgetTargetCard", "duelChoice", "shiftGauge"] },
+      "rules": [
+        "A wrapped run: 9-10-1 is a run; 10-1-2 is a run.",
+        "Shifted gauges stay within 1 to 10.",
+        "A shifted part keeps its material.",
+        "The shift ends with the duel; the part in your deck is unchanged."
+      ],
+      "art": [
+        "Two bottle-cap gears on nails through a board.",
+        "A brass gear train between two plates.",
+        "A skeletonised gear train with jewelled pivots under a glass dome."
+      ]
+    },
+    {
+      "id": "pendulum",
+      "name": "Pendulum",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "common",
+      "role": "credits",
+      "object": "A clock pendulum with a brass bob.",
+      "passive": {
+        "text": [
+          "+1 credit when you win a duel in 8 turns or fewer.",
+          "+2 credits when you win a duel in 8 turns or fewer.",
+          "+2 credits when you win a duel in 10 turns or fewer."
+        ],
+        "effects": [
+          {
+            "type": "gainCurrency",
+            "params": { "hook": "onRoundEnd", "amount": [1, 2, 2], "maxTurns": [8, 8, 10] },
+            "when": { "won": true }
+          }
+        ]
+      },
+      "gadget": {
+        "name": "Count the Swings",
+        "usedIn": ["duelResult"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Set swinging",
+        "rechargeCost": 2,
+        "text": [
+          "After a win: +1 credit for each draw you didn't use (up to 4).",
+          "After a win: +1 credit for each draw you didn't use (up to 6).",
+          "After any duel: +1 credit for each draw you didn't use (up to 6)."
+        ],
+        "effects": [{ "type": "gainCurrency", "params": { "perUnusedDraw": 1, "max": [4, 6, 6] } }],
+        "when": { "won": [true, true, false] }
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "when", "gadgetAnywhere", "gainCurrency.perUnusedDraw"] },
+      "rules": [
+        "Unused draws are your draw limit minus the draws you took, counted when the duel ended.",
+        "After a showdown you have 0 unused draws, so Masterwork after a loss is usually worth little: it pays when an opponent went out early.",
+        "`when.won` false at Masterwork means \"won or lost\"."
+      ],
+      "art": [
+        "A spanner hung on a string.",
+        "A wooden rod with a brass bob.",
+        "A mercury-compensated pendulum with a jar bob and an engraved beat scale."
+      ]
+    },
+    {
+      "id": "carriage_clock",
+      "name": "Carriage Clock",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "uncommon",
+      "role": "tempo",
+      "object": "A brass travelling clock with a carrying handle.",
+      "passive": {
+        "text": ["+1 hand size.", "+1 hand size and +1 draw.", "+1 hand size and +2 draws."],
+        "effects": [{ "type": "modifyRules", "params": { "handSize": 1, "drawLimit": [0, 1, 2] } }]
+      },
+      "gadget": {
+        "name": "Chime the Hour",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Wind",
+        "rechargeCost": 4,
+        "text": [
+          "Draw 1 card now for each opponent.",
+          "Draw 1 card now for each opponent, plus 1.",
+          "Draw 1 card now for each opponent, plus 1. Every opponent misses its next turn."
+        ],
+        "effects": [
+          { "type": "drawExtra", "params": { "perOpponent": 1, "plus": [0, 1, 1] } },
+          { "type": "skipTurn", "params": { "all": true, "turns": [0, 0, 1] } }
+        ]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "drawExtra.perOpponent", "skipTurn.all"] },
+      "rules": [
+        "Counts opponents still in the duel.",
+        "Strongest in elite duels (2 minions at act 2+) and weakest against a lone boss."
+      ],
+      "art": [
+        "A kitchen clock in a lunchbox with a belt for a handle.",
+        "A gorge-case carriage clock with bevelled glass.",
+        "A gilt grande-sonnerie carriage clock with enamel panels and a repeat button."
+      ]
+    },
+    {
+      "id": "chronometer",
+      "name": "Chronometer",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "uncommon",
+      "role": "information",
+      "object": "A marine chronometer in a gimballed box.",
+      "passive": {
+        "text": [
+          "You can see how many cards each opponent still needs to go out.",
+          "You can see how many cards each opponent still needs to go out. +1 draw.",
+          "You can see how many cards each opponent still needs to go out. +1 draw, and +1 more the first time an opponent is 1 card away."
+        ],
+        "effects": [
+          { "type": "modifyRules", "params": { "seeOpponentProgress": true, "drawLimit": [0, 1, 1] } },
+          { "type": "extraDraws", "params": { "hook": "onOpponentNearOut", "amount": [0, 0, 1], "oncePerDuel": true } }
+        ]
+      },
+      "gadget": {
+        "name": "Set the Time",
+        "usedIn": ["duel"],
+        "target": "opponent",
+        "charges": 1,
+        "rechargeName": "Rate it",
+        "rechargeCost": 4,
+        "text": [
+          "Choose one: +2 draws this duel, or an opponent misses its next turn.",
+          "Choose one: +3 draws this duel, or an opponent misses its next turn.",
+          "+3 draws this duel, and an opponent misses its next turn."
+        ],
+        "effects": [
+          {
+            "type": "chooseOne",
+            "params": {
+              "both": [false, false, true],
+              "options": [
+                { "type": "extraDraws", "params": { "amount": [2, 3, 3] } },
+                { "type": "skipTurn", "params": { "turns": 1 } }
+              ]
+            }
+          }
+        ]
+      },
+      "engine": {
+        "build": "new",
+        "needs": ["tierParams", "rule.seeOpponentProgress", "hook.onOpponentNearOut", "duelChoice", "chooseOne"]
+      },
+      "rules": [
+        "\"Cards still needed\" is the same count the bot uses (handProgress), shown on each opponent.",
+        "The target is only needed if you choose the missed turn.",
+        "Pairs with the Alarm Clock: see who's close, then stop them."
+      ],
+      "art": [
+        "A wristwatch taped inside a cigar box with a compass.",
+        "A brass chronometer in a mahogany box.",
+        "A two-day marine chronometer with a gimbal, a silvered dial and a numbered maker's plate."
+      ]
+    },
+    {
+      "id": "water_clock",
+      "name": "Water Clock",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "uncommon",
+      "role": "bosses",
+      "object": "A dripping clepsydra with a float and dial.",
+      "passive": {
+        "text": [
+          "+2 draws in boss duels.",
+          "+2 draws and +1 hand size in boss duels.",
+          "+3 draws and +1 hand size in boss duels."
+        ],
+        "effects": [
+          {
+            "type": "modifyRules",
+            "params": { "drawLimit": [2, 2, 3], "handSize": [0, 1, 1] },
+            "when": { "kind": ["boss"] }
+          }
+        ]
+      },
+      "gadget": {
+        "name": "Run Dry",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Fill the cistern",
+        "rechargeCost": 4,
+        "text": [
+          "Boss duels only: the boss misses its next turn.",
+          "Boss duels only: the boss misses its next turn and discards a random card.",
+          "Boss duels only: the boss misses its next 2 turns and discards a random card."
+        ],
+        "effects": [
+          { "type": "skipTurn", "params": { "boss": true, "turns": [1, 1, 2] } },
+          { "type": "forceDiscard", "params": { "count": [0, 1, 1], "target": "boss" } }
+        ],
+        "when": { "kind": ["boss"] }
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "when", "forceDiscard"] },
+      "rules": [
+        "Can't be used in minion or elite duels, so its charges are saved for bosses.",
+        "If a boss ever brings minions, this targets the boss only."
+      ],
+      "art": [
+        "A drinks bottle dripping into a measuring jug with a cork float.",
+        "A copper clepsydra with a float and pointer.",
+        "A tiered brass water clock with a gilt float figure pointing at the hours."
+      ]
+    },
+    {
+      "id": "escapement",
+      "name": "Escapement",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "uncommon",
+      "role": "discard",
+      "object": "An anchor escapement and its toothed wheel.",
+      "passive": {
+        "text": [
+          "+1 draw this duel each time an opponent takes from the discard pile (up to 2).",
+          "+1 draw this duel each time an opponent takes from the discard pile (up to 3).",
+          "+1 draw this duel each time an opponent takes from the discard pile (up to 3)."
+        ],
+        "effects": [{ "type": "extraDraws", "params": { "hook": "onOpponentTake", "amount": 1, "maxPerDuel": [2, 3, 3] } }]
+      },
+      "gadget": {
+        "name": "Lock",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Adjust the pallets",
+        "rechargeCost": 4,
+        "text": [
+          "Nobody can take from the discard pile for the next 2 turns.",
+          "Nobody can take from the discard pile for the next 3 turns.",
+          "Opponents can't take from the discard pile for the next 3 turns. You still can."
+        ],
+        "effects": [{ "type": "lockDiscard", "params": { "turns": [2, 3, 3], "exceptYou": [false, false, true] } }]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "hook.onOpponentTake", "lockDiscard"] },
+      "rules": [
+        "\"Turns\" are yours: the lock lasts until the end of your 2nd turn after this one, and every opponent turn in between.",
+        "Strongest against greedy minions (Magpie, Steam Hound, Boiler Titan, Clockwork King).",
+        "Overlaps the Fireguard, which locks one opponent for longer."
+      ],
+      "art": [
+        "A cut-out tin anchor rocking on a saw-tooth wheel.",
+        "A steel anchor and brass wheel on a plate.",
+        "A jewelled lever escapement under a loupe, with the pallets picked out in ruby."
+      ]
+    },
+    {
+      "id": "perpetual_calendar",
+      "name": "Perpetual Calendar",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "uncommon",
+      "role": "synergy",
+      "object": "A desk calendar with turning drums for day, date and month.",
+      "passive": {
+        "text": [
+          "Your other Clockwork gadgets have +1 charge.",
+          "Your other Clockwork gadgets have +1 charge and cost 1 less to recharge.",
+          "Your other Clockwork gadgets have +1 charge and cost 2 less to recharge."
+        ],
+        "effects": [
+          { "type": "chargeBonus", "params": { "collection": "clockwork", "amount": 1, "excludeSelf": true } },
+          { "type": "rechargeDiscount", "params": { "collection": "clockwork", "amount": [0, 1, 2] } }
+        ]
+      },
+      "gadget": {
+        "name": "Leaf Through",
+        "usedIn": ["scrapbook"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Turn the drums",
+        "rechargeCost": 4,
+        "text": [
+          "Move 1 piece from any page to a Clockwork page.",
+          "Move up to 2 pieces from any pages to Clockwork pages.",
+          "Move up to 3 pieces from any pages to Clockwork pages."
+        ],
+        "effects": [{ "type": "movePieces", "params": { "count": [1, 2, 3], "toCollection": "clockwork" } }]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "chargeBonus", "rechargeDiscount", "gadgetAnywhere", "movePieces"] },
+      "rules": [
+        "Recharge costs never go below 1.",
+        "Moving pieces can complete a stage on the new page (and lose one on the old page).",
+        "Pieces of an item that is alive can be moved; if its page drops a stage, the item drops a grade."
+      ],
+      "art": [
+        "A tear-off calendar with numbers drawn on in marker.",
+        "A wooden desk calendar with three turning drums.",
+        "A gilt perpetual calendar with enamel drums and a moon-phase window."
+      ]
+    },
+    {
+      "id": "grandfather_clock",
+      "name": "Grandfather Clock",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "rare",
+      "role": "bosses",
+      "object": "A longcase clock with a painted moon dial.",
+      "passive": {
+        "text": ["+1 draw.", "+1 draw, and +2 more in boss duels.", "+2 draws, and +2 more in boss duels."],
+        "effects": [
+          { "type": "modifyRules", "params": { "drawLimit": [1, 1, 2] } },
+          { "type": "modifyRules", "params": { "drawLimit": [0, 2, 2] }, "when": { "kind": ["boss"] } }
+        ]
+      },
+      "gadget": {
+        "name": "Turn Back the Clock",
+        "usedIn": ["duelResult"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Restart the pendulum",
+        "rechargeCost": 7,
+        "text": [
+          "After losing a duel: play it again from the start, with new hands and the same opponents and stakes.",
+          "After losing a duel: play it again from the start, with new hands, the same opponents and stakes, and +2 draws.",
+          "After losing a duel: play it again from the start, with new hands, the same opponents and stakes, and +2 draws. Opponents start 1 card short."
+        ],
+        "effects": [{ "type": "replayDuel", "params": { "extraDraws": [0, 2, 2], "opponentHandSize": [0, 0, -1] } }],
+        "when": { "won": false }
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "when", "gadgetAnywhere", "replayDuel"] },
+      "rules": [
+        "The loss is undone completely: stakes, lost life and all. Then the duel restarts with the same opponents, twist and lot.",
+        "Charges spent during the lost duel stay spent.",
+        "Can be used once per duel: the replay can't be replayed even with a second charge."
+      ],
+      "art": [
+        "A wardrobe with a kitchen clock screwed into the door and a saucepan lid for a pendulum.",
+        "An oak longcase clock with a painted moon dial.",
+        "A mahogany longcase with a rolling moon, a tide dial and gilt finials."
+      ]
+    },
+    {
+      "id": "tourbillon",
+      "name": "Tourbillon",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "rare",
+      "role": "tempo",
+      "object": "A watch movement in a rotating cage.",
+      "passive": {
+        "text": [
+          "On every 5th turn of a duel, every opponent misses its turn.",
+          "On every 4th turn of a duel, every opponent misses its turn.",
+          "On every 3rd turn of a duel, every opponent misses its turn."
+        ],
+        "effects": [{ "type": "skipTurn", "params": { "hook": "onTurnStart", "everyTurns": [5, 4, 3], "all": true, "turns": 1 } }]
+      },
+      "gadget": {
+        "name": "Spin the Cage",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Regulate",
+        "rechargeCost": 6,
+        "text": [
+          "For your next 3 turns, draw 2 cards each turn and discard 2.",
+          "For your next 4 turns, draw 2 cards each turn and discard 2.",
+          "For the rest of the duel, draw 2 cards each turn and discard 2."
+        ],
+        "effects": [{ "type": "doubleDraw", "params": { "turns": [3, 4, 99] } }]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "hook.onTurnStart", "skipTurn.all", "doubleDraw"] },
+      "rules": [
+        "Doubled turns use 1 draw each, not 2.",
+        "You can go out after either draw.",
+        "Both discards come from your hand at the end of the turn, so you see 2 new cards each turn and keep the best.",
+        "Taking from the discard pile counts as one of the 2 draws."
+      ],
+      "art": [
+        "A watch movement spinning in a tea strainer on a drill.",
+        "A steel tourbillon cage over a silver movement.",
+        "A flying tourbillon with a gold cage, ruby jewels and a sapphire window."
+      ]
+    },
+    {
+      "id": "stopped_clock",
+      "name": "Stopped Clock",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "rare",
+      "role": "stakes",
+      "object": "A mantel clock stopped at ten past ten.",
+      "passive": {
+        "text": [
+          "When you lose a duel, keep 1 random part of your stake.",
+          "When you lose a duel, keep 1 part of your stake of your choice.",
+          "When you lose a duel, keep 2 parts of your stake of your choice."
+        ],
+        "effects": [
+          {
+            "type": "stakeGrace",
+            "params": { "hook": "onRoundEnd", "keep": [1, 1, 2], "choose": [false, true, true] },
+            "when": { "won": false }
+          }
+        ]
+      },
+      "gadget": {
+        "name": "Twice a Day",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Wind it anyway",
+        "rechargeCost": 7,
+        "text": [
+          "If you lose this duel, you keep your whole stake.",
+          "If you lose this duel, you keep your whole stake.",
+          "If you lose this duel, you keep your whole stake. In a boss duel, you also don't lose a life."
+        ],
+        "effects": [{ "type": "insureDuel", "params": { "stake": true, "life": [false, false, true] } }]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "when", "rule.stakeGrace", "insureDuel", "duelChoice"] },
+      "rules": [
+        "Fine changes only the passive; that's allowed, since each tier must change something on the card.",
+        "Use the gadget any time before the duel ends; it covers the whole duel.",
+        "Does nothing if you win."
+      ],
+      "art": [
+        "A broken alarm clock with its hands glued at ten past ten.",
+        "A slate mantel clock with a stopped pendulum.",
+        "A gilt-bronze mantel clock under a glass dome, stopped at ten past ten."
+      ]
+    },
+    {
+      "id": "astronomical_clock",
+      "name": "Astronomical Clock",
+      "status": "draft",
+      "batch": 2,
+      "collection": "clockwork",
+      "rarity": "heirloom",
+      "role": "synergy",
+      "object": "A tower clock face with sun, moon and zodiac hands.",
+      "passive": {
+        "text": [
+          "Whenever an opponent misses a turn, draw 1 card.",
+          "Whenever an opponent misses a turn, draw 1 card. +1 draw.",
+          "Whenever an opponent misses a turn, draw 1 card and get +1 draw this duel. +1 draw."
+        ],
+        "effects": [
+          { "type": "drawExtra", "params": { "hook": "onOpponentSkipped", "amount": 1 } },
+          { "type": "extraDraws", "params": { "hook": "onOpponentSkipped", "amount": [0, 0, 1] } },
+          { "type": "modifyRules", "params": { "drawLimit": [0, 1, 1] } }
+        ]
+      },
+      "gadget": {
+        "name": "Eclipse",
+        "usedIn": ["duel"],
+        "target": "opponent",
+        "charges": 1,
+        "rechargeName": "Realign",
+        "rechargeCost": 8,
+        "text": [
+          "An opponent misses 1 turn for every 2 Clockwork items you own.",
+          "Every opponent misses 1 turn for every 2 Clockwork items you own.",
+          "Every opponent misses 1 turn for each Clockwork item you own (up to 3)."
+        ],
+        "effects": [
+          {
+            "type": "skipTurn",
+            "params": { "all": [false, true, true], "turns": { "perOwned": "clockwork", "per": [2, 2, 1], "max": 3 } }
+          }
+        ]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "hook.onOpponentSkipped", "perOwned", "skipTurn.all"] },
+      "rules": [
+        "Build-around: draws only come from other items that skip turns (Pocket Watch, Music Box, Tourbillon, Water Clock, Chronometer).",
+        "Each missed turn of each opponent counts separately: Masterwork Pocket Watch against 2 minions draws 2 cards.",
+        "Counts this item, so with 1 Clockwork item the Prototype gadget does nothing; the card says so plainly."
+      ],
+      "art": [
+        "A clock face painted on a dustbin lid with a cardboard sun and moon.",
+        "A brass astronomical dial with sun and moon hands.",
+        "A gilt astronomical clock with a zodiac ring, a rotating moon ball and enamel planets."
+      ]
+    },
+    {
+      "id": "kettle",
+      "name": "Kettle",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "common",
+      "role": "discard",
+      "object": "A copper kettle on the hob.",
+      "passive": {
+        "text": [
+          "Your first draw from the discard pile each duel doesn't use a draw.",
+          "Your first 2 draws from the discard pile each duel don't use a draw.",
+          "Your first 2 draws from the discard pile each duel don't use a draw. +1 hand size."
+        ],
+        "effects": [{ "type": "modifyRules", "params": { "freeDiscardDraws": [1, 2, 2], "handSize": [0, 0, 1] } }]
+      },
+      "gadget": null,
+      "engine": { "build": "new", "needs": ["tierParams", "rule.freeDiscardDraws"] },
+      "rules": [
+        "A fixture: no gadget, so its passive is stronger than a Common's usually is.",
+        "In effect +1 draw (+2 at Fine) whenever you take from the discard pile.",
+        "Does nothing under the Locked Skip twist."
+      ],
+      "art": [
+        "A dented saucepan with a tin-can spout.",
+        "A copper kettle with a wooden handle.",
+        "A planished copper kettle on a spirit stand with a brass swing handle."
+      ]
+    },
+    {
+      "id": "coal_scuttle",
+      "name": "Coal Scuttle",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "common",
+      "role": "discard",
+      "object": "A coal scuttle and its shovel.",
+      "passive": {
+        "text": [
+          "+1 credit after each duel for every 4 cards in the discard pile (up to 3).",
+          "+1 credit after each duel for every 3 cards in the discard pile (up to 3).",
+          "+1 credit after each duel for every 3 cards in the discard pile (up to 4)."
+        ],
+        "effects": [{ "type": "gainCurrency", "params": { "hook": "onRoundEnd", "perDiscard": [4, 3, 3], "max": [3, 3, 4] } }]
+      },
+      "gadget": {
+        "name": "Shovel",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Fill up",
+        "rechargeCost": 3,
+        "text": [
+          "Take the top 2 cards of the discard pile into your hand. Then discard 1 extra card.",
+          "Take the top 3 cards of the discard pile into your hand. Then discard 2 extra cards.",
+          "Take the top 3 cards of the discard pile into your hand. Then discard 1 extra card."
+        ],
+        "effects": [{ "type": "takeFromDiscard", "params": { "top": [2, 3, 3], "thenDiscard": [1, 2, 1] } }]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "takeFromDiscard.gadget", "duelChoice"] },
+      "rules": [
+        "Doesn't use a draw.",
+        "The extra discards happen at once and go on top of the discard pile, after your taken cards are gone.",
+        "Counted when the duel ends, before the discard pile is cleared."
+      ],
+      "art": [
+        "A paint tin with a garden trowel.",
+        "A black iron helmet scuttle with a shovel.",
+        "A brass-bound mahogany purdonium with a painted lid and a pierced shovel."
+      ]
+    },
+    {
+      "id": "fire_poker",
+      "name": "Fire Poker",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "common",
+      "role": "discard",
+      "object": "A fireside poker with a twisted shaft.",
+      "passive": {
+        "text": [
+          "+1 draw.",
+          "+1 draw. You can see the top 2 cards of the discard pile.",
+          "+2 draws. You can see the top 2 cards of the discard pile."
+        ],
+        "effects": [{ "type": "modifyRules", "params": { "drawLimit": [1, 1, 2], "seeDiscard": [0, 2, 2] } }]
+      },
+      "gadget": {
+        "name": "Stoke",
+        "usedIn": ["duel"],
+        "target": "discardCard",
+        "charges": 1,
+        "rechargeName": "Straighten",
+        "rechargeCost": 3,
+        "text": [
+          "Take any card from the top 3 of the discard pile into your hand.",
+          "Take any card from the top 5 of the discard pile into your hand.",
+          "Take any card from the discard pile into your hand."
+        ],
+        "effects": [{ "type": "takeFromDiscard", "params": { "depth": [3, 5, 99] } }]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "rule.seeDiscard", "takeFromDiscard.gadget", "gadgetTargetCard"] },
+      "rules": [
+        "Doesn't use a draw; you still draw and discard as normal this turn.",
+        "Works under the Locked Skip twist: the twist stops drawing from the discard pile, not gadgets. (Ruling to confirm.)",
+        "\"See the top 2\" overlaps the Hearth set bonus (top 3); the bigger number wins."
+      ],
+      "art": [
+        "A bent tent peg with a coat-hanger handle.",
+        "A wrought-iron poker with a twisted shaft.",
+        "A steel poker with a brass knop and a cut-steel handle."
+      ]
+    },
+    {
+      "id": "fireguard",
+      "name": "Fireguard",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "common",
+      "role": "disruption",
+      "object": "A mesh fireguard on a frame.",
+      "passive": {
+        "text": [
+          "+1 draw in duels against a greedy opponent.",
+          "+1 draw in duels against a greedy opponent.",
+          "+1 draw and +1 hand size in duels against a greedy opponent."
+        ],
+        "effects": [
+          {
+            "type": "modifyRules",
+            "params": { "drawLimit": 1, "handSize": [0, 0, 1] },
+            "when": { "greedyOpponent": true }
+          }
+        ]
+      },
+      "gadget": {
+        "name": "Screen",
+        "usedIn": ["duel"],
+        "target": "opponent",
+        "charges": 1,
+        "rechargeName": "Mend the mesh",
+        "rechargeCost": 2,
+        "text": [
+          "An opponent can't take from the discard pile for its next 3 turns.",
+          "An opponent can't take from the discard pile for its next 4 turns.",
+          "Every opponent can't take from the discard pile for its next 3 turns."
+        ],
+        "effects": [{ "type": "lockDiscard", "params": { "opponentTurns": [3, 4, 3], "all": [false, false, true] } }]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "when", "lockDiscard"] },
+      "rules": [
+        "Unlike the Bellows, it covers greedy bosses too (\"opponent\", not \"minion\").",
+        "A locked opponent draws from its own pile instead."
+      ],
+      "art": [
+        "Chicken wire on a broken chair back.",
+        "A black iron fireguard with brass mesh.",
+        "A serpentine brass fender guard with a pierced top rail."
+      ]
+    },
+    {
+      "id": "toasting_fork",
+      "name": "Toasting Fork",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "common",
+      "role": "discard",
+      "object": "A long three-pronged toasting fork.",
+      "passive": {
+        "text": ["+1 draw.", "+1 draw.", "+2 draws."],
+        "effects": [{ "type": "modifyRules", "params": { "drawLimit": [1, 1, 2] } }]
+      },
+      "gadget": {
+        "name": "Toast",
+        "usedIn": ["duel"],
+        "target": "handCard",
+        "charges": 2,
+        "rechargeName": "Bend back",
+        "rechargeCost": 2,
+        "text": [
+          "Swap a card in your hand with the top card of the discard pile.",
+          "Swap a card in your hand with one of the top 2 cards of the discard pile.",
+          "Swap up to 2 cards in your hand with any of the top 3 cards of the discard pile."
+        ],
+        "effects": [{ "type": "swapWithDiscard", "params": { "swaps": [1, 1, 2], "depth": [1, 2, 3] } }]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "gadgetTargetCard", "duelChoice", "swapWithDiscard"] },
+      "rules": [
+        "Doesn't use a draw.",
+        "Your card goes where the taken card was, so the top of the discard pile can change.",
+        "Base 2 charges: it's a small effect you'll want often."
+      ],
+      "art": [
+        "A barbecue fork lashed to a broom handle.",
+        "A brass toasting fork with a twisted stem.",
+        "A telescopic silver toasting fork with an engraved crest."
+      ]
+    },
+    {
+      "id": "tinderbox",
+      "name": "Tinderbox",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "common",
+      "role": "bosses",
+      "object": "A tin tinderbox with flint and steel.",
+      "passive": {
+        "text": [
+          "Twists that cut your draws or hand size cut 1 less.",
+          "Twists that cut your draws or hand size cut 2 less.",
+          "Twists that cut your draws or hand size don't affect you."
+        ],
+        "effects": [{ "type": "twistResist", "params": { "drawLimit": [1, 2, 99], "handSize": [1, 2, 99] } }]
+      },
+      "gadget": {
+        "name": "Strike a Light",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 2,
+        "rechargeName": "New flint",
+        "rechargeCost": 2,
+        "text": ["Draw 1 card now.", "Draw 2 cards now.", "Draw 2 cards now. +1 draw this duel."],
+        "effects": [
+          { "type": "drawExtra", "params": { "amount": [1, 2, 2] } },
+          { "type": "extraDraws", "params": { "amount": [0, 0, 1] } }
+        ]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "twistResist"] },
+      "rules": [
+        "Covers Short Fuse (-3 draws) and Cramped Workshop (-1 hand size) today, and any later twist with a negative drawLimit or handSize.",
+        "A twist can't be cut below 0: Prototype turns Short Fuse into -2 draws.",
+        "Base 2 charges."
+      ],
+      "art": [
+        "A mint tin with a lighter flint and a nail file.",
+        "A tin tinderbox with flint, steel and a candle socket.",
+        "A brass strike-a-light with an engraved lid and a silver steel."
+      ]
+    },
+    {
+      "id": "dustpan",
+      "name": "Dustpan and Brush",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "common",
+      "role": "discard",
+      "object": "A dustpan and hand brush.",
+      "passive": {
+        "text": [
+          "After each duel you win, take 1 random card from the discard pile into your deck.",
+          "After each duel you win, take 1 card of your choice from the top 3 of the discard pile into your deck.",
+          "After each duel you win, take 1 card of your choice from the top 5 of the discard pile into your deck."
+        ],
+        "effects": [
+          {
+            "type": "keepFromDiscard",
+            "params": { "hook": "onRoundEnd", "count": 1, "choose": [false, true, true], "depth": [99, 3, 5] },
+            "when": { "won": true }
+          }
+        ]
+      },
+      "gadget": {
+        "name": "Sweep Up",
+        "usedIn": ["duelResult"],
+        "target": "handCard",
+        "charges": 1,
+        "rechargeName": "New bristles",
+        "rechargeCost": 3,
+        "text": [
+          "After a duel: remove 1 card from your deck for good.",
+          "After a duel: remove up to 2 cards from your deck for good.",
+          "After a duel: remove up to 2 cards from your deck for good, and +1 credit for each."
+        ],
+        "effects": [{ "type": "destroyCard", "params": { "count": [1, 2, 2], "creditEach": [0, 0, 1] } }]
+      },
+      "engine": {
+        "build": "new",
+        "needs": ["tierParams", "when", "gadgetAnywhere", "keepFromDiscard", "destroyCard.gadget", "duelChoice"]
+      },
+      "rules": [
+        "The card you take can be an opponent's part: it becomes yours, like a card from the pot.",
+        "Temporary cards can't be kept.",
+        "Sweep Up chooses from your whole deck, like the shop's Scrap a card. It can't remove your last 20 cards (match the shop's rule)."
+      ],
+      "art": [
+        "A cereal box cut into a scoop and a toothbrush.",
+        "A tin dustpan with a bristle hand brush.",
+        "A japanned dustpan with a brass handle and a horsehair brush with a turned grip."
+      ]
+    },
+    {
+      "id": "warming_pan",
+      "name": "Warming Pan",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "uncommon",
+      "role": "tempo",
+      "object": "A long-handled bed warming pan.",
+      "passive": {
+        "text": ["+1 hand size.", "+1 hand size.", "+1 hand size and +1 draw."],
+        "effects": [{ "type": "modifyRules", "params": { "handSize": 1, "drawLimit": [0, 0, 1] } }]
+      },
+      "gadget": {
+        "name": "Warm Through",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Fresh embers",
+        "rechargeCost": 4,
+        "text": [
+          "+1 hand size for the rest of the duel, and draw 1 card now.",
+          "+1 hand size for the rest of the duel, and draw 2 cards now.",
+          "+2 hand size for the rest of the duel, and draw 2 cards now."
+        ],
+        "effects": [
+          { "type": "handSizeNow", "params": { "amount": [1, 1, 2] } },
+          { "type": "drawExtra", "params": { "amount": [1, 2, 2] } }
+        ]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "handSizeNow"] },
+      "rules": [
+        "Mid-duel hand size means you keep the extra cards at the end of your turn instead of discarding down.",
+        "Going out still needs every card in your hand to be in melds, so a bigger hand is more to meld: this is about seeing more cards, not going out sooner."
+      ],
+      "art": [
+        "A frying pan with holes punched in a lid wired on.",
+        "A copper warming pan with a turned wooden handle.",
+        "A brass warming pan with a pierced and engraved lid and an ebonised handle."
+      ]
+    },
+    {
+      "id": "fire_bucket",
+      "name": "Fire Bucket",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "uncommon",
+      "role": "bosses",
+      "object": "A red fire bucket of sand.",
+      "passive": {
+        "text": [
+          "In boss duels, the boss can't take from the discard pile.",
+          "In boss duels, the boss can't take from the discard pile. +1 draw in boss duels.",
+          "In elite and boss duels, opponents can't take from the discard pile. +1 draw in boss duels."
+        ],
+        "effects": [
+          {
+            "type": "modifyRules",
+            "params": { "opponentDiscardDraw": false },
+            "when": { "kind": [["boss"], ["boss"], ["elite", "boss"]] }
+          },
+          { "type": "modifyRules", "params": { "drawLimit": [0, 1, 1] }, "when": { "kind": ["boss"] } }
+        ]
+      },
+      "gadget": {
+        "name": "Douse",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Refill with sand",
+        "rechargeCost": 5,
+        "text": [
+          "Boss duels only: the boss discards 2 random cards.",
+          "Boss duels only: the boss discards 3 random cards.",
+          "Boss duels only: the boss discards 3 random cards and misses its next turn."
+        ],
+        "effects": [
+          { "type": "forceDiscard", "params": { "target": "boss", "count": [2, 3, 3] } },
+          { "type": "skipTurn", "params": { "boss": true, "turns": [0, 0, 1] } }
+        ],
+        "when": { "kind": ["boss"] }
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "when", "rule.opponentDiscardDraw", "forceDiscard"] },
+      "rules": [
+        "Discarded cards go on top of the discard pile, so the boss can't take them back (the passive) but you can.",
+        "A boss discarding cards makes its hand smaller, not its melds weaker: it may be closer to going out if it dropped its worst cards. Random cards only.",
+        "Two of the three bosses are greedy, so the passive bites."
+      ],
+      "art": [
+        "A paint bucket with FIRE written on in marker.",
+        "A red tin fire bucket with a rounded bottom.",
+        "A painted leather fire bucket with a gilt crest and a brass rim."
+      ]
+    },
+    {
+      "id": "stockpot",
+      "name": "Stockpot",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "uncommon",
+      "role": "tempo",
+      "object": "A big iron stockpot on the range.",
+      "passive": {
+        "text": [
+          "+1 draw. Opponents can't take your first discard of each duel.",
+          "+1 draw. Opponents can't take your first discard of each duel.",
+          "+2 draws. Opponents can't take your first discard of each duel."
+        ],
+        "effects": [{ "type": "modifyRules", "params": { "drawLimit": [1, 1, 2], "protectDiscardTurns": 1 } }]
+      },
+      "gadget": {
+        "name": "Simmer",
+        "usedIn": ["duel"],
+        "target": "handCard",
+        "charges": 1,
+        "rechargeName": "Add stock",
+        "rechargeCost": 4,
+        "text": [
+          "Put up to 2 cards from your hand on the bottom of your draw pile, then draw that many.",
+          "Put up to 3 cards from your hand on the bottom of your draw pile, then draw that many.",
+          "Put up to 3 cards from your hand on the bottom of your draw pile, then draw that many. +1 draw this duel."
+        ],
+        "effects": [
+          { "type": "cycleCards", "params": { "max": [2, 3, 3] } },
+          { "type": "extraDraws", "params": { "amount": [0, 0, 1] } }
+        ]
+      },
+      "engine": {
+        "build": "new",
+        "needs": ["tierParams", "rule.protectDiscardTurns", "gadgetTargetCard", "duelChoice", "cycleCards"]
+      },
+      "rules": [
+        "Shares rule.protectDiscardTurns with the Music Box; the larger value wins.",
+        "The new cards don't use draws.",
+        "Cards on the bottom can come back if the draw pile runs out and is rebuilt."
+      ],
+      "art": [
+        "A plastic bucket on a camping stove.",
+        "A cast-iron stockpot with a lid.",
+        "A tinned-copper stockpot with brass handles and a stamped kitchen mark."
+      ]
+    },
+    {
+      "id": "chimney_pot",
+      "name": "Chimney Pot",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "uncommon",
+      "role": "information",
+      "object": "A terracotta chimney pot.",
+      "passive": {
+        "text": [
+          "You can see the top card of your draw pile.",
+          "You can see the top card of your draw pile. +1 draw.",
+          "You can see the top 2 cards of your draw pile. +1 draw."
+        ],
+        "effects": [{ "type": "modifyRules", "params": { "seeOwnTop": [1, 1, 2], "drawLimit": [0, 1, 1] } }]
+      },
+      "gadget": {
+        "name": "Down the Flue",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Sweep",
+        "rechargeCost": 3,
+        "text": [
+          "Look at the top 3 cards of your draw pile and put them back in any order.",
+          "Look at the top 4 cards of your draw pile and put them back in any order.",
+          "Look at the top 4 cards of your draw pile. Put any on the discard pile and the rest back in any order."
+        ],
+        "effects": [{ "type": "reorderTop", "params": { "count": [3, 4, 4], "mayDiscard": [false, false, true] } }]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "rule.seeOwnTop", "reorderTop.gadget", "duelChoice"] },
+      "rules": [
+        "Seeing the top card helps you choose between your draw pile and the discard pile.",
+        "Cards put on the discard pile are open to everyone, greedy minions included.",
+        "Copies the Parts Catalogue special at Prototype."
+      ],
+      "art": [
+        "A drainpipe offcut with a tin-can cowl.",
+        "A terracotta chimney pot with a rolled rim.",
+        "A glazed and moulded chimney pot with a cast-iron cowl that turns in the wind."
+      ]
+    },
+    {
+      "id": "kitchen_range",
+      "name": "Kitchen Range",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "rare",
+      "role": "discard",
+      "object": "A black-leaded cast-iron kitchen range.",
+      "passive": {
+        "text": [
+          "Once per duel, you can take any card from the discard pile, not just the top one.",
+          "Twice per duel, you can take any card from the discard pile, not just the top one.",
+          "You can always take any card from the discard pile, not just the top one."
+        ],
+        "effects": [{ "type": "modifyRules", "params": { "takeAnyDiscard": [1, 2, 99] } }]
+      },
+      "gadget": {
+        "name": "Fire Up",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Black-lead",
+        "rechargeCost": 6,
+        "text": [
+          "Shuffle the top 5 cards of the discard pile into your draw pile.",
+          "Shuffle the top 8 cards of the discard pile into your draw pile.",
+          "Shuffle the whole discard pile into your draw pile, and draw 1 card."
+        ],
+        "effects": [
+          { "type": "discardToDrawPile", "params": { "count": [5, 8, 99] } },
+          { "type": "drawExtra", "params": { "amount": [0, 0, 1] } }
+        ]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "rule.takeAnyDiscard", "discardToDrawPile"] },
+      "rules": [
+        "Taking any card still uses a draw, like taking the top one.",
+        "Opponents' cards shuffled into your draw pile are yours for this duel only; they go back when it ends.",
+        "Under the Locked Skip twist the passive does nothing, but the gadget still works (it isn't a draw)."
+      ],
+      "art": [
+        "A barbecue grill bolted into a fireplace.",
+        "A black cast-iron range with an oven door and hob.",
+        "A black-leaded range with steel trim, twin ovens, a boiler and a polished brass rail."
+      ]
+    },
+    {
+      "id": "fire_blanket",
+      "name": "Fire Blanket",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "rare",
+      "role": "bosses",
+      "object": "A folded fire blanket in a wall tin.",
+      "passive": {
+        "text": [
+          "The first time you would lose a life in a run, you don't.",
+          "The first time you would lose a life in each act, you don't.",
+          "The first time you would lose a life in each act, you don't, and you keep your stake."
+        ],
+        "effects": [{ "type": "spareLife", "params": { "per": ["run", "act", "act"], "keepStake": [false, false, true] } }]
+      },
+      "gadget": {
+        "name": "Smother",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Refold",
+        "rechargeCost": 7,
+        "text": [
+          "Minion duels only: end this duel now. Nobody wins, and every stake goes back.",
+          "Minion and elite duels only: end this duel now. Nobody wins, and every stake goes back.",
+          "End this duel now. Nobody wins, every stake goes back, and you don't lose a life."
+        ],
+        "effects": [{ "type": "endDuelDraw", "params": {} }],
+        "when": { "kind": [["battle"], ["battle", "elite"], ["battle", "elite", "boss"]] }
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "when", "spareLife", "endDuelDraw"] },
+      "rules": [
+        "A smothered duel is neither won nor lost: no pot, no lot, no \"after a win\" effects.",
+        "At a boss stop, a smothered boss duel can't be skipped: the run needs the boss beaten, so the duel starts again (new hands). (Ruling to confirm.)",
+        "A spare life you don't use isn't carried over."
+      ],
+      "art": [
+        "A tea towel stapled into a biscuit tin.",
+        "A red wall tin with pull tapes.",
+        "An enamelled brass wall case with a glass front and a crest, the tapes tasselled."
+      ]
+    },
+    {
+      "id": "pot_bellied_stove",
+      "name": "Pot-Bellied Stove",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "rare",
+      "role": "stakes",
+      "object": "A round cast-iron stove with a flue pipe.",
+      "passive": {
+        "text": [
+          "When you go out, each opponent adds its highest-gauge card in hand to the pot.",
+          "When you go out, each opponent adds its 2 highest-gauge cards in hand to the pot.",
+          "When you go out, each opponent adds its 2 highest-gauge cards in hand to the pot, and you get +1 credit for each."
+        ],
+        "effects": [
+          {
+            "type": "growPot",
+            "params": { "hook": "onBuild", "perOpponent": [1, 2, 2], "pick": "highestGauge", "creditEach": [0, 0, 1] }
+          }
+        ]
+      },
+      "gadget": {
+        "name": "Burn",
+        "usedIn": ["duel"],
+        "target": "handCard",
+        "charges": 1,
+        "rechargeName": "Riddle the ashes",
+        "rechargeCost": 5,
+        "text": [
+          "Remove a card in your hand from your deck for good, and draw 2 cards.",
+          "Remove a card in your hand from your deck for good, draw 2 cards, and get +1 draw this duel.",
+          "Remove up to 2 cards in your hand from your deck for good, and draw 2 cards for each."
+        ],
+        "effects": [
+          { "type": "destroyCard", "params": { "count": [1, 1, 2], "fromHand": true } },
+          { "type": "drawExtra", "params": { "perCard": 2 } },
+          { "type": "extraDraws", "params": { "amount": [0, 1, 0] } }
+        ]
+      },
+      "engine": {
+        "build": "new",
+        "needs": ["tierParams", "growPot", "destroyCard.gadget", "gadgetTargetCard", "drawExtra.perCard"]
+      },
+      "rules": [
+        "Pot cards are added before the pot is paid out, so you win them.",
+        "Only when you go out, not on a showdown win.",
+        "Burning a temporary card removes it from the duel only.",
+        "Masterwork drops the Fine +1 draw in favour of a second burn."
+      ],
+      "art": [
+        "An oil drum with a hole cut for a door and a drainpipe flue.",
+        "A cast-iron pot-bellied stove with a mica window.",
+        "A nickel-trimmed parlour stove with an urn finial and a crown top."
+      ]
+    },
+    {
+      "id": "firedogs",
+      "name": "Firedogs",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "rare",
+      "role": "flexibility",
+      "object": "A pair of iron andirons that hold the logs.",
+      "passive": {
+        "text": [
+          "Once per duel, you can discard 1 extra card and draw a replacement.",
+          "Twice per duel, you can discard 1 extra card and draw a replacement.",
+          "On each of your turns, you can discard 1 extra card and draw a replacement."
+        ],
+        "effects": [{ "type": "modifyRules", "params": { "extraDiscards": [1, 2, 99] } }]
+      },
+      "gadget": {
+        "name": "Bank the Fire",
+        "usedIn": ["duel"],
+        "target": "handCard",
+        "charges": 1,
+        "rechargeName": "Rake out",
+        "rechargeCost": 6,
+        "text": [
+          "Set up to 2 cards from your hand aside for the rest of the duel. They don't count towards your hand size, and you can use them in melds when you go out.",
+          "Set up to 3 cards from your hand aside for the rest of the duel. They don't count towards your hand size, and you can use them in melds when you go out.",
+          "Set up to 3 cards from your hand aside for the rest of the duel, and draw 1 card for each. They don't count towards your hand size, and you can use them in melds when you go out."
+        ],
+        "effects": [{ "type": "setAside", "params": { "max": [2, 3, 3], "drawEach": [false, false, true] } }]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "rule.extraDiscards", "gadgetTargetCard", "duelChoice", "setAside"] },
+      "rules": [
+        "Replacement draws don't use a draw.",
+        "Set-aside cards must be used when you go out, like the rest of your hand.",
+        "Set-aside cards are face up: opponents can't take them, and you can't discard them."
+      ],
+      "art": [
+        "Two breeze blocks with bent rebar on top.",
+        "A pair of wrought-iron firedogs.",
+        "A pair of brass-headed firedogs cast as seated hounds."
+      ]
+    },
+    {
+      "id": "brass_fender",
+      "name": "Brass Fender",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "heirloom",
+      "role": "synergy",
+      "object": "A polished brass fender around the hearth.",
+      "passive": {
+        "text": [
+          "+1 credit after each duel for each Hearth gadget you used in it.",
+          "+1 credit after each duel for each Hearth gadget you used in it. +1 draw.",
+          "+2 credits after each duel for each Hearth gadget you used in it. +1 draw."
+        ],
+        "effects": [
+          { "type": "gainCurrency", "params": { "hook": "onRoundEnd", "perGadgetUsed": "hearth", "amount": [1, 1, 2] } },
+          { "type": "modifyRules", "params": { "drawLimit": [0, 1, 1] } }
+        ]
+      },
+      "gadget": {
+        "name": "Hold the Heat",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Polish",
+        "rechargeCost": 8,
+        "text": [
+          "The next Hearth gadget you use this duel doesn't spend a charge.",
+          "The next 2 Hearth gadgets you use this duel don't spend a charge.",
+          "The next 2 gadgets you use this duel don't spend a charge."
+        ],
+        "effects": [{ "type": "freeGadgetUses", "params": { "count": [1, 2, 2], "collection": ["hearth", "hearth", "any"] } }]
+      },
+      "engine": { "build": "new", "needs": ["tierParams", "gainCurrency.perGadgetUsed", "freeGadgetUses"] },
+      "rules": [
+        "Build-around: worth little without other Hearth gadgets, and a lot with Toasting Fork, Tinderbox and Coal Scuttle.",
+        "A gadget with no charges left can still be used while Hold the Heat covers it.",
+        "Hold the Heat can't cover itself. Uses left over when the duel ends are lost.",
+        "A use is counted per use, so one gadget used twice pays twice."
+      ],
+      "art": [
+        "A strip of copper flashing bent round the hearth on bricks.",
+        "A brass fender with a moulded rail.",
+        "A club fender with a buttoned leather seat and pierced brass panels."
+      ]
+    },
+    {
+      "id": "smoke_jack",
+      "name": "Smoke Jack",
+      "status": "draft",
+      "batch": 2,
+      "collection": "hearth",
+      "rarity": "heirloom",
+      "role": "scrapbook",
+      "object": "A chimney turbine that turns the roasting spit.",
+      "passive": {
+        "text": [
+          "When you go out, place 1 extra piece for every 2 cards in your melds you took from the discard pile.",
+          "When you go out, place 1 extra piece for each card in your melds you took from the discard pile (up to 3).",
+          "When you go out, place 1 extra piece and +1 credit for each card in your melds you took from the discard pile (up to 4)."
+        ],
+        "effects": [
+          {
+            "type": "extraPieces",
+            "params": { "hook": "onBuild", "perDiscardTaken": [0.5, 1, 1], "max": [3, 3, 4], "creditEach": [0, 0, 1] }
+          }
+        ]
+      },
+      "gadget": {
+        "name": "Roast",
+        "usedIn": ["duel"],
+        "target": "none",
+        "charges": 1,
+        "rechargeName": "Clean the vanes",
+        "rechargeCost": 6,
+        "text": [
+          "Take the top card of the discard pile. It doesn't use a draw.",
+          "Take the top 2 cards of the discard pile. They don't use a draw.",
+          "Take the top 2 cards of the discard pile. They don't use a draw, and opponents can't take from the discard pile on their next turn."
+        ],
+        "effects": [
+          { "type": "takeFromDiscard", "params": { "top": [1, 2, 2] } },
+          { "type": "lockDiscard", "params": { "opponentTurns": [0, 0, 1], "all": true } }
+        ]
+      },
+      "engine": {
+        "build": "new",
+        "needs": [
+          "tierParams",
+          "trackDiscardOrigin",
+          "extraPieces",
+          "takeFromDiscard.gadget",
+          "lockDiscard"
+        ]
+      },
+      "rules": [
+        "Build-around: the passive needs you to take a lot from the discard pile (Fire Poker, Kitchen Range, Kettle, Coal Scuttle).",
+        "Cards taken by any means count: draws, gadgets and the Horseshoe Magnet.",
+        "Extra pieces go to the page you're building for, after the normal pieces.",
+        "Prototype rounds down: 3 taken cards place 1 extra piece."
+      ],
+      "art": [
+        "A desk fan in a chimney with a bicycle chain down to a skewer.",
+        "An iron smoke jack with vanes, gears and a spit chain.",
+        "A brass smoke jack with a gilt turbine, a geared spit and a chain through a pulley wheel."
+      ]
     }
   ]
 }

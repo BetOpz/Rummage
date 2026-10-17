@@ -12,8 +12,9 @@ Some rules here change the live game (marked **Changes the game**). They're prop
 
 1. **Framework** (this document): structure, rarities, scaling, wording and the engine vocabulary.
 2. **Batch 1** (26 cards, done in draft): the 8 live items reworked to these rules, plus 18 new ones spread across every collection and rarity to test the template.
-3. **Batches 2–8** (about 25 each): fill one or two collections per batch until each has its 20.
-4. **Engine work** runs alongside, in the order `npm run portfolio` shows: the needs most cards are waiting on come first.
+3. **Batch 2** (34 cards, done in draft): completes Clockwork and Hearth, so two collections can be judged whole.
+4. **Batches 3–8** (about 25 each): fill one or two collections per batch until each has its 20.
+5. **Engine work** runs alongside, in the order `npm run portfolio` shows: the needs most cards are waiting on come first.
 
 ## 2. Shape of the set
 
@@ -60,7 +61,7 @@ A collection is a family of objects with a theme and a mechanical lean. About ha
 
 ## 4. Pages in a run
 
-With 200 items, a run can't offer every page. **Proposal** (needs deciding before batch 2, because it sets how strong commons can be):
+With 200 items, a run can't offer every page. **Working assumption** (batch 2 is written against it; still open to change, and if it changes, card strength is adjusted rather than the designs):
 
 - **The scrapbook holds up to 12 pages in a run.** You start with 3, chosen from 5 Common pages offered at the start.
 - **Loose pages** are a new kind of parcel in lots: a page instead of a part. Lots have a page chance (shoebox 5%, up to estate sale 40%, where the boss lot always holds one Rare or Heirloom page).
@@ -109,6 +110,8 @@ Every card in `design/card-portfolio.json` has these fields. Every text and art 
 - **Base charges** are 1 or 2 (Heirlooms 1). **Recharge costs** by rarity: Common 2–4, Uncommon 3–6, Rare 4–7, Heirloom 6–9.
 
 **Power guide** (a starting point for the sim to correct):
+
+- **A draw is a turn.** In a duel your draw limit is the number of turns you get; when it runs out the duel goes to a showdown. Opponents have no limit and take a turn after each of yours. So +1 draw is one more turn, and cards never cut an opponent's draws: they make it miss turns, stop it going out, or keep it off the discard pile.
 
 - A Common's passive is worth about **1 draw** (Prototype) to **2 draws** (Masterwork). A fixture's is worth about half as much again.
 - One gadget charge is worth about **one turn of tempo**: an opponent missing a turn, 2 extra cards, or a sure pick of one card.
@@ -159,7 +162,7 @@ Effects the cards can use. **Exists** means it's in `src/engine/effects.ts` toda
 | `skipTurn`, `revealHands`, `extraDraws`, `drawExtra`, `stealCard`, `raiseStakes` | gadget | duel gadgets |
 | `drawChoice`, `reorderTop`, `takeFromDiscard` | special cards | exist for workshop specials; need a gadget version (`.gadget`) |
 
-**Hooks** (when passives fire). Existing: `onRoundStart` (hands dealt), `onBuild` (you go out), `onRoundEnd` (duel ends). Needed: `hook.onDuelDraw`, `hook.onDiscard`, `hook.onOpponentTake` (an opponent takes from the discard pile), `hook.onOpponentWouldGoOut`, `hook.onStake`, `hook.onPick`, `hook.onPlacePiece`, `hook.onStageComplete`, `hook.onEnterStop`, `hook.onShopEnter`.
+**Hooks** (when passives fire). Existing: `onRoundStart` (hands dealt), `onBuild` (you go out), `onRoundEnd` (duel ends). Needed: `hook.onTurnStart` (your turn begins), `hook.onOpponentSkipped` (an opponent misses a turn), `hook.onOpponentNearOut` (an opponent is 1 card from going out), `hook.onDuelDraw`, `hook.onDiscard`, `hook.onOpponentTake` (an opponent takes from the discard pile), `hook.onOpponentWouldGoOut`, `hook.onStake`, `hook.onPick`, `hook.onPlacePiece`, `hook.onStageComplete`, `hook.onEnterStop`, `hook.onShopEnter`.
 
 **Conditions** (`when`), on any effect or gadget: `kind` (battle, elite, boss), `greedyOpponent`, `minOpponents`, `act`, `won`. Engine need `when`.
 
@@ -173,7 +176,7 @@ Effects the cards can use. **Exists** means it's in `src/engine/effects.ts` toda
 | `gadgetTargetCard` | A gadget that targets a card in your hand or the discard pile. |
 | `perOwned` | A number that counts items you own in a collection. |
 | `collectionBonus` | Set bonuses (section 3). |
-| `rule.*` | New round rules: `seeOwnTop`, `seeDiscard`, `protectDiscardTurns`, `stakeGrace`. |
+| `rule.*` | New round rules: `seeOwnTop`, `seeDiscard`, `protectDiscardTurns`, `stakeGrace`, `wrapRuns`, `seeOpponentProgress`, `freeDiscardDraws`, `takeAnyDiscard`, `extraDiscards`, `opponentDiscardDraw`. |
 
 New single-card effects are named after what they do (`discardTrap`, `swapHands`, `movePieces` and so on). The current list, with which cards need each, is printed by `npm run portfolio`.
 
@@ -209,9 +212,20 @@ New single-card effects are named after what they do (`discardTrap`, `swapHands`
 - **Magnifier:** Spyglass parcel checks go 1 of 3, 1 of 2, exact by tier.
 - **Workbench** is a fixture (it already has no gadget), so its passive grows at Fine and Masterwork.
 
-## 12. Open questions
+## 12. Batch 2
 
-- **Pages in a run** (section 4): the 12-page scrapbook, loose pages, and tearing out pages all need deciding before batch 2.
+34 cards that complete two collections. Clockwork leans on turns: extra turns, missed turns, blocking going out, and seeing how close opponents are. Hearth leans on the discard pile and hazards: free and deeper takes, swaps, locks, twists and boss duels.
+
+| Collection | Common | Uncommon | Rare | Heirloom |
+|---|---|---|---|---|
+| Clockwork | Egg Timer, Metronome (fixture), Wind-Up Key, Cuckoo Clock, Alarm Clock, Mainspring, Gearbox, Pendulum | Carriage Clock, Chronometer, Water Clock, Escapement, Perpetual Calendar | Grandfather Clock, Tourbillon, Stopped Clock | Astronomical Clock |
+| Hearth | Kettle (fixture), Coal Scuttle, Fire Poker, Fireguard, Toasting Fork, Tinderbox, Dustpan and Brush | Warming Pan, Fire Bucket, Stockpot, Chimney Pot | Kitchen Range, Fire Blanket, Pot-Bellied Stove, Firedogs | Brass Fender, Smoke Jack |
+
+Batch 1 cards in these collections are unchanged. Rulings marked "to confirm" in the data (gadgets under the Locked Skip twist; smothering a boss duel) need a decision before those cards are built.
+
+## 13. Open questions
+
+- **Pages in a run** (section 4): the working assumption above. Confirm or change it; batch 3 onwards are written against whatever stands.
 - **Set bonuses:** 3 and 5 items are guesses. With 12 pages they're reachable but take commitment.
 - **Fixtures:** are 2 per collection (20 in all) the right number?
 - **Balance:** the bot doesn't use gadgets well, so the sim will undervalue gadget-heavy items. A better bot is needed before tuning.
